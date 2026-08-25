@@ -39,3 +39,18 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/src/generated/prisma
+
+# prisma sqlite db (local dev data)
+/dev.db
+/dev.db-journal
+
+# MCP server config — contiene la API key de Stitch en texto plano
+.mcp.json
+
+# estado local de herramientas/agentes, no es parte de la app
+.claude/
+.agents/
+.windsurf/
+skills-lock.json

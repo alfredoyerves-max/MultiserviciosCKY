@@ -1,0 +1,321 @@
+// Quotly — esquema de datos (Fases 1-5 del spec)
+//
+// Nota de portabilidad: SQLite no soporta enums nativos ni arrays, así que
+// los campos "tipo enum" (categoria, tipoCliente, modalidad, estado, tier)
+// se guardan como String validado en la capa de aplicación (zod), y las
+// listas (modalidades disponibles) como JSON serializado. Esto mantiene el
+// esquema compatible sin cambios cuando se migre a Postgres/Supabase.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+/// Parámetros generales del sistema (Fase 1). Fila única (id fijo = 1).
+model SystemConfig {
+  id Int @id @default(1)
+
+  umaDiaria    Float
+  umaMensual   Float
+  topeSbcUmas  Float // en múltiplos de UMA, ej. 25
+
+  /// Salario mínimo general vigente (Campeche, zona general). Vive en la
+  /// sección fiscal (candado de contraseña) — es la base de las bandas 1-2
+  /// de la tabla CEAV y de la alerta de sueldo por debajo del mínimo.
+  salarioMinimoDiario  Float
+  salarioMinimoMensual Float
+
+  primaRiesgoPct Float // editable — cambia según clasificación IMSS, dato de negocio (sin candado)
+
+  imssEnfMatCuotaFijaPct Float // % de 1 UMA mensual
+  imssEnfMatCuotaAdicPct Float // % del excedente sobre 3 UMA
+  imssEnfMatDineroPct    Float // % del SBC
+  imssGastosMedPensPct   Float // % del SBC
+  imssInvalidezVidaPct   Float // % del SBC
+  imssGuarderiasPct      Float // % del SBC
+  imssRetiroPct          Float // % del SBC
+  // Cesantía y Vejez (CEAV) ya NO es tasa fija — ver modelo CeavBanda.
+  // Reforma LSS/LSAR (DOF 16-dic-2020), Art. 168 fracción II: la cuota
+  // patronal depende del SBC del trabajador en múltiplos de UMA/SM.
+
+  infonavitPct Float // % del SBC
+
+  isnPct                Float // % de la nómina
+  impuestoAdicionalPct  Float // % del ISN
+
+  diasAguinaldo       Int
+  diasVacaciones      Int
+  primaVacacionalPct  Float
+
+  ivaPct         Float
+  retencionIsrPct Float // Art. 113-J RESICO, solo Persona Moral
+
+  horasPorDia    Int
+  diasPorSemana  Int
+
+  margenUtilidadDefaultPct Float // placeholder inicial, editable en /configuracion
+
+  updatedAt DateTime @updatedAt
+}
+
+/// Tabla de bandas de Cesantía y Vejez (CEAV) — Addendum v4, punto 1.
+/// La cuota patronal depende de en qué banda cae el SBC mensual del
+/// trabajador. `unidadLimite` indica contra qué se compara
+/// `limiteSuperior`:
+///   - "SALARIO_MINIMO": limiteSuperior × salarioMinimoMensual (bandas 1-2)
+///   - "UMA": limiteSuperior × umaMensual (bandas 3-8)
+/// `limiteSuperior` null = sin tope (última banda, "4.01 UMA en adelante").
+/// Las bandas se evalúan en orden (`orden` 1→8) y se toma la primera cuyo
+/// tope no se exceda. Esto NO es un rango estrictamente monótono en pesos:
+/// el salario mínimo ha crecido mucho más rápido que la UMA desde 2019, así
+/// que en 2026 "1.50×SM" (banda 2, ~$14,374) es mayor en pesos que
+/// "2.00×UMA" (banda 3, ~$7,132) — las bandas 3-5 quedan prácticamente
+/// inalcanzables para sueldos típicos. Es un artefacto real de la reforma
+/// (DOF 16-dic-2020) al no haberse actualizado desde entonces la mezcla de
+/// unidades SM/UMA de las bandas bajas.
+model CeavBanda {
+  id                 String @id @default(cuid())
+  anio               Int
+  orden              Int
+  etiqueta           String // texto oficial de la banda, para mostrar
+  unidadLimite       String // "SALARIO_MINIMO" | "UMA"
+  limiteSuperior     Float? // multiplicador; null = sin límite superior
+  porcentajePatronal Float
+
+  @@unique([anio, orden])
+}
+
+/// Puesto de trabajo reutilizable entre servicios (Fase 3).
+model Puesto {
+  id            String   @id @default(cuid())
+  nombre        String
+  sueldoMensual Float
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  servicios Servicio[]
+}
+
+/// Servicio del catálogo (Fase 3). categoria: LIMPIEZA | SEGURIDAD |
+/// MANTENIMIENTO | FUMIGACION | JARDINES | AC (validado en zod).
+///
+/// Addendum v4 punto 4: el costo de mano de obra ya NO depende de tener un
+/// Puesto pre-guardado. `puestoId` es opcional — si es null, el sueldo vive
+/// directamente en `sueldoMensualInline`/`nombrePuestoInline` (capturado en
+/// el propio formulario de Servicio, con opción de guardarlo como Puesto
+/// después). Exactamente uno de los dos caminos debe estar presente —
+/// validado en zod (servicioSchema), no en el esquema de BD.
+model Servicio {
+  id          String  @id @default(cuid())
+  nombre      String
+  descripcion String?
+  categoria   String
+
+  puestoId String?
+  puesto   Puesto? @relation(fields: [puestoId], references: [id], onDelete: SetNull)
+
+  // Usado solo cuando puestoId es null — sueldo capturado directo en el
+  // formulario de Servicio, sin pasar por el catálogo de Puestos.
+  sueldoMensualInline Float?
+  nombrePuestoInline  String?
+
+  personalPorUnidad Int @default(1)
+
+  // modalidades disponibles: JSON de un subconjunto de
+  // ["HORA","DIA","SEMANA","MES"]
+  modalidadesJson String @default("[]")
+
+  incluyeUniforme       Boolean @default(false)
+  costoUniforme         Float?
+  vidaUtilUniformeMeses Int?
+
+  incluyeMaterial       Boolean @default(false)
+  costoMaterial         Float?
+  vidaUtilMaterialMeses Int?
+
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lineas LineaCotizacion[]
+}
+
+/// Cliente de una cotización (Fase 4). tipoCliente: PERSONA_MORAL |
+/// PERSONA_FISICA | GOBIERNO (validado en zod).
+model Cliente {
+  id                String  @id @default(cuid())
+  nombreRazonSocial String
+  rfc               String?
+  contacto          String?
+  tipoCliente       String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cotizaciones Cotizacion[]
+}
+
+/// Cotización (Fases 4-7). estado: BORRADOR | ENVIADA | ACEPTADA | RECHAZADA
+/// (validado en zod) — son también las 4 columnas del kanban de
+/// seguimiento (Fase 6). Cuando estado pasa a ACEPTADA, desde su detalle
+/// se puede generar una CuentaPorCobrar (Fase 7) — relación 1:1 opcional.
+model Cotizacion {
+  id     String @id @default(cuid())
+  folio  String @unique
+
+  clienteId String
+  cliente   Cliente @relation(fields: [clienteId], references: [id])
+  proyecto  String?
+
+  margenUtilidadPct Float // snapshot editable por cotización
+
+  subtotal     Float @default(0)
+  iva          Float @default(0)
+  retencionIsr Float @default(0)
+  totalAPagar  Float @default(0)
+  netoARecibir Float @default(0)
+
+  estado String @default("BORRADOR")
+
+  /// Fecha de vigencia/validez propia de esta cotización (varía por
+  /// cotización, ej. 15 días desde su creación) — usada por el kanban de
+  /// Fase 6 para el recordatorio de "por vencer"/"vencida".
+  fechaVigencia DateTime
+
+  /// Cotización generada solo como trámite interno del cliente (papeleo
+  /// de compras sin intención real de compra) — no es un estado ni un tipo
+  /// separado, solo un flag que el kanban oculta por defecto.
+  esSoporte Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lineas          LineaCotizacion[]
+  cuentaPorCobrar CuentaPorCobrar?
+}
+
+/// Línea de servicio dentro de una cotización. Guarda un snapshot del
+/// costo real unitario calculado en el momento (las tasas de Configuración
+/// cambian cada año — una cotización vieja no debe recalcularse con tasas
+/// nuevas). modalidad: HORA | DIA | SEMANA | MES.
+model LineaCotizacion {
+  id String @id @default(cuid())
+
+  cotizacionId String
+  cotizacion   Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
+
+  servicioId String
+  servicio   Servicio @relation(fields: [servicioId], references: [id])
+
+  modalidad String
+  personas  Int
+  duracion  Int // número de unidades en la modalidad (ej. 20 días)
+
+  costoRealUnitarioSnapshot Float
+  costoRealTotal            Float
+  precioVenta               Float
+
+  createdAt DateTime @default(now())
+}
+
+/// Cuenta por cobrar (Fase 7) — se genera automáticamente al confirmar la
+/// aceptación de una Cotización (ver confirmarAceptacionAction), pidiendo
+/// la fecha de vencimiento en ese momento (no se puede derivar de la
+/// cotización). `montoTotal` es un snapshot de `cotizacion.netoARecibir`
+/// — lo que realmente se cobra en efectivo, no `totalAPagar` (la
+/// retención ISR no la paga el cliente a ti, se la queda para enterarla
+/// al SAT).
+///
+/// Pendiente/Parcial/Cobrada se calculan del saldo en tiempo de lectura
+/// (ver lib/cuentas.ts) — pero `cancelada` SÍ se guarda explícitamente,
+/// porque "cancelada" no es derivable del saldo. Solo se puede cancelar
+/// una cuenta que ya tiene abonos (si no tiene ninguno, se elimina de
+/// verdad en vez de cancelarse). Una cuenta cancelada conserva su
+/// historial de abonos para auditoría, pero deja de contar en los KPIs de
+/// "por cobrar"/"vencido" y ya no admite abonos nuevos.
+model CuentaPorCobrar {
+  id           String     @id @default(cuid())
+  cotizacionId String     @unique
+  cotizacion   Cotizacion @relation(fields: [cotizacionId], references: [id])
+
+  montoTotal      Float
+  fechaVencimiento DateTime
+  cancelada       Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  abonos AbonoPorCobrar[]
+}
+
+model AbonoPorCobrar {
+  id                String          @id @default(cuid())
+  cuentaPorCobrarId String
+  cuentaPorCobrar   CuentaPorCobrar @relation(fields: [cuentaPorCobrarId], references: [id], onDelete: Cascade)
+
+  fecha  DateTime
+  monto  Float
+  nota   String?
+
+  createdAt DateTime @default(now())
+}
+
+/// Cuenta por pagar (Fase 7) — registro independiente (proveedor en texto
+/// libre, sin catálogo propio todavía). Mismo sistema de abonos parciales
+/// y estado calculado que CuentaPorCobrar.
+model CuentaPorPagar {
+  id        String @id @default(cuid())
+  concepto  String
+  proveedor String
+
+  montoTotal       Float
+  fechaVencimiento DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  abonos AbonoPorPagar[]
+}
+
+model AbonoPorPagar {
+  id               String         @id @default(cuid())
+  cuentaPorPagarId String
+  cuentaPorPagar   CuentaPorPagar @relation(fields: [cuentaPorPagarId], references: [id], onDelete: Cascade)
+
+  fecha DateTime
+  monto Float
+  nota  String?
+
+  createdAt DateTime @default(now())
+}
+
+/// Cuenta de usuario. Por ahora solo existe el bootstrap del primer usuario
+/// vía /setup — no hay pantalla de alta de usuarios adicionales.
+model Usuario {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  nombre       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  session Session?
+}
+
+/// Sesión activa. `usuarioId` es único a propósito: una sola fila por
+/// usuario, así que iniciar sesión en un segundo lugar reemplaza el token
+/// (upsert) y el anterior deja de ser válido en su siguiente request.
+/// `expiresAt` se recorre 30 min hacia adelante en cada actividad
+/// (sliding expiration) para el auto-cierre por inactividad.
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  usuarioId String   @unique
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
