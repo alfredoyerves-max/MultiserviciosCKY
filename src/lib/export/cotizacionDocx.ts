@@ -383,6 +383,111 @@ function leyendaRetencionBlock(): Paragraph {
   });
 }
 
+/** Bloque de nota con título en acento (mismo criterio visual que
+ *  PRESTADOR/CLIENTE) seguido del texto en párrafo normal — usado para
+ *  condición de pago, condiciones comerciales y garantía/calidad. */
+function notaBlock(titulo: string, texto: string): Paragraph[] {
+  return [
+    new Paragraph({
+      spacing: { before: 240, after: 60 },
+      children: [new TextRun({ text: titulo, bold: true, size: 15, color: ACCENT, characterSpacing: 8 })],
+    }),
+    new Paragraph({ children: [new TextRun({ text: texto, size: 17, color: DARK })] }),
+  ];
+}
+
+function metodosPagoLabel(metodos: CotizacionExportData["metodosPago"]): string {
+  const activos = [
+    metodos.efectivo ? "Efectivo" : null,
+    metodos.transferencia ? "Transferencia" : null,
+    metodos.cheque ? "Cheque" : null,
+  ].filter((m): m is string => m !== null);
+  return activos.length > 0 ? activos.join(" · ") : "Consultar con el prestador de servicio";
+}
+
+function datosBancariosBlock(data: CotizacionExportData): Paragraph[] {
+  const cuentaLineas = data.cuentasBancarias.map(
+    (c) =>
+      new Paragraph({
+        spacing: { after: 40 },
+        children: [
+          new TextRun({ text: `${c.banco} — Titular: `, size: 17, color: GRAY }),
+          new TextRun({ text: c.titular, size: 17, color: DARK }),
+          new TextRun({ text: "  ·  CLABE: ", size: 17, color: GRAY }),
+          new TextRun({ text: c.clabe, size: 17, color: DARK }),
+          ...(c.numeroCuenta
+            ? [
+                new TextRun({ text: "  ·  Cuenta: ", size: 17, color: GRAY }),
+                new TextRun({ text: c.numeroCuenta, size: 17, color: DARK }),
+              ]
+            : []),
+        ],
+      })
+  );
+
+  return [
+    new Paragraph({
+      spacing: { before: 240, after: 60 },
+      children: [
+        new TextRun({ text: "DATOS BANCARIOS Y MÉTODOS DE PAGO", bold: true, size: 15, color: ACCENT, characterSpacing: 8 }),
+      ],
+    }),
+    ...cuentaLineas,
+    new Paragraph({
+      spacing: { before: 40 },
+      children: [
+        new TextRun({ text: "Métodos de pago aceptados: ", size: 17, color: GRAY }),
+        new TextRun({ text: metodosPagoLabel(data.metodosPago), size: 17, color: DARK }),
+      ],
+    }),
+  ];
+}
+
+/** Bloque de firmas — tabla de 2 columnas sin bordes exteriores, cada
+ *  columna con una línea de firma (borde superior de un párrafo en
+ *  blanco) seguida de la etiqueta y el valor. */
+function firmasBlock(data: CotizacionExportData): Table {
+  const signLine = { top: { style: BorderStyle.SINGLE, size: 4, color: DARK } };
+
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: NO_BORDERS,
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 46, type: WidthType.PERCENTAGE },
+            borders: NO_BORDERS,
+            children: [
+              new Paragraph({ spacing: { before: 600 }, children: [] }),
+              new Paragraph({ border: signLine, spacing: { after: 100 }, children: [] }),
+              new Paragraph({ children: [new TextRun({ text: "AUTORIZADO POR", size: 13, color: GRAY, characterSpacing: 6 })] }),
+              new Paragraph({
+                spacing: { before: 40 },
+                children: [new TextRun({ text: data.prestador.nombre, bold: true, size: 18, color: DARK })],
+              }),
+            ],
+          }),
+          new TableCell({ width: { size: 8, type: WidthType.PERCENTAGE }, borders: NO_BORDERS, children: [new Paragraph({ children: [] })] }),
+          new TableCell({
+            width: { size: 46, type: WidthType.PERCENTAGE },
+            borders: NO_BORDERS,
+            children: [
+              new Paragraph({ spacing: { before: 600 }, children: [] }),
+              new Paragraph({ border: signLine, spacing: { after: 100 }, children: [] }),
+              new Paragraph({ children: [new TextRun({ text: "ACEPTADO POR", size: 13, color: GRAY, characterSpacing: 6 })] }),
+              new Paragraph({
+                spacing: { before: 220 },
+                children: [new TextRun({ text: "FECHA", size: 13, color: GRAY, characterSpacing: 6 })],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
 export async function generarCotizacionDocx(data: CotizacionExportData): Promise<Buffer> {
   const lineasTable = data.tipo === "SERVICIO" ? lineasServicioTable(data) : lineasMaterialTable(data);
   const tituloTabla = data.tipo === "SERVICIO" ? "SERVICIOS COTIZADOS" : "MATERIALES COTIZADOS";
@@ -403,6 +508,11 @@ export async function generarCotizacionDocx(data: CotizacionExportData): Promise
           new Paragraph({ spacing: { before: 260 }, children: [] }),
           fiscalBlock(data),
           ...(esPersonaMoral ? [leyendaRetencionBlock()] : []),
+          ...notaBlock("CONDICIÓN DE PAGO", data.condicionPago),
+          ...notaBlock("CONDICIONES COMERCIALES", data.condicionesComerciales),
+          ...datosBancariosBlock(data),
+          ...notaBlock("GARANTÍA Y CALIDAD", data.garantia),
+          firmasBlock(data),
           new Paragraph({
             spacing: { before: 400 },
             border: { top: { style: BorderStyle.SINGLE, size: 4, color: BORDER_COLOR } },

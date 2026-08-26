@@ -1,22 +1,28 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { EstadoSelect } from "./estado-select";
+import { EliminarCotizacionButton } from "./eliminar-cotizacion-button";
+import { puedeEliminarseCotizacion } from "@/lib/cotizacionRules";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate } from "@/lib/format";
 import {
-  ESTADOS_COTIZACION,
   ESTADO_COTIZACION_LABELS,
   TIPO_CLIENTE_LABELS,
   TIPOS_COTIZACION,
   TIPO_COTIZACION_LABELS,
+  type EstadoCotizacion,
   type TipoCliente,
   type TipoCotizacion,
 } from "@/lib/enums";
-import { Select } from "@/components/ui/input";
+import { Select, Input } from "@/components/ui/input";
 import type { AbonoPorCobrar, Cliente, Cotizacion, CuentaPorCobrar } from "@/generated/prisma/client";
 import Link from "next/link";
+
+const ESTADOS_ACTIVOS: EstadoCotizacion[] = ["BORRADOR", "ENVIADA"];
+const ESTADOS_HISTORICOS: EstadoCotizacion[] = ["ACEPTADA", "RECHAZADA"];
 
 const TIPO_COTIZACION_TONE: Record<TipoCotizacion, "primary" | "secondary"> = {
   SERVICIO: "primary",
@@ -76,10 +82,29 @@ export function KanbanBoard({
   const hoy = new Date();
   const mesActualValue = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}`;
 
-  const columnas = ESTADOS_COTIZACION.map((estado) => ({
+  const [busqueda, setBusqueda] = useState("");
+
+  // El kanban activo (Fase 6) solo muestra el flujo vivo de negociación —
+  // Borrador y Enviada. Aceptada/Rechazada ya no están en negociación, así
+  // que viven en la tabla histórica debajo, con su propio buscador —
+  // ambas vistas comparten los mismos filtros de mes/tipo/soporte (ya
+  // aplicados server-side en listCotizacionesKanban).
+  const columnas = ESTADOS_ACTIVOS.map((estado) => ({
     estado,
     cotizaciones: cotizaciones.filter((c) => c.estado === estado),
   }));
+
+  const historicas = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    return cotizaciones
+      .filter((c) => ESTADOS_HISTORICOS.includes(c.estado as EstadoCotizacion))
+      .filter(
+        (c) =>
+          q === "" ||
+          c.folio.toLowerCase().includes(q) ||
+          c.cliente.nombreRazonSocial.toLowerCase().includes(q)
+      );
+  }, [cotizaciones, busqueda]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -128,7 +153,7 @@ export function KanbanBoard({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {columnas.map((col) => (
           <div key={col.estado} className="flex flex-col gap-3">
             <div className="flex items-center justify-between px-1">
@@ -147,6 +172,49 @@ export function KanbanBoard({
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="mt-2 flex flex-col gap-3 border-t border-border pt-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-text">
+            Histórico — Aceptadas y Rechazadas
+            <span className="ml-2 text-xs font-normal text-text-dim">{historicas.length}</span>
+          </h2>
+          <Input
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar por folio o cliente…"
+            className="h-9 w-64"
+          />
+        </div>
+
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-dim">
+                <th className="px-4 py-3 font-medium">Folio</th>
+                <th className="px-4 py-3 font-medium">Cliente</th>
+                <th className="px-4 py-3 font-medium">Tipo</th>
+                <th className="px-4 py-3 text-right font-medium">Total</th>
+                <th className="px-4 py-3 font-medium">Estado</th>
+                <th className="px-4 py-3 font-medium">Fecha</th>
+                <th className="px-4 py-3 text-right font-medium">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {historicas.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-4 py-6 text-center text-text-dim">
+                    Sin cotizaciones históricas para este filtro.
+                  </td>
+                </tr>
+              )}
+              {historicas.map((c) => (
+                <HistoricoRow key={c.id} cotizacion={c} />
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -198,15 +266,76 @@ function KanbanCard({ cotizacion }: { cotizacion: CotizacionConCliente }) {
           </Badge>
         )}
 
+        <div className="mt-1 flex items-center gap-2">
+          <EstadoSelect
+            cotizacion={{
+              ...cotizacion,
+              tieneCuentaPorCobrar: cotizacion.cuentaPorCobrar !== null,
+              tieneAbonos: (cotizacion.cuentaPorCobrar?.abonos.length ?? 0) > 0,
+            }}
+            className="h-8 flex-1 text-xs"
+          />
+          {puedeEliminarseCotizacion(cotizacion) && (
+            <EliminarCotizacionButton
+              cotizacion={{
+                id: cotizacion.id,
+                folio: cotizacion.folio,
+                tipo: cotizacion.tipo,
+                clienteNombre: cotizacion.cliente.nombreRazonSocial,
+                total: cotizacion.netoARecibir,
+              }}
+              size="sm"
+              className="h-8 shrink-0 px-2 text-xs"
+            />
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function HistoricoRow({ cotizacion }: { cotizacion: CotizacionConCliente }) {
+  return (
+    <tr className="border-b border-border last:border-0">
+      <td className="px-4 py-3">
+        <Link href={`/cotizaciones/${cotizacion.id}`} className="font-mono text-sm text-primary hover:underline">
+          {cotizacion.folio}
+        </Link>
+      </td>
+      <td className="px-4 py-3 text-text">{cotizacion.cliente.nombreRazonSocial}</td>
+      <td className="px-4 py-3">
+        <Badge tone={TIPO_COTIZACION_TONE[cotizacion.tipo as TipoCotizacion]}>
+          {TIPO_COTIZACION_LABELS[cotizacion.tipo as TipoCotizacion]}
+        </Badge>
+      </td>
+      <td className="px-4 py-3 text-right font-mono tabular-nums text-text">
+        {formatCurrency(cotizacion.netoARecibir)}
+      </td>
+      <td className="px-4 py-3">
         <EstadoSelect
           cotizacion={{
             ...cotizacion,
             tieneCuentaPorCobrar: cotizacion.cuentaPorCobrar !== null,
             tieneAbonos: (cotizacion.cuentaPorCobrar?.abonos.length ?? 0) > 0,
           }}
-          className="mt-1 h-8 text-xs"
+          className="h-8 w-auto text-xs"
         />
-      </CardContent>
-    </Card>
+      </td>
+      <td className="px-4 py-3 text-text-muted">{formatDate(cotizacion.createdAt)}</td>
+      <td className="px-4 py-3 text-right">
+        {puedeEliminarseCotizacion(cotizacion) && (
+          <EliminarCotizacionButton
+            cotizacion={{
+              id: cotizacion.id,
+              folio: cotizacion.folio,
+              tipo: cotizacion.tipo,
+              clienteNombre: cotizacion.cliente.nombreRazonSocial,
+              total: cotizacion.netoARecibir,
+            }}
+            size="sm"
+          />
+        )}
+      </td>
+    </tr>
   );
 }

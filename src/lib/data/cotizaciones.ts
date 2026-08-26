@@ -5,15 +5,30 @@ import { calcularTotalesFiscales } from "@/lib/fiscalEngine";
 import { sueldoMensualEfectivo } from "@/lib/servicioCosto";
 import { calcularStock } from "@/lib/inventario";
 import { lockProducto } from "@/lib/data/locks";
+import { puedeEliminarseCotizacion } from "@/lib/cotizacionRules";
 import { createCliente } from "./clientes";
 import type { CotizacionInput, CotizacionMaterialInput } from "@/lib/schemas/cotizacion";
 import type { TipoCliente, TipoCotizacion } from "@/lib/enums";
 
+/**
+ * Genera el siguiente folio del año a partir de un contador atómico
+ * (FolioSecuencia), NUNCA de `count()` de registros existentes — un
+ * folio de una cotización eliminada no debe poder reutilizarse, y contar
+ * filas sí bajaría al eliminar una. El UPSERT con RETURNING es una sola
+ * sentencia atómica de Postgres: lee y avanza el contador sin condición
+ * de carrera, sin necesitar un lock explícito.
+ */
 async function generarFolio(): Promise<string> {
   const year = new Date().getFullYear();
-  const inicioAnio = new Date(year, 0, 1);
-  const count = await prisma.cotizacion.count({ where: { createdAt: { gte: inicioAnio } } });
-  return `COT-${year}-${String(count + 1).padStart(4, "0")}`;
+  const rows = await prisma.$queryRaw<{ numero: number }[]>`
+    INSERT INTO "FolioSecuencia" ("anio", "siguiente")
+    VALUES (${year}, 2)
+    ON CONFLICT ("anio")
+    DO UPDATE SET "siguiente" = "FolioSecuencia"."siguiente" + 1
+    RETURNING "siguiente" - 1 AS "numero"
+  `;
+  const numero = rows[0].numero;
+  return `COT-${year}-${String(numero).padStart(4, "0")}`;
 }
 
 export async function createCotizacion(input: CotizacionInput) {
@@ -220,6 +235,22 @@ export function getCotizacion(id: string) {
 
 export function getCotizacionTipo(id: string) {
   return prisma.cotizacion.findUniqueOrThrow({ where: { id }, select: { tipo: true, folio: true } });
+}
+
+export { puedeEliminarseCotizacion };
+
+export async function deleteCotizacion(id: string) {
+  const cotizacion = await prisma.cotizacion.findUniqueOrThrow({
+    where: { id },
+    select: { estado: true, cuentaPorCobrar: { select: { id: true } } },
+  });
+  if (!puedeEliminarseCotizacion(cotizacion)) {
+    throw new Error(
+      "No se puede eliminar: esta cotización está Aceptada o tiene una cuenta por cobrar asociada."
+    );
+  }
+  // lineas/lineasMaterial se eliminan en cascada (onDelete: Cascade).
+  await prisma.cotizacion.delete({ where: { id } });
 }
 
 export function updateEstadoCotizacion(id: string, estado: string) {

@@ -10,6 +10,11 @@ const pct = z.coerce
   .transform((v) => v / 100);
 const positive = z.coerce.number().min(0);
 const positiveInt = z.coerce.number().int().min(0);
+// Checkboxes del candado fiscal se envían como campo oculto "on"/"off"
+// (nunca ausentes cuando la sección está desbloqueada — ver CheckboxField
+// en config-form.tsx), para no chocar con la convención de "campo
+// ausente = sección bloqueada, no tocar" que usan los demás campos.
+const boolFlag = z.enum(["on", "off"]).transform((v) => v === "on");
 
 /**
  * Campos normativos protegidos por el candado de "Editar valores
@@ -43,6 +48,26 @@ export const PROTECTED_FISCAL_FIELDS = [
   "infonavitPct",
   "isnPct",
   "impuestoAdicionalPct",
+
+  // Identidad del prestador, cuentas bancarias y métodos de pago — Fase
+  // 12. Extienden el mismo candado: no son tasas normativas, pero son
+  // datos sensibles de identidad/pago que ameritan la misma confirmación
+  // de contraseña antes de editarse.
+  "prestadorNombre",
+  "prestadorRfc",
+  "prestadorRegimenFiscal",
+  "prestadorDireccion",
+  "prestadorTelefono",
+  "prestadorEmail",
+  "aceptaEfectivo",
+  "aceptaTransferencia",
+  "aceptaCheque",
+  "garantiaServicio",
+  "garantiaMaterial",
+  "condicionPagoServicio",
+  "condicionPagoMaterial",
+  "condicionesComercialesServicio",
+  "condicionesComercialesMaterial",
 ] as const;
 
 const systemConfigFieldsSchema = z.object({
@@ -87,6 +112,17 @@ const systemConfigFieldsSchema = z.object({
   prestadorDireccion: z.string().trim().optional(),
   prestadorTelefono: z.string().trim().optional(),
   prestadorEmail: z.string().trim().optional(),
+
+  aceptaEfectivo: boolFlag,
+  aceptaTransferencia: boolFlag,
+  aceptaCheque: boolFlag,
+
+  garantiaServicio: z.string().trim().min(1, "Requerido"),
+  garantiaMaterial: z.string().trim().min(1, "Requerido"),
+  condicionPagoServicio: z.string().trim().min(1, "Requerido"),
+  condicionPagoMaterial: z.string().trim().min(1, "Requerido"),
+  condicionesComercialesServicio: z.string().trim().min(1, "Requerido"),
+  condicionesComercialesMaterial: z.string().trim().min(1, "Requerido"),
 });
 
 export const systemConfigSchema = systemConfigFieldsSchema.partial(

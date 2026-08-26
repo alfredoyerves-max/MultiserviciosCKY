@@ -22,7 +22,7 @@ const LOGO_DATA_URI = `data:image/png;base64,${fs.readFileSync(LOGO_PATH).toStri
 const styles = StyleSheet.create({
   page: { fontSize: 9.5, color: DARK, fontFamily: "Helvetica" },
   topBar: { height: 7, backgroundColor: ACCENT },
-  body: { padding: 34, paddingTop: 24 },
+  body: { padding: 34, paddingTop: 24, paddingBottom: 20 },
 
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   logoBrandRow: { flexDirection: "row", alignItems: "center", gap: 10 },
@@ -113,7 +113,22 @@ const styles = StyleSheet.create({
   },
   legalText: { fontSize: 7.5, color: GRAY, fontStyle: "italic", lineHeight: 1.5 },
 
-  footer: { marginTop: 28, borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 8 },
+  noteBlock: { marginTop: 13 },
+  noteTitle: { fontSize: 8, fontFamily: "Helvetica-Bold", color: ACCENT, letterSpacing: 0.8, marginBottom: 4 },
+  noteText: { fontSize: 8.5, color: DARK, lineHeight: 1.5 },
+
+  bankRow: { fontSize: 8.5, color: DARK, marginBottom: 3, lineHeight: 1.4 },
+  bankLabel: { color: GRAY },
+  methodsRow: { fontSize: 8.5, color: DARK, marginTop: 4 },
+
+  signWrap: { marginTop: 22, flexDirection: "row", justifyContent: "space-between" },
+  signCol: { width: "44%" },
+  signSpacer: { height: 16 },
+  signLine: { borderTopWidth: 1, borderTopColor: DARK, marginBottom: 6 },
+  signLabel: { fontSize: 7, color: GRAY, letterSpacing: 0.8 },
+  signValue: { fontSize: 9.5, fontFamily: "Helvetica-Bold", color: DARK, marginTop: 3 },
+
+  footer: { marginTop: 18, borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 8 },
   footerText: { fontSize: 7.5, color: GRAY_SOFT },
 });
 
@@ -180,6 +195,65 @@ function LineasMaterialTable({ data }: { data: CotizacionExportData }) {
 
 const LEYENDA_RETENCION =
   "De conformidad con el Artículo 113-J de la Ley del ISR, al ser usted Persona Moral, se aplicará la retención obligatoria del 1.25% de ISR sobre el subtotal de esta operación. Dicho monto se reflejará descontado en el total neto de su factura para que proceda con su entero directo al SAT.";
+
+function NoteBlock({ title, text }: { title: string; text: string }) {
+  return (
+    <View style={styles.noteBlock}>
+      <Text style={styles.noteTitle}>{title}</Text>
+      <Text style={styles.noteText}>{text}</Text>
+    </View>
+  );
+}
+
+function metodosPagoLabel(metodos: CotizacionExportData["metodosPago"]): string {
+  const activos = [
+    metodos.efectivo ? "Efectivo" : null,
+    metodos.transferencia ? "Transferencia" : null,
+    metodos.cheque ? "Cheque" : null,
+  ].filter((m): m is string => m !== null);
+  return activos.length > 0 ? activos.join(" · ") : "Consultar con el prestador de servicio";
+}
+
+function DatosBancariosBlock({ data }: { data: CotizacionExportData }) {
+  return (
+    <View style={styles.noteBlock}>
+      <Text style={styles.noteTitle}>DATOS BANCARIOS Y MÉTODOS DE PAGO</Text>
+      {data.cuentasBancarias.map((c, i) => (
+        <Text style={styles.bankRow} key={i}>
+          <Text style={styles.bankLabel}>{c.banco} — Titular: </Text>
+          {c.titular}
+          <Text style={styles.bankLabel}>  ·  CLABE: </Text>
+          {c.clabe}
+          {c.numeroCuenta && <Text style={styles.bankLabel}>  ·  Cuenta: </Text>}
+          {c.numeroCuenta ?? ""}
+        </Text>
+      ))}
+      <Text style={styles.methodsRow}>
+        <Text style={styles.bankLabel}>Métodos de pago aceptados: </Text>
+        {metodosPagoLabel(data.metodosPago)}
+      </Text>
+    </View>
+  );
+}
+
+function FirmasBlock({ data }: { data: CotizacionExportData }) {
+  return (
+    <View style={styles.signWrap}>
+      <View style={styles.signCol}>
+        <View style={styles.signSpacer} />
+        <View style={styles.signLine} />
+        <Text style={styles.signLabel}>AUTORIZADO POR</Text>
+        <Text style={styles.signValue}>{data.prestador.nombre}</Text>
+      </View>
+      <View style={styles.signCol}>
+        <View style={styles.signSpacer} />
+        <View style={styles.signLine} />
+        <Text style={styles.signLabel}>ACEPTADO POR</Text>
+        <Text style={[styles.signLabel, { marginTop: 16 }]}>FECHA</Text>
+      </View>
+    </View>
+  );
+}
 
 function CotizacionPdfDocument({ data }: { data: CotizacionExportData }) {
   const esPersonaMoral = data.cliente.tipoCliente === "PERSONA_MORAL";
@@ -257,6 +331,13 @@ function CotizacionPdfDocument({ data }: { data: CotizacionExportData }) {
               <Text style={styles.legalText}>{LEYENDA_RETENCION}</Text>
             </View>
           )}
+
+          <NoteBlock title="CONDICIÓN DE PAGO" text={data.condicionPago} />
+          <NoteBlock title="CONDICIONES COMERCIALES" text={data.condicionesComerciales} />
+          <DatosBancariosBlock data={data} />
+          <NoteBlock title="GARANTÍA Y CALIDAD" text={data.garantia} />
+
+          <FirmasBlock data={data} />
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>

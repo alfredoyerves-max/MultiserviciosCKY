@@ -3,10 +3,11 @@
 import { useActionState, useState } from "react";
 import { saveSystemConfigAction, type ConfigActionState } from "./actions";
 import { FiscalSectionHeader } from "./fiscal-lock";
+import { CuentasBancariasPanel } from "./cuentas-bancarias-panel";
 import { Field, FieldError, FieldLabel, Input, Textarea } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { SystemConfig } from "@/generated/prisma/client";
+import type { CuentaBancaria, SystemConfig } from "@/generated/prisma/client";
 import type { CeavBandaInput } from "@/lib/costEngine";
 
 const initialState: ConfigActionState = { ok: false };
@@ -18,9 +19,11 @@ function toPctDisplay(fraction: number) {
 export function ConfigForm({
   config,
   bandasCeav,
+  cuentasBancarias,
 }: {
   config: SystemConfig;
   bandasCeav: CeavBandaInput[];
+  cuentasBancarias: CuentaBancaria[];
 }) {
   const [state, formAction, pending] = useActionState(saveSystemConfigAction, initialState);
   const [fiscalUnlocked, setFiscalUnlocked] = useState(false);
@@ -109,40 +112,142 @@ export function ConfigForm({
         <NumField name="margenUtilidadDefaultPct" label="Margen de utilidad por defecto (%)" defaultValue={toPctDisplay(config.margenUtilidadDefaultPct)} error={state.fieldErrors?.margenUtilidadDefaultPct} />
       </Section>
 
-      <Section
+      <FiscalSection
         title="Datos del prestador de servicio"
-        hint="Solo se usan en el membrete de las cotizaciones exportadas a Word/PDF — no participan en ningún cálculo."
+        hint="Identidad del negocio — se usan en el membrete de las cotizaciones exportadas a Word/PDF. Protegidos por contraseña."
+        unlocked={fiscalUnlocked}
+        onUnlock={handleUnlock}
       >
-        <Field>
-          <FieldLabel htmlFor="prestadorNombre">Nombre / razón social</FieldLabel>
-          <Input id="prestadorNombre" name="prestadorNombre" defaultValue={config.prestadorNombre} required />
-          <FieldError>{state.fieldErrors?.prestadorNombre}</FieldError>
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="prestadorRfc">RFC (opcional)</FieldLabel>
-          <Input id="prestadorRfc" name="prestadorRfc" defaultValue={config.prestadorRfc ?? ""} />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="prestadorRegimenFiscal">Régimen fiscal (opcional)</FieldLabel>
-          <Input
-            id="prestadorRegimenFiscal"
-            name="prestadorRegimenFiscal"
-            defaultValue={config.prestadorRegimenFiscal ?? ""}
+        <LockedField
+          locked={!fiscalUnlocked}
+          name="prestadorNombre"
+          label="Nombre / razón social"
+          defaultValue={config.prestadorNombre}
+          error={state.fieldErrors?.prestadorNombre}
+          required
+        />
+        <LockedField
+          locked={!fiscalUnlocked}
+          name="prestadorRfc"
+          label="RFC (opcional)"
+          defaultValue={config.prestadorRfc ?? ""}
+        />
+        <LockedField
+          locked={!fiscalUnlocked}
+          name="prestadorRegimenFiscal"
+          label="Régimen fiscal (opcional)"
+          defaultValue={config.prestadorRegimenFiscal ?? ""}
+        />
+        <LockedField
+          locked={!fiscalUnlocked}
+          name="prestadorTelefono"
+          label="Teléfono (opcional)"
+          defaultValue={config.prestadorTelefono ?? ""}
+        />
+        <LockedField
+          locked={!fiscalUnlocked}
+          name="prestadorEmail"
+          label="Correo (opcional)"
+          defaultValue={config.prestadorEmail ?? ""}
+        />
+        <LockedField
+          locked={!fiscalUnlocked}
+          name="prestadorDireccion"
+          label="Dirección (opcional)"
+          defaultValue={config.prestadorDireccion ?? ""}
+          className="sm:col-span-2"
+          textarea
+        />
+      </FiscalSection>
+
+      <FiscalSection
+        title="Cuentas bancarias y métodos de pago"
+        hint="Solo las cuentas activas se incluyen en las cotizaciones exportadas. Protegidas por contraseña."
+        unlocked={fiscalUnlocked}
+        onUnlock={handleUnlock}
+        bare
+      >
+        <div className="flex flex-col gap-5">
+          <CuentasBancariasPanel
+            cuentas={cuentasBancarias}
+            locked={!fiscalUnlocked}
+            fiscalPassword={fiscalPassword}
           />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="prestadorTelefono">Teléfono (opcional)</FieldLabel>
-          <Input id="prestadorTelefono" name="prestadorTelefono" defaultValue={config.prestadorTelefono ?? ""} />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="prestadorEmail">Correo (opcional)</FieldLabel>
-          <Input id="prestadorEmail" name="prestadorEmail" defaultValue={config.prestadorEmail ?? ""} />
-        </Field>
-        <Field className="sm:col-span-2">
-          <FieldLabel htmlFor="prestadorDireccion">Dirección (opcional)</FieldLabel>
-          <Textarea id="prestadorDireccion" name="prestadorDireccion" defaultValue={config.prestadorDireccion ?? ""} />
-        </Field>
-      </Section>
+          <div className="border-t border-border pt-4">
+            <p className="mb-3 text-xs uppercase tracking-wide text-text-dim">Métodos de pago aceptados</p>
+            <div className="flex flex-wrap gap-4">
+              <CheckboxField
+                locked={!fiscalUnlocked}
+                name="aceptaEfectivo"
+                label="Efectivo"
+                defaultChecked={config.aceptaEfectivo}
+              />
+              <CheckboxField
+                locked={!fiscalUnlocked}
+                name="aceptaTransferencia"
+                label="Transferencia"
+                defaultChecked={config.aceptaTransferencia}
+              />
+              <CheckboxField
+                locked={!fiscalUnlocked}
+                name="aceptaCheque"
+                label="Cheque"
+                defaultChecked={config.aceptaCheque}
+              />
+            </div>
+          </div>
+        </div>
+      </FiscalSection>
+
+      <FiscalSection
+        title="Leyendas de la cotización (por tipo)"
+        hint="Un texto para cotizaciones de Servicio y otro para Material — se elige automáticamente según el tipo. Protegidas por contraseña."
+        unlocked={fiscalUnlocked}
+        onUnlock={handleUnlock}
+      >
+        <LockedField
+          locked={!fiscalUnlocked}
+          name="condicionPagoServicio"
+          label="Condición de pago — Servicio"
+          defaultValue={config.condicionPagoServicio}
+          textarea
+        />
+        <LockedField
+          locked={!fiscalUnlocked}
+          name="condicionPagoMaterial"
+          label="Condición de pago — Material"
+          defaultValue={config.condicionPagoMaterial}
+          textarea
+        />
+        <LockedField
+          locked={!fiscalUnlocked}
+          name="condicionesComercialesServicio"
+          label="Condiciones comerciales — Servicio"
+          defaultValue={config.condicionesComercialesServicio}
+          textarea
+        />
+        <LockedField
+          locked={!fiscalUnlocked}
+          name="condicionesComercialesMaterial"
+          label="Condiciones comerciales — Material"
+          defaultValue={config.condicionesComercialesMaterial}
+          textarea
+        />
+        <LockedField
+          locked={!fiscalUnlocked}
+          name="garantiaServicio"
+          label="Garantía / calidad — Servicio"
+          defaultValue={config.garantiaServicio}
+          textarea
+        />
+        <LockedField
+          locked={!fiscalUnlocked}
+          name="garantiaMaterial"
+          label="Garantía / calidad — Material"
+          defaultValue={config.garantiaMaterial}
+          textarea
+        />
+      </FiscalSection>
 
       {state.error && (
         <p className="text-sm text-danger">{state.error}</p>
@@ -295,5 +400,93 @@ function NumField({
       />
       <FieldError>{error}</FieldError>
     </Field>
+  );
+}
+
+/** Igual que NumField pero para texto/textarea (identidad del prestador,
+ *  leyendas de la cotización) — mismo criterio de candado: bloqueado
+ *  omite `name` por completo, así que un envío sin desbloquear no toca
+ *  el campo en el servidor. */
+function LockedField({
+  name,
+  label,
+  defaultValue,
+  error,
+  locked = false,
+  required = false,
+  textarea = false,
+  className,
+}: {
+  name: string;
+  label: string;
+  defaultValue: string;
+  error?: string;
+  locked?: boolean;
+  required?: boolean;
+  textarea?: boolean;
+  className?: string;
+}) {
+  if (locked) {
+    return (
+      <Field className={className}>
+        <FieldLabel>{label}</FieldLabel>
+        <div className="min-h-10 whitespace-pre-wrap rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-muted">
+          {defaultValue || "—"}
+        </div>
+      </Field>
+    );
+  }
+
+  return (
+    <Field className={className}>
+      <FieldLabel htmlFor={name}>{label}</FieldLabel>
+      {textarea ? (
+        <Textarea id={name} name={name} defaultValue={defaultValue} required={required} />
+      ) : (
+        <Input id={name} name={name} defaultValue={defaultValue} required={required} />
+      )}
+      <FieldError>{error}</FieldError>
+    </Field>
+  );
+}
+
+/** Checkbox controlado del candado fiscal — cuando está desbloqueado
+ *  siempre manda un valor explícito "on"/"off" vía un input oculto (nunca
+ *  ausente, a diferencia de un <input type="checkbox"> normal cuando está
+ *  desmarcado), para no chocar con la convención de "campo ausente =
+ *  sección bloqueada". Bloqueado, solo muestra el estado actual. */
+function CheckboxField({
+  name,
+  label,
+  defaultChecked,
+  locked = false,
+}: {
+  name: string;
+  label: string;
+  defaultChecked: boolean;
+  locked?: boolean;
+}) {
+  const [checked, setChecked] = useState(defaultChecked);
+
+  if (locked) {
+    return (
+      <span className="flex items-center gap-2 text-sm text-text-muted">
+        <span className={`h-2 w-2 rounded-full ${defaultChecked ? "bg-success-soft" : "bg-text-dim"}`} />
+        {label}
+      </span>
+    );
+  }
+
+  return (
+    <label className="flex items-center gap-2 text-sm text-text-muted">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => setChecked(e.target.checked)}
+        className="h-4 w-4 rounded border-border-strong bg-surface-2 accent-[var(--color-primary)]"
+      />
+      <input type="hidden" name={name} value={checked ? "on" : "off"} />
+      {label}
+    </label>
   );
 }

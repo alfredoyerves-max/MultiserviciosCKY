@@ -1,6 +1,6 @@
 import { MODALIDAD_LABELS, TIPO_CLIENTE_LABELS, UNIDAD_MEDIDA_LABELS, type Modalidad, type TipoCliente, type UnidadMedida } from "@/lib/enums";
 import type { getCotizacion } from "@/lib/data/cotizaciones";
-import type { SystemConfig } from "@/generated/prisma/client";
+import type { CuentaBancaria, SystemConfig } from "@/generated/prisma/client";
 
 type CotizacionConLineas = Awaited<ReturnType<typeof getCotizacion>>;
 
@@ -55,6 +55,25 @@ export interface CotizacionExportData {
   /** El único total que se muestra al usuario: subtotal + iva −
    *  retención. Etiquétalo siempre "Total", nunca "Neto a recibir". */
   netoARecibir: number;
+
+  /** Condición de pago / condiciones comerciales / garantía — ya
+   *  seleccionadas según el tipo de cotización (Servicio o Material) al
+   *  construir estos datos, para que el exportador no tenga que decidir. */
+  condicionPago: string;
+  condicionesComerciales: string;
+  garantia: string;
+
+  cuentasBancarias: {
+    banco: string;
+    clabe: string;
+    numeroCuenta: string | null;
+    titular: string;
+  }[];
+  metodosPago: {
+    efectivo: boolean;
+    transferencia: boolean;
+    cheque: boolean;
+  };
 }
 
 /**
@@ -68,11 +87,11 @@ export interface CotizacionExportData {
  */
 export function buildCotizacionExportData(
   cotizacion: CotizacionConLineas,
-  config: Pick<
-    SystemConfig,
-    "prestadorNombre" | "prestadorRfc" | "prestadorRegimenFiscal" | "prestadorDireccion" | "prestadorTelefono" | "prestadorEmail"
-  >
+  config: SystemConfig,
+  cuentasBancariasActivas: CuentaBancaria[]
 ): CotizacionExportData {
+  const esServicio = cotizacion.tipo === "SERVICIO";
+
   return {
     folio: cotizacion.folio,
     tipo: cotizacion.tipo as "SERVICIO" | "MATERIAL",
@@ -118,5 +137,23 @@ export function buildCotizacionExportData(
     retencionIsr: cotizacion.retencionIsr,
     totalAPagar: cotizacion.totalAPagar,
     netoARecibir: cotizacion.netoARecibir,
+
+    condicionPago: esServicio ? config.condicionPagoServicio : config.condicionPagoMaterial,
+    condicionesComerciales: esServicio
+      ? config.condicionesComercialesServicio
+      : config.condicionesComercialesMaterial,
+    garantia: esServicio ? config.garantiaServicio : config.garantiaMaterial,
+
+    cuentasBancarias: cuentasBancariasActivas.map((c) => ({
+      banco: c.banco,
+      clabe: c.clabe,
+      numeroCuenta: c.numeroCuenta,
+      titular: c.titular,
+    })),
+    metodosPago: {
+      efectivo: config.aceptaEfectivo,
+      transferencia: config.aceptaTransferencia,
+      cheque: config.aceptaCheque,
+    },
   };
 }

@@ -66,9 +66,10 @@ model SystemConfig {
 
   /// Datos del "Prestador de servicio" — Fase 11 (exportación). Solo se
   /// usan para el membrete de los documentos exportados (Word/PDF) de
-  /// cotización, no participan en ningún cálculo. Sembrados con un nombre
-  /// placeholder y el resto vacío — el usuario los completa una vez en
-  /// /configuracion, sin candado (no son datos fiscales sensibles).
+  /// cotización, no participan en ningún cálculo. Protegidos por el mismo
+  /// candado de "Editar valores fiscales" (Fase 12) — identidad del
+  /// negocio, no son datos fiscales normativos pero ameritan la misma
+  /// confirmación de contraseña antes de editarse.
   prestadorNombre        String  @default("Multiservicios Yerves")
   prestadorRfc           String?
   prestadorRegimenFiscal String?
@@ -76,7 +77,53 @@ model SystemConfig {
   prestadorTelefono      String?
   prestadorEmail         String?
 
+  /// Métodos de pago aceptados — Fase 12. Se reflejan en el bloque de
+  /// datos bancarios de la cotización exportada. Protegidos por el mismo
+  /// candado que el resto de esta sección.
+  aceptaEfectivo      Boolean @default(true)
+  aceptaTransferencia Boolean @default(true)
+  aceptaCheque        Boolean @default(false)
+
+  /// Leyendas editables de la cotización exportada — Fase 12. Un par por
+  /// concepto (Servicio / Material), seleccionado automáticamente según
+  /// Cotizacion.tipo al construir el documento (ver
+  /// lib/export/cotizacionData.ts). Protegidas por el mismo candado.
+  garantiaServicio              String @default("Nuestro compromiso es brindar un servicio profesional y supervisado, ejecutado por personal calificado bajo estrictos estándares de calidad, seguridad y cumplimiento en cada entrega.")
+  garantiaMaterial              String @default("Garantizamos la calidad, especificaciones técnicas y óptimo estado de los materiales suministrados, asegurando un estricto control en tiempos de entrega y disponibilidad de inventario.")
+  condicionPagoServicio         String @default("Pago contra entrega / Liquidación al cierre del periodo convenido contra entrega del servicio.")
+  condicionPagoMaterial         String @default("Pago de contado (100% anticipado previo al suministro o entrega de material).")
+  condicionesComercialesServicio String @default("El servicio incluye personal uniformado y monitoreo de calidad en sitio. Los insumos y consumibles de limpieza corren por cuenta del cliente, salvo solicitud expresa de suministro independiente.")
+  condicionesComercialesMaterial String @default("Precios exclusivos para la venta y entrega de materiales o productos solicitados. No incluye aplicación ni servicios operativos.")
+
   updatedAt DateTime @updatedAt
+}
+
+/// Cuenta bancaria del prestador de servicio — Fase 12. Datos protegidos
+/// por el mismo candado de "Editar valores fiscales" (fiscal-lock.tsx).
+/// Solo las cuentas `activa: true` se incluyen en los documentos
+/// exportados (Word/PDF) — `activa` permite desactivar una cuenta sin
+/// perder su historial, igual criterio que Activo.estado.
+model CuentaBancaria {
+  id           String  @id @default(cuid())
+  banco        String
+  clabe        String
+  numeroCuenta String?
+  titular      String
+  activa       Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Contador atómico de folios por año — Fase 12. Garantiza que el folio de
+/// una cotización eliminada NUNCA se reutilice, a diferencia de contar
+/// registros existentes (`count()`), que sí baja al eliminar uno. Ver
+/// generarFolio() en lib/data/cotizaciones.ts: usa un UPSERT atómico de
+/// Postgres (INSERT ... ON CONFLICT DO UPDATE ... RETURNING) para leer e
+/// incrementar en una sola sentencia, sin condición de carrera.
+model FolioSecuencia {
+  anio      Int @id
+  siguiente Int @default(1)
 }
 
 /// Tabla de bandas de Cesantía y Vejez (CEAV) — Addendum v4, punto 1.

@@ -1,4 +1,4 @@
-import { getCotizacion } from "@/lib/data/cotizaciones";
+import { getCotizacion, puedeEliminarseCotizacion } from "@/lib/data/cotizaciones";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AnchorButton, ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import {
   type UnidadMedida,
 } from "@/lib/enums";
 import { EstadoSelect } from "../estado-select";
+import { EliminarCotizacionButton } from "../eliminar-cotizacion-button";
 import { CostDetail } from "./cost-detail";
 import Link from "next/link";
 
@@ -30,6 +31,7 @@ export default async function CotizacionDetallePage({
   const { id } = await params;
   const cotizacion = await getCotizacion(id);
   const tipo = cotizacion.tipo as TipoCotizacion;
+  const puedeEliminar = puedeEliminarseCotizacion(cotizacion);
 
   return (
     <div className="flex flex-col gap-6">
@@ -63,6 +65,21 @@ export default async function CotizacionDetallePage({
           <AnchorButton href={`/api/cotizaciones/${cotizacion.id}/export?format=pdf`} download>
             Exportar PDF
           </AnchorButton>
+          {puedeEliminar && (
+            <EliminarCotizacionButton
+              cotizacion={{
+                id: cotizacion.id,
+                folio: cotizacion.folio,
+                tipo: cotizacion.tipo,
+                clienteNombre: cotizacion.cliente.nombreRazonSocial,
+                total: cotizacion.netoARecibir,
+              }}
+              variant="danger"
+              size="sm"
+              label="Eliminar cotización"
+              redirectTo="/cotizaciones"
+            />
+          )}
           <ButtonLink href="/cotizaciones" variant="secondary" size="sm">
             ← Volver
           </ButtonLink>

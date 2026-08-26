@@ -1,10 +1,13 @@
 "use server";
 
 import { updateSystemConfig, updateCeavBandas } from "@/lib/data/config";
+import { createCuentaBancaria, deleteCuentaBancaria, setCuentaBancariaActiva } from "@/lib/data/cuentasBancarias";
 import { systemConfigSchema, ceavBandasUpdateSchema, PROTECTED_FISCAL_FIELDS } from "@/lib/schemas/config";
+import { cuentaBancariaSchema } from "@/lib/schemas/cuentaBancaria";
 import { requireSession } from "@/lib/auth/session";
 import { verifyPassword } from "@/lib/auth/password";
 import { revalidatePath } from "next/cache";
+import type { Usuario } from "@/generated/prisma/client";
 
 export interface ConfigActionState {
   ok: boolean;
@@ -51,6 +54,21 @@ export async function unlockFiscalAction(
  */
 function seccionFiscalDesbloqueada(formData: FormData): boolean {
   return PROTECTED_FISCAL_FIELDS.some((f) => formData.has(f)) || formData.has("ceavPct_1");
+}
+
+/**
+ * Defensa en profundidad compartida por todas las escrituras protegidas
+ * por el candado (config general, cuentas bancarias): la sección
+ * desbloqueada del lado del cliente es solo UX — cualquier escritura real
+ * vuelve a verificar la contraseña del usuario en sesión aquí. Lanza si
+ * falta o es incorrecta.
+ */
+async function verificarPasswordFiscal(usuario: Usuario, formData: FormData) {
+  const password = String(formData.get("fiscalPassword") ?? "");
+  const valido = password !== "" && (await verifyPassword(password, usuario.passwordHash));
+  if (!valido) {
+    throw new Error("Contraseña incorrecta o faltante para guardar cambios protegidos.");
+  }
 }
 
 export async function saveSystemConfigAction(
@@ -109,4 +127,65 @@ export async function saveSystemConfigAction(
   revalidatePath("/servicios");
   revalidatePath("/cotizaciones/nueva");
   return { ok: true };
+}
+
+export interface CuentaBancariaActionState {
+  ok: boolean;
+  error?: string;
+  fieldErrors?: Record<string, string>;
+}
+
+/**
+ * Alta de cuenta bancaria — bajo el mismo candado que el resto de la
+ * sección fiscal/identidad. El formulario del panel reenvía la contraseña
+ * ya verificada al desbloquear (ver CuentasBancariasPanel), y aquí se
+ * vuelve a verificar server-side (defensa en profundidad).
+ */
+export async function addCuentaBancariaAction(
+  _prev: CuentaBancariaActionState,
+  formData: FormData
+): Promise<CuentaBancariaActionState> {
+  const usuario = await requireSession();
+
+  try {
+    await verificarPasswordFiscal(usuario, formData);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Contraseña inválida." };
+  }
+
+  const parsed = cuentaBancariaSchema.safeParse({
+    banco: formData.get("banco"),
+    clabe: formData.get("clabe"),
+    numeroCuenta: formData.get("numeroCuenta") || undefined,
+    titular: formData.get("titular"),
+  });
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      fieldErrors[String(issue.path[0])] = issue.message;
+    }
+    return { ok: false, error: "Revisa los campos marcados.", fieldErrors };
+  }
+
+  await createCuentaBancaria(parsed.data);
+  revalidatePath("/configuracion");
+  return { ok: true };
+}
+
+export async function deleteCuentaBancariaAction(id: string, password: string) {
+  const usuario = await requireSession();
+  const formData = new FormData();
+  formData.set("fiscalPassword", password);
+  await verificarPasswordFiscal(usuario, formData);
+  await deleteCuentaBancaria(id);
+  revalidatePath("/configuracion");
+}
+
+export async function toggleCuentaBancariaActivaAction(id: string, activa: boolean, password: string) {
+  const usuario = await requireSession();
+  const formData = new FormData();
+  formData.set("fiscalPassword", password);
+  await verificarPasswordFiscal(usuario, formData);
+  await setCuentaBancariaActiva(id, activa);
+  revalidatePath("/configuracion");
 }

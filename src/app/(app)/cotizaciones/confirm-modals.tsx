@@ -1,7 +1,12 @@
 "use client";
 
 import { useActionState } from "react";
-import { confirmarAceptacionAction, confirmarRechazoAction, type CotizacionActionState } from "./actions";
+import {
+  confirmarAceptacionAction,
+  confirmarRechazoAction,
+  deleteCotizacionAction,
+  type CotizacionActionState,
+} from "./actions";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel, Input } from "@/components/ui/input";
@@ -132,6 +137,60 @@ export function ConfirmarRechazoModal({
           </Button>
           <Button type="submit" variant="danger" disabled={pending}>
             {pending ? "Confirmando…" : "Confirmar rechazo"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+export function ConfirmarEliminacionModal({
+  cotizacion,
+  onClose,
+  onDeleted,
+}: {
+  cotizacion: CotizacionResumen;
+  onClose: () => void;
+  /** Se llama tras eliminar con éxito, además de cerrar el modal — la
+   *  página de detalle la usa para redirigir a /cotizaciones. */
+  onDeleted?: () => void;
+}) {
+  const [state, formAction, pending] = useActionState(
+    async (prev: CotizacionActionState, formData: FormData) => {
+      const res = await deleteCotizacionAction(prev, formData);
+      if (res.ok) {
+        onClose();
+        onDeleted?.();
+      }
+      return res;
+    },
+    initialState
+  );
+
+  return (
+    <Modal onClose={onClose}>
+      <form action={formAction} className="flex flex-col gap-4 p-5">
+        <input type="hidden" name="cotizacionId" value={cotizacion.id} />
+        <div>
+          <h3 className="text-sm font-semibold text-text">Eliminar cotización</h3>
+          <p className="mt-1 text-xs text-text-dim">
+            {cotizacion.folio} · {cotizacion.clienteNombre} · {formatCurrency(cotizacion.total)}
+          </p>
+        </div>
+
+        <p className="text-sm text-text-muted">
+          Esta acción no se puede deshacer. El folio {cotizacion.folio} no se reutilizará en ninguna
+          cotización futura.
+        </p>
+
+        {state.error && <p className="text-sm text-danger">{state.error}</p>}
+
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" variant="danger" disabled={pending}>
+            {pending ? "Eliminando…" : "Eliminar cotización"}
           </Button>
         </div>
       </form>

@@ -7,6 +7,7 @@ import {
   asegurarCambioEstadoPermitido,
   confirmarAceptacionMaterial,
   getCotizacionTipo,
+  deleteCotizacion,
 } from "@/lib/data/cotizaciones";
 import {
   generarCuentaPorCobrar,
@@ -244,5 +245,33 @@ export async function confirmarRechazoAction(
   revalidatePath("/cotizaciones");
   revalidatePath(`/cotizaciones/${cotizacionId}`);
   revalidatePath("/pagos");
+  return { ok: true };
+}
+
+/**
+ * Elimina una cotización — solo si no tiene cuenta por cobrar y su estado
+ * no es ACEPTADA (ver puedeEliminarseCotizacion en lib/data/cotizaciones).
+ * El folio nunca se reutiliza (generarFolio usa un contador atómico, no
+ * cuenta de registros), así que eliminar es seguro para la numeración.
+ * No redirige — el llamador (detalle, kanban o tabla histórica) decide
+ * qué hacer al terminar (ver ConfirmarEliminacionModal).
+ */
+export async function deleteCotizacionAction(
+  _prev: CotizacionActionState,
+  formData: FormData
+): Promise<CotizacionActionState> {
+  await requireSession();
+
+  const cotizacionId = String(formData.get("cotizacionId") ?? "");
+  if (!cotizacionId) return { ok: false, error: "Falta la cotización." };
+
+  try {
+    await deleteCotizacion(cotizacionId);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "No se pudo eliminar la cotización." };
+  }
+
+  revalidatePath("/cotizaciones");
+  revalidatePath("/");
   return { ok: true };
 }
