@@ -24,14 +24,24 @@ export function ConfigForm({
 }) {
   const [state, formAction, pending] = useActionState(saveSystemConfigAction, initialState);
   const [fiscalUnlocked, setFiscalUnlocked] = useState(false);
+  // Se reenvía como campo oculto para que el servidor la vuelva a
+  // verificar al guardar (defensa en profundidad — ver saveSystemConfigAction).
+  const [fiscalPassword, setFiscalPassword] = useState("");
+
+  function handleUnlock(password: string) {
+    setFiscalUnlocked(true);
+    setFiscalPassword(password);
+  }
 
   return (
     <form action={formAction} className="flex flex-col gap-6">
+      <input type="hidden" name="fiscalPassword" value={fiscalPassword} />
+
       <FiscalSection
         title="UMA, salario mínimo y tope salarial"
         hint="Normativo — cambia por ley cada año."
         unlocked={fiscalUnlocked}
-        onUnlock={() => setFiscalUnlocked(true)}
+        onUnlock={handleUnlock}
       >
         <NumField locked={!fiscalUnlocked} name="umaDiaria" label="UMA diaria ($)" defaultValue={config.umaDiaria} error={state.fieldErrors?.umaDiaria} step="0.01" />
         <NumField locked={!fiscalUnlocked} name="umaMensual" label="UMA mensual ($)" defaultValue={config.umaMensual} error={state.fieldErrors?.umaMensual} step="0.01" />
@@ -44,7 +54,7 @@ export function ConfigForm({
         title="Tabla CEAV — Cesantía y Vejez por banda de SBC"
         hint="Cuota patronal según en qué banda cae el SBC mensual del trabajador (Reforma LSS/LSAR, DOF 16-dic-2020). Sube cada enero hasta 2030."
         unlocked={fiscalUnlocked}
-        onUnlock={() => setFiscalUnlocked(true)}
+        onUnlock={handleUnlock}
         bare
       >
         <CeavBandasTable bandas={bandasCeav} locked={!fiscalUnlocked} />
@@ -54,7 +64,7 @@ export function ConfigForm({
         title="IMSS (cuotas normativas)"
         hint="Todos en % del SBC, salvo donde se indica. La prima de riesgo es un dato de negocio y se edita aparte, sin candado."
         unlocked={fiscalUnlocked}
-        onUnlock={() => setFiscalUnlocked(true)}
+        onUnlock={handleUnlock}
       >
         <NumField locked={!fiscalUnlocked} name="imssEnfMatCuotaFijaPct" label="Enf. y maternidad — cuota fija (% de 1 UMA mensual)" defaultValue={toPctDisplay(config.imssEnfMatCuotaFijaPct)} error={state.fieldErrors?.imssEnfMatCuotaFijaPct} suffix="%" />
         <NumField locked={!fiscalUnlocked} name="imssEnfMatCuotaAdicPct" label="Enf. y maternidad — cuota adicional (% excedente sobre 3 UMA)" defaultValue={toPctDisplay(config.imssEnfMatCuotaAdicPct)} error={state.fieldErrors?.imssEnfMatCuotaAdicPct} suffix="%" />
@@ -68,7 +78,7 @@ export function ConfigForm({
       <FiscalSection
         title="INFONAVIT, ISN e impuestos estatales"
         unlocked={fiscalUnlocked}
-        onUnlock={() => setFiscalUnlocked(true)}
+        onUnlock={handleUnlock}
       >
         <NumField locked={!fiscalUnlocked} name="infonavitPct" label="INFONAVIT (% del SBC)" defaultValue={toPctDisplay(config.infonavitPct)} error={state.fieldErrors?.infonavitPct} suffix="%" />
         <NumField locked={!fiscalUnlocked} name="isnPct" label="ISN Campeche (% de la nómina)" defaultValue={toPctDisplay(config.isnPct)} error={state.fieldErrors?.isnPct} suffix="%" />
@@ -176,7 +186,7 @@ function FiscalSection({
   title: string;
   hint?: string;
   unlocked: boolean;
-  onUnlock: () => void;
+  onUnlock: (password: string) => void;
   /** true = sin el grid de 2 columnas (para tablas, ej. bandas CEAV). */
   bare?: boolean;
   children: React.ReactNode;
@@ -213,10 +223,7 @@ function CeavBandasTable({ bandas, locked }: { bandas: CeavBandaInput[]; locked:
               </td>
               <td className="py-2 text-right">
                 {locked ? (
-                  <>
-                    <input type="hidden" name={name} value={defaultValue} />
-                    <span className="font-mono tabular-nums text-text-muted">{defaultValue}%</span>
-                  </>
+                  <span className="font-mono tabular-nums text-text-muted">{defaultValue}%</span>
                 ) : (
                   <Input
                     name={name}
@@ -259,7 +266,6 @@ function NumField({
     return (
       <Field>
         <FieldLabel>{label}</FieldLabel>
-        <input type="hidden" name={name} value={defaultValue} />
         <div className="flex h-10 items-center rounded-lg border border-border bg-surface px-3 text-sm text-text-muted">
           {defaultValue}
           {suffix}

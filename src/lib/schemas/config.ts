@@ -11,7 +11,41 @@ const pct = z.coerce
 const positive = z.coerce.number().min(0);
 const positiveInt = z.coerce.number().int().min(0);
 
-export const systemConfigSchema = z.object({
+/**
+ * Campos normativos protegidos por el candado de "Editar valores
+ * fiscales" en /configuracion (más la tabla CEAV, que se maneja aparte —
+ * ver ceavBandasUpdateSchema). Única fuente de verdad de esta lista:
+ * la usan tanto el schema de abajo (para volverlos opcionales — ver
+ * nota) como saveSystemConfigAction (para decidir si esta escritura
+ * necesita re-verificar la contraseña del usuario).
+ *
+ * NumField y CeavBandasTable (config-form.tsx) omiten por completo el
+ * atributo `name` de estos campos cuando están bloqueados — así que si
+ * el usuario nunca pasó por el candado, estos campos simplemente no
+ * llegan en el FormData. Por eso son `.optional()` aquí: "ausente" es la
+ * señal de "no se tocó", y Prisma trata un campo `undefined` en
+ * `update.data` como "no lo toques" (a diferencia de `null`), así que no
+ * hace falta fusionar manualmente con los valores actuales.
+ */
+export const PROTECTED_FISCAL_FIELDS = [
+  "umaDiaria",
+  "umaMensual",
+  "topeSbcUmas",
+  "salarioMinimoDiario",
+  "salarioMinimoMensual",
+  "imssEnfMatCuotaFijaPct",
+  "imssEnfMatCuotaAdicPct",
+  "imssEnfMatDineroPct",
+  "imssGastosMedPensPct",
+  "imssInvalidezVidaPct",
+  "imssGuarderiasPct",
+  "imssRetiroPct",
+  "infonavitPct",
+  "isnPct",
+  "impuestoAdicionalPct",
+] as const;
+
+const systemConfigFieldsSchema = z.object({
   umaDiaria: positive,
   umaMensual: positive,
   topeSbcUmas: positive,
@@ -53,6 +87,13 @@ export const systemConfigSchema = z.object({
   prestadorTelefono: z.string().trim().optional(),
   prestadorEmail: z.string().trim().optional(),
 });
+
+export const systemConfigSchema = systemConfigFieldsSchema.partial(
+  Object.fromEntries(PROTECTED_FISCAL_FIELDS.map((f) => [f, true])) as Record<
+    (typeof PROTECTED_FISCAL_FIELDS)[number],
+    true
+  >
+);
 
 export type SystemConfigInput = z.infer<typeof systemConfigSchema>;
 

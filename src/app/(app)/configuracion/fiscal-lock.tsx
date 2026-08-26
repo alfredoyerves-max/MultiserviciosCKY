@@ -18,7 +18,10 @@ export function FiscalSectionHeader({
   title: string;
   hint?: string;
   unlocked: boolean;
-  onUnlock: () => void;
+  /** Recibe la contraseña que se acaba de verificar — el formulario
+   *  principal la reenvía como campo oculto para que el servidor la
+   *  vuelva a verificar al guardar (ver saveSystemConfigAction). */
+  onUnlock: (password: string) => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -41,8 +44,8 @@ export function FiscalSectionHeader({
       {open && (
         <UnlockModal
           onCancel={() => setOpen(false)}
-          onUnlocked={() => {
-            onUnlock();
+          onUnlocked={(password) => {
+            onUnlock(password);
             setOpen(false);
           }}
         />
@@ -51,11 +54,17 @@ export function FiscalSectionHeader({
   );
 }
 
-function UnlockModal({ onCancel, onUnlocked }: { onCancel: () => void; onUnlocked: () => void }) {
+function UnlockModal({
+  onCancel,
+  onUnlocked,
+}: {
+  onCancel: () => void;
+  onUnlocked: (password: string) => void;
+}) {
   const [state, formAction, pending] = useActionState(
     async (prev: UnlockActionState, formData: FormData) => {
       const res = await unlockFiscalAction(prev, formData);
-      if (res.ok) onUnlocked();
+      if (res.ok) onUnlocked(String(formData.get("password") ?? ""));
       return res;
     },
     initialUnlockState
