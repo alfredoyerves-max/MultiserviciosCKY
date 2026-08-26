@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: DashboardIcon },
   { href: "/cotizaciones", label: "Cotizaciones", icon: QuoteIcon },
   { href: "/servicios", label: "Servicios", icon: ServiceIcon },
+  { href: "/inventario", label: "Inventario y Activos", icon: InventarioIcon },
   { href: "/pagos", label: "Pagos y Cobros", icon: PagosIcon },
   { href: "/configuracion", label: "Configuración", icon: SettingsIcon },
 ];
@@ -106,6 +107,16 @@ function ServiceIcon(props: React.SVGProps<SVGSVGElement>) {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} {...props}>
       <path d="M14.7 6.3a4 4 0 0 1-5.6 5.6L4 17v3h3l5.1-5.1a4 4 0 0 1 5.6-5.6L14.7 6.3Z" />
       <path d="M17 3l1 1.5L20 5l-1.5 1L18 8l-1.5-1L15 8l.5-2L14 5l2-1.5L17 3Z" />
+    </svg>
+  );
+}
+
+function InventarioIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} {...props}>
+      <path d="M3 7l9-4 9 4-9 4-9-4Z" />
+      <path d="M3 7v10l9 4 9-4V7" />
+      <path d="M12 11v10" />
     </svg>
   );
 }

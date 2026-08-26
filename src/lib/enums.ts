@@ -59,3 +59,46 @@ export const ESTADO_COTIZACION_LABELS: Record<EstadoCotizacion, string> = {
   ACEPTADA: "Aceptada",
   RECHAZADA: "Rechazada",
 };
+
+export const UNIDADES_MEDIDA = [
+  "PIEZA",
+  "LITRO",
+  "KILOGRAMO",
+  "GRAMO",
+  "CAJA",
+  "PAQUETE",
+  "ROLLO",
+  "BOTE",
+  "GALON",
+  "METRO",
+  "BOLSA",
+  "PAR",
+  "KIT",
+] as const;
+export const unidadMedidaSchema = z.enum(UNIDADES_MEDIDA);
+export type UnidadMedida = z.infer<typeof unidadMedidaSchema>;
+
+export const UNIDAD_MEDIDA_LABELS: Record<UnidadMedida, string> = {
+  PIEZA: "Pieza",
+  LITRO: "Litro",
+  KILOGRAMO: "Kilogramo",
+  GRAMO: "Gramo",
+  CAJA: "Caja",
+  PAQUETE: "Paquete",
+  ROLLO: "Rollo",
+  BOTE: "Bote",
+  GALON: "Galón",
+  METRO: "Metro",
+  BOLSA: "Bolsa",
+  PAR: "Par",
+  KIT: "Kit",
+};
+
+export const MOTIVOS_SALIDA = ["VENTA_CLIENTE", "USO_INTERNO"] as const;
+export const motivoSalidaSchema = z.enum(MOTIVOS_SALIDA);
+export type MotivoSalida = z.infer<typeof motivoSalidaSchema>;
+
+export const MOTIVO_SALIDA_LABELS: Record<MotivoSalida, string> = {
+  VENTA_CLIENTE: "Venta a cliente",
+  USO_INTERNO: "Uso interno",
+};

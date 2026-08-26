@@ -311,6 +311,59 @@ model Usuario {
   session Session?
 }
 
+/// Producto del catálogo de inventario/almacén (Fase 8). Materiales que se
+/// compran para reventa a clientes y materiales de uso interno del propio
+/// personal (ej. insumos de limpieza) comparten el mismo almacén — no hay
+/// separación en el modelo. `costoCompraReciente` NUNCA se edita
+/// directamente: se actualiza solo al registrar una entrada (ver
+/// lib/data/movimientosInventario.ts). `precioVentaSugerido` es para
+/// cuando se cotice a un cliente (Fase 9, todavía no conectado).
+model Producto {
+  id           String  @id @default(cuid())
+  nombre       String
+  descripcion  String?
+  unidadMedida String // PIEZA | LITRO | KG | CAJA | ... (validado en zod)
+
+  costoCompraReciente Float?
+  precioVentaSugerido Float?
+
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  movimientos MovimientoInventario[]
+}
+
+/// Movimiento de inventario — entrada (compra) o salida (venta a cliente o
+/// uso interno) — Fase 8. El stock actual de un Producto NUNCA se guarda
+/// como campo directo: siempre es la suma de sus movimientos (entradas -
+/// salidas), calculada en tiempo de lectura (ver lib/inventario.ts).
+///
+/// tipo: ENTRADA | SALIDA. En una ENTRADA se captura proveedor (texto
+/// libre, sin catálogo propio todavía) y costoUnitario. En una SALIDA se
+/// captura motivoSalida (VENTA_CLIENTE | USO_INTERNO) y opcionalmente una
+/// referencia en texto libre (a qué cliente/servicio corresponde — la
+/// Fase 9 de cotización de materiales lo conectará formalmente).
+model MovimientoInventario {
+  id         String   @id @default(cuid())
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+
+  tipo     String
+  fecha    DateTime
+  cantidad Float
+
+  // Solo ENTRADA
+  proveedor     String?
+  costoUnitario Float?
+
+  // Solo SALIDA
+  motivoSalida String?
+  referencia   String?
+
+  createdAt DateTime @default(now())
+}
+
 /// Sesión activa. `usuarioId` es único a propósito: una sola fila por
 /// usuario, así que iniciar sesión en un segundo lugar reemplaza el token
 /// (upsert) y el anterior deja de ser válido en su siguiente request.
