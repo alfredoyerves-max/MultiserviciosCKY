@@ -18,6 +18,7 @@ function fechaDefault(diasDesdeHoy: number) {
 interface CotizacionResumen {
   id: string;
   folio: string;
+  tipo: string;
   clienteNombre: string;
   totalAPagar: number;
 }
@@ -56,6 +57,8 @@ export function ConfirmarAceptacionModal({
           {reutilizaCuentaExistente
             ? "Esta cotización ya tiene una cuenta por cobrar generada — se reutilizará tal cual, sin crear una nueva."
             : "Se generará automáticamente su cuenta por cobrar."}
+          {cotizacion.tipo === "MATERIAL" &&
+            " También se registrará automáticamente la salida de inventario de cada producto (Venta a cliente). Si el stock ya no alcanza, la confirmación se bloqueará."}
         </p>
 
         {!reutilizaCuentaExistente && (

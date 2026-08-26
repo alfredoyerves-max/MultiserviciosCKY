@@ -6,12 +6,21 @@ import { formatCurrency, formatDate, formatPercent } from "@/lib/format";
 import {
   MODALIDAD_LABELS,
   TIPO_CLIENTE_LABELS,
+  TIPO_COTIZACION_LABELS,
+  UNIDAD_MEDIDA_LABELS,
   type Modalidad,
   type TipoCliente,
+  type TipoCotizacion,
+  type UnidadMedida,
 } from "@/lib/enums";
 import { EstadoSelect } from "../estado-select";
 import { CostDetail } from "./cost-detail";
 import Link from "next/link";
+
+const TIPO_COTIZACION_TONE: Record<TipoCotizacion, "primary" | "secondary"> = {
+  SERVICIO: "primary",
+  MATERIAL: "secondary",
+};
 
 export default async function CotizacionDetallePage({
   params,
@@ -20,6 +29,7 @@ export default async function CotizacionDetallePage({
 }) {
   const { id } = await params;
   const cotizacion = await getCotizacion(id);
+  const tipo = cotizacion.tipo as TipoCotizacion;
 
   return (
     <div className="flex flex-col gap-6">
@@ -27,6 +37,7 @@ export default async function CotizacionDetallePage({
         <div>
           <div className="flex items-center gap-3">
             <h1 className="font-mono text-xl font-semibold text-text">{cotizacion.folio}</h1>
+            <Badge tone={TIPO_COTIZACION_TONE[tipo]}>{TIPO_COTIZACION_LABELS[tipo]}</Badge>
             <EstadoSelect
               cotizacion={{
                 ...cotizacion,
@@ -50,37 +61,73 @@ export default async function CotizacionDetallePage({
         </ButtonLink>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Servicios cotizados</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-dim">
-                <th className="px-5 py-3 font-medium">Servicio</th>
-                <th className="px-5 py-3 font-medium">Modalidad</th>
-                <th className="px-5 py-3 font-medium">Personas</th>
-                <th className="px-5 py-3 font-medium">Duración</th>
-                <th className="px-5 py-3 text-right font-medium">Importe</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cotizacion.lineas.map((l) => (
-                <tr key={l.id} className="border-b border-border last:border-0">
-                  <td className="px-5 py-3 text-text">{l.servicio.nombre}</td>
-                  <td className="px-5 py-3 text-text-muted">{MODALIDAD_LABELS[l.modalidad as Modalidad]}</td>
-                  <td className="px-5 py-3 text-text-muted">{l.personas}</td>
-                  <td className="px-5 py-3 text-text-muted">{l.duracion}</td>
-                  <td className="px-5 py-3 text-right font-mono tabular-nums text-text">
-                    {formatCurrency(l.precioVenta)}
-                  </td>
+      {tipo === "SERVICIO" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Servicios cotizados</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-dim">
+                  <th className="px-5 py-3 font-medium">Servicio</th>
+                  <th className="px-5 py-3 font-medium">Modalidad</th>
+                  <th className="px-5 py-3 font-medium">Personas</th>
+                  <th className="px-5 py-3 font-medium">Duración</th>
+                  <th className="px-5 py-3 text-right font-medium">Importe</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
+              </thead>
+              <tbody>
+                {cotizacion.lineas.map((l) => (
+                  <tr key={l.id} className="border-b border-border last:border-0">
+                    <td className="px-5 py-3 text-text">{l.servicio.nombre}</td>
+                    <td className="px-5 py-3 text-text-muted">{MODALIDAD_LABELS[l.modalidad as Modalidad]}</td>
+                    <td className="px-5 py-3 text-text-muted">{l.personas}</td>
+                    <td className="px-5 py-3 text-text-muted">{l.duracion}</td>
+                    <td className="px-5 py-3 text-right font-mono tabular-nums text-text">
+                      {formatCurrency(l.precioVenta)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Materiales cotizados</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-dim">
+                  <th className="px-5 py-3 font-medium">Producto</th>
+                  <th className="px-5 py-3 font-medium">Cantidad</th>
+                  <th className="px-5 py-3 text-right font-medium">Precio unitario</th>
+                  <th className="px-5 py-3 text-right font-medium">Importe</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cotizacion.lineasMaterial.map((l) => (
+                  <tr key={l.id} className="border-b border-border last:border-0">
+                    <td className="px-5 py-3 text-text">{l.producto.nombre}</td>
+                    <td className="px-5 py-3 text-text-muted">
+                      {l.cantidad} {UNIDAD_MEDIDA_LABELS[l.producto.unidadMedida as UnidadMedida]}
+                    </td>
+                    <td className="px-5 py-3 text-right font-mono tabular-nums text-text-muted">
+                      {formatCurrency(l.precioUnitario)}
+                    </td>
+                    <td className="px-5 py-3 text-right font-mono tabular-nums text-text">
+                      {formatCurrency(l.importe)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -95,17 +142,21 @@ export default async function CotizacionDetallePage({
               <Resumen label="Retención ISR" value={`- ${formatCurrency(cotizacion.retencionIsr)}`} />
             )}
             <Resumen label="Neto a recibir" value={formatCurrency(cotizacion.netoARecibir)} />
-            <Resumen label="Margen aplicado" value={formatPercent(cotizacion.margenUtilidadPct)} />
+            {cotizacion.margenUtilidadPct != null && (
+              <Resumen label="Margen aplicado" value={formatPercent(cotizacion.margenUtilidadPct)} />
+            )}
           </div>
 
-          <CostDetail
-            lineas={cotizacion.lineas.map((l) => ({
-              id: l.id,
-              servicioNombre: l.servicio.nombre,
-              costoRealTotal: l.costoRealTotal,
-              precioVenta: l.precioVenta,
-            }))}
-          />
+          {tipo === "SERVICIO" && (
+            <CostDetail
+              lineas={cotizacion.lineas.map((l) => ({
+                id: l.id,
+                servicioNombre: l.servicio.nombre,
+                costoRealTotal: l.costoRealTotal,
+                precioVenta: l.precioVenta,
+              }))}
+            />
+          )}
         </CardContent>
       </Card>
 

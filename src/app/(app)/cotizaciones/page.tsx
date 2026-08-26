@@ -1,11 +1,12 @@
 import { listCotizacionesKanban } from "@/lib/data/cotizaciones";
 import { ButtonLink } from "@/components/ui/button";
 import { KanbanBoard } from "./kanban-board";
+import { TIPOS_COTIZACION, type TipoCotizacion } from "@/lib/enums";
 
 export default async function CotizacionesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mes?: string; soporte?: string }>;
+  searchParams: Promise<{ mes?: string; soporte?: string; tipo?: string }>;
 }) {
   const sp = await searchParams;
 
@@ -16,8 +17,11 @@ export default async function CotizacionesPage({
   const anio = Number(anioStr);
   const mes = Number(mesStr);
   const incluirSoporte = sp.soporte === "1";
+  const tipo = TIPOS_COTIZACION.includes(sp.tipo as TipoCotizacion)
+    ? (sp.tipo as TipoCotizacion)
+    : undefined;
 
-  const cotizaciones = await listCotizacionesKanban({ anio, mes, incluirSoporte });
+  const cotizaciones = await listCotizacionesKanban({ anio, mes, incluirSoporte, tipo });
 
   return (
     <div className="flex flex-col gap-6">
@@ -32,7 +36,13 @@ export default async function CotizacionesPage({
         <ButtonLink href="/cotizaciones/nueva">+ Nueva cotización</ButtonLink>
       </div>
 
-      <KanbanBoard cotizaciones={cotizaciones} anio={anio} mes={mes} incluirSoporte={incluirSoporte} />
+      <KanbanBoard
+        cotizaciones={cotizaciones}
+        anio={anio}
+        mes={mes}
+        incluirSoporte={incluirSoporte}
+        tipo={tipo}
+      />
     </div>
   );
 }

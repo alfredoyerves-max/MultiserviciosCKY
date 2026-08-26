@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { createCotizacionAction, type CotizacionActionState } from "../actions";
+import { createCotizacionAction, type CotizacionActionState } from "../../actions";
+import { ClienteStep, type ClienteNuevoState } from "../cliente-step";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel, Input, Select } from "@/components/ui/input";
@@ -9,8 +10,6 @@ import { formatCurrency, formatPercent } from "@/lib/format";
 import {
   MODALIDAD_LABELS,
   SERVICIO_CATEGORIA_LABELS,
-  TIPOS_CLIENTE,
-  TIPO_CLIENTE_LABELS,
   type Modalidad,
   type ServicioCategoria,
   type TipoCliente,
@@ -52,11 +51,11 @@ export function Wizard({
     clientes.length > 0 ? "existente" : "nuevo"
   );
   const [clienteId, setClienteId] = useState(clientes[0]?.id ?? "");
-  const [clienteNuevo, setClienteNuevo] = useState({
+  const [clienteNuevo, setClienteNuevo] = useState<ClienteNuevoState>({
     nombreRazonSocial: "",
     rfc: "",
     contacto: "",
-    tipoCliente: "PERSONA_MORAL" as TipoCliente,
+    tipoCliente: "PERSONA_MORAL",
   });
   const [proyecto, setProyecto] = useState("");
   const [margenUtilidadPct, setMargenUtilidadPct] = useState(margenDefaultPct);
@@ -144,93 +143,17 @@ export function Wizard({
       <input type="hidden" name="diasVigencia" value={diasVigencia} />
       <input type="hidden" name="esSoporte" value={esSoporte ? "on" : ""} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>1. Cliente</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {clientes.length > 0 && (
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant={modoCliente === "existente" ? "primary" : "secondary"}
-                onClick={() => setModoCliente("existente")}
-              >
-                Cliente existente
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={modoCliente === "nuevo" ? "primary" : "secondary"}
-                onClick={() => setModoCliente("nuevo")}
-              >
-                Cliente nuevo
-              </Button>
-            </div>
-          )}
-
-          {modoCliente === "existente" ? (
-            <Field>
-              <FieldLabel htmlFor="clienteSelect">Selecciona un cliente</FieldLabel>
-              <Select id="clienteSelect" value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
-                {clientes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nombreRazonSocial} — {TIPO_CLIENTE_LABELS[c.tipoCliente as TipoCliente]}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field>
-                <FieldLabel>Nombre / razón social</FieldLabel>
-                <Input
-                  value={clienteNuevo.nombreRazonSocial}
-                  onChange={(e) =>
-                    setClienteNuevo((c) => ({ ...c, nombreRazonSocial: e.target.value }))
-                  }
-                  required
-                />
-              </Field>
-              <Field>
-                <FieldLabel>Tipo de cliente</FieldLabel>
-                <Select
-                  value={clienteNuevo.tipoCliente}
-                  onChange={(e) =>
-                    setClienteNuevo((c) => ({ ...c, tipoCliente: e.target.value as TipoCliente }))
-                  }
-                >
-                  {TIPOS_CLIENTE.map((t) => (
-                    <option key={t} value={t}>
-                      {TIPO_CLIENTE_LABELS[t]}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field>
-                <FieldLabel>RFC (opcional)</FieldLabel>
-                <Input
-                  value={clienteNuevo.rfc}
-                  onChange={(e) => setClienteNuevo((c) => ({ ...c, rfc: e.target.value }))}
-                />
-              </Field>
-              <Field>
-                <FieldLabel>Contacto (opcional)</FieldLabel>
-                <Input
-                  value={clienteNuevo.contacto}
-                  onChange={(e) => setClienteNuevo((c) => ({ ...c, contacto: e.target.value }))}
-                />
-              </Field>
-            </div>
-          )}
-
-          <Field>
-            <FieldLabel>Proyecto (opcional)</FieldLabel>
-            <Input value={proyecto} onChange={(e) => setProyecto(e.target.value)} />
-          </Field>
-        </CardContent>
-      </Card>
+      <ClienteStep
+        clientes={clientes}
+        modoCliente={modoCliente}
+        setModoCliente={setModoCliente}
+        clienteId={clienteId}
+        setClienteId={setClienteId}
+        clienteNuevo={clienteNuevo}
+        setClienteNuevo={setClienteNuevo}
+        proyecto={proyecto}
+        setProyecto={setProyecto}
+      />
 
       <Card>
         <CardHeader className="items-start justify-between">

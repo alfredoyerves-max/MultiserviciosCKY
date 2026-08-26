@@ -102,3 +102,12 @@ export const MOTIVO_SALIDA_LABELS: Record<MotivoSalida, string> = {
   VENTA_CLIENTE: "Venta a cliente",
   USO_INTERNO: "Uso interno",
 };
+
+export const TIPOS_COTIZACION = ["SERVICIO", "MATERIAL"] as const;
+export const tipoCotizacionSchema = z.enum(TIPOS_COTIZACION);
+export type TipoCotizacion = z.infer<typeof tipoCotizacionSchema>;
+
+export const TIPO_COTIZACION_LABELS: Record<TipoCotizacion, string> = {
+  SERVICIO: "Servicio",
+  MATERIAL: "Material",
+};

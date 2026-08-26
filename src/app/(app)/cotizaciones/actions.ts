@@ -2,15 +2,18 @@
 
 import {
   createCotizacion,
+  createCotizacionMaterial,
   updateEstadoCotizacion,
   asegurarCambioEstadoPermitido,
+  confirmarAceptacionMaterial,
+  getCotizacionTipo,
 } from "@/lib/data/cotizaciones";
 import {
   generarCuentaPorCobrar,
   existeCuentaPorCobrar,
   eliminarCuentaPorCobrarPorCotizacion,
 } from "@/lib/data/cuentasPorCobrar";
-import { cotizacionInputSchema } from "@/lib/schemas/cotizacion";
+import { cotizacionInputSchema, cotizacionMaterialInputSchema } from "@/lib/schemas/cotizacion";
 import { generarCuentaPorCobrarSchema } from "@/lib/schemas/cuentas";
 import { estadoCotizacionSchema } from "@/lib/enums";
 import { requireSession } from "@/lib/auth/session";
@@ -79,6 +82,62 @@ export async function createCotizacionAction(
   redirect(`/cotizaciones/${cotizacion.id}`);
 }
 
+export async function createCotizacionMaterialAction(
+  _prev: CotizacionActionState,
+  formData: FormData
+): Promise<CotizacionActionState> {
+  await requireSession();
+
+  const lineasJson = formData.get("lineasMaterialJson");
+  const clienteNuevoJson = formData.get("clienteNuevoJson");
+
+  let lineasMaterial: unknown = [];
+  try {
+    lineasMaterial = lineasJson ? JSON.parse(String(lineasJson)) : [];
+  } catch {
+    return { ok: false, error: "Las líneas de material no son válidas." };
+  }
+
+  let clienteNuevo: unknown = undefined;
+  if (clienteNuevoJson && String(clienteNuevoJson) !== "") {
+    try {
+      clienteNuevo = JSON.parse(String(clienteNuevoJson));
+    } catch {
+      return { ok: false, error: "Los datos del cliente nuevo no son válidos." };
+    }
+  }
+
+  const clienteId = formData.get("clienteId");
+
+  const parsed = cotizacionMaterialInputSchema.safeParse({
+    clienteId: clienteId ? String(clienteId) : undefined,
+    clienteNuevo,
+    proyecto: formData.get("proyecto") ?? undefined,
+    diasVigencia: formData.get("diasVigencia"),
+    esSoporte: formData.get("esSoporte") === "on",
+    lineasMaterial,
+  });
+
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
+  }
+
+  if (!parsed.data.clienteId && !parsed.data.clienteNuevo) {
+    return { ok: false, error: "Selecciona un cliente existente o captura uno nuevo." };
+  }
+
+  let cotizacion;
+  try {
+    cotizacion = await createCotizacionMaterial(parsed.data);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Error al crear la cotización." };
+  }
+
+  revalidatePath("/cotizaciones");
+  revalidatePath("/");
+  redirect(`/cotizaciones/${cotizacion.id}`);
+}
+
 // Solo para transiciones Borrador <-> Enviada, que no disparan nada
 // financiero. Aceptada/Rechazada pasan por confirmarAceptacionAction /
 // confirmarRechazoAction (modal de confirmación obligatorio). En ambos
@@ -105,6 +164,12 @@ export async function updateEstadoAction(id: string, estado: string) {
  * una. Si ya existe (ej. se movió a Borrador sin abonos y se vuelve a
  * aceptar), se reutiliza tal cual: no se pide fecha de vencimiento nueva
  * ni se crea un segundo registro, solo se actualiza el estado.
+ *
+ * Si la cotización es de tipo MATERIAL (Fase 9), además descuenta el stock
+ * automáticamente (una salida por línea, motivo "Venta a cliente",
+ * referencia = folio) en la misma transacción que genera la cuenta por
+ * cobrar — ver confirmarAceptacionMaterial. Si el stock ya no alcanza, la
+ * operación completa se revierte y el error identifica el producto.
  */
 export async function confirmarAceptacionAction(
   _prev: CotizacionActionState,
@@ -116,8 +181,10 @@ export async function confirmarAceptacionAction(
   if (!cotizacionId) return { ok: false, error: "Falta la cotización." };
 
   try {
+    const { tipo } = await getCotizacionTipo(cotizacionId);
     const yaExiste = await existeCuentaPorCobrar(cotizacionId);
 
+    let fechaVencimiento: Date | undefined;
     if (!yaExiste) {
       const parsedFecha = generarCuentaPorCobrarSchema.safeParse({
         cotizacionId,
@@ -126,8 +193,14 @@ export async function confirmarAceptacionAction(
       if (!parsedFecha.success) {
         return { ok: false, error: "Fecha de vencimiento inválida." };
       }
+      fechaVencimiento = parsedFecha.data.fechaVencimiento;
+    }
+
+    if (tipo === "MATERIAL") {
+      await confirmarAceptacionMaterial(cotizacionId, fechaVencimiento);
+    } else if (!yaExiste) {
       await updateEstadoCotizacion(cotizacionId, "ACEPTADA");
-      await generarCuentaPorCobrar(parsedFecha.data);
+      await generarCuentaPorCobrar({ cotizacionId, fechaVencimiento: fechaVencimiento! });
     } else {
       await updateEstadoCotizacion(cotizacionId, "ACEPTADA");
     }
@@ -138,6 +211,7 @@ export async function confirmarAceptacionAction(
   revalidatePath("/cotizaciones");
   revalidatePath(`/cotizaciones/${cotizacionId}`);
   revalidatePath("/pagos");
+  revalidatePath("/inventario");
   revalidatePath("/");
   return { ok: true };
 }

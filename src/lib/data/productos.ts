@@ -12,6 +12,16 @@ export function listProductosActivos() {
   return prisma.producto.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } });
 }
 
+/** Para el wizard de cotización de material (Fase 9) — necesita el stock
+ *  actual de cada producto para la advertencia informativa de stock. */
+export function listProductosActivosConMovimientos() {
+  return prisma.producto.findMany({
+    where: { activo: true },
+    include: { movimientos: { select: { tipo: true, cantidad: true } } },
+    orderBy: { nombre: "asc" },
+  });
+}
+
 export function getProducto(id: string) {
   return prisma.producto.findUniqueOrThrow({
     where: { id },

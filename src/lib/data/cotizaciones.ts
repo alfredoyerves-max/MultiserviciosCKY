@@ -3,8 +3,9 @@ import { getSystemConfigConCeav } from "./config";
 import { calcularCostoReal, costoRealPorModalidad } from "@/lib/costEngine";
 import { calcularTotalesFiscales } from "@/lib/fiscalEngine";
 import { sueldoMensualEfectivo } from "@/lib/servicioCosto";
-import type { CotizacionInput } from "@/lib/schemas/cotizacion";
-import type { TipoCliente } from "@/lib/enums";
+import { calcularStock } from "@/lib/inventario";
+import type { CotizacionInput, CotizacionMaterialInput } from "@/lib/schemas/cotizacion";
+import type { TipoCliente, TipoCotizacion } from "@/lib/enums";
 
 async function generarFolio(): Promise<string> {
   const year = new Date().getFullYear();
@@ -80,6 +81,7 @@ export async function createCotizacion(input: CotizacionInput) {
   return prisma.cotizacion.create({
     data: {
       folio,
+      tipo: "SERVICIO",
       clienteId,
       proyecto: input.proyecto || null,
       margenUtilidadPct: margenFraccion,
@@ -93,6 +95,73 @@ export async function createCotizacion(input: CotizacionInput) {
       lineas: { create: lineasCalculadas },
     },
     include: { cliente: true, lineas: { include: { servicio: true } } },
+  });
+}
+
+/**
+ * Cotización de venta de materiales (Fase 9) — mismo pipeline de estados
+ * que las de servicio, pero sin motor de costo real: el precio de venta se
+ * captura directo por línea (precargado desde Producto.precioVentaSugerido,
+ * editable). Nunca lleva `lineas` (LineaCotizacion) — solo
+ * `lineasMaterial`.
+ */
+export async function createCotizacionMaterial(input: CotizacionMaterialInput) {
+  const config = await getSystemConfigConCeav();
+
+  const productoIds = [...new Set(input.lineasMaterial.map((l) => l.productoId))];
+  const productos = await prisma.producto.findMany({ where: { id: { in: productoIds } } });
+  const productoById = new Map(productos.map((p) => [p.id, p]));
+
+  let clienteId = input.clienteId;
+  let tipoCliente: TipoCliente;
+
+  if (clienteId) {
+    const cliente = await prisma.cliente.findUniqueOrThrow({ where: { id: clienteId } });
+    tipoCliente = cliente.tipoCliente as TipoCliente;
+  } else if (input.clienteNuevo) {
+    const cliente = await prisma.cliente.create({ data: input.clienteNuevo });
+    clienteId = cliente.id;
+    tipoCliente = cliente.tipoCliente as TipoCliente;
+  } else {
+    throw new Error("Falta el cliente de la cotización.");
+  }
+
+  const lineasCalculadas = input.lineasMaterial.map((linea) => {
+    const producto = productoById.get(linea.productoId);
+    if (!producto) throw new Error(`Producto ${linea.productoId} no encontrado.`);
+    return {
+      productoId: linea.productoId,
+      cantidad: linea.cantidad,
+      precioUnitario: linea.precioUnitario,
+      importe: linea.cantidad * linea.precioUnitario,
+    };
+  });
+
+  const subtotal = lineasCalculadas.reduce((sum, l) => sum + l.importe, 0);
+  const fiscal = calcularTotalesFiscales(subtotal, tipoCliente, config.ivaPct, config.retencionIsrPct);
+
+  const folio = await generarFolio();
+
+  const fechaVigencia = new Date();
+  fechaVigencia.setDate(fechaVigencia.getDate() + input.diasVigencia);
+
+  return prisma.cotizacion.create({
+    data: {
+      folio,
+      tipo: "MATERIAL",
+      clienteId,
+      proyecto: input.proyecto || null,
+      margenUtilidadPct: null,
+      subtotal: fiscal.subtotal,
+      iva: fiscal.iva,
+      retencionIsr: fiscal.retencionIsr,
+      totalAPagar: fiscal.totalAPagar,
+      netoARecibir: fiscal.netoARecibir,
+      fechaVigencia,
+      esSoporte: input.esSoporte ?? false,
+      lineasMaterial: { create: lineasCalculadas },
+    },
+    include: { cliente: true, lineasMaterial: { include: { producto: true } } },
   });
 }
 
@@ -110,6 +179,8 @@ export interface KanbanFiltros {
   anio: number;
   mes: number; // 1-12
   incluirSoporte: boolean;
+  /** Sin filtrar (todos) si se omite. */
+  tipo?: TipoCotizacion;
 }
 
 /** Cotizaciones creadas en un mes calendario dado, para el kanban de
@@ -123,6 +194,7 @@ export function listCotizacionesKanban(filtros: KanbanFiltros) {
     where: {
       createdAt: { gte: inicio, lt: finExclusivo },
       ...(filtros.incluirSoporte ? {} : { esSoporte: false }),
+      ...(filtros.tipo ? { tipo: filtros.tipo } : {}),
     },
     include: {
       cliente: true,
@@ -138,9 +210,14 @@ export function getCotizacion(id: string) {
     include: {
       cliente: true,
       lineas: { include: { servicio: true } },
+      lineasMaterial: { include: { producto: true } },
       cuentaPorCobrar: { include: { abonos: { select: { id: true } } } },
     },
   });
+}
+
+export function getCotizacionTipo(id: string) {
+  return prisma.cotizacion.findUniqueOrThrow({ where: { id }, select: { tipo: true, folio: true } });
 }
 
 export function updateEstadoCotizacion(id: string, estado: string) {
@@ -169,4 +246,67 @@ export async function asegurarCambioEstadoPermitido(cotizacionId: string, nuevoE
       "No se puede cambiar el estado: esta cotización ya tiene pagos registrados en su cuenta por cobrar."
     );
   }
+}
+
+/**
+ * Confirma la aceptación de una cotización de MATERIAL (Fase 9): en una
+ * sola transacción, valida que el stock real alcance para cada producto
+ * (agregando la cantidad si el mismo producto aparece en más de una
+ * línea — el stock es del producto, no de la línea), registra una salida
+ * de inventario por "Venta a cliente" por cada línea (referencia = folio),
+ * cambia el estado a ACEPTADA y genera la cuenta por cobrar si todavía no
+ * existe. Si el stock ya no alcanza, la transacción se revierte por
+ * completo y no queda ningún cambio a medias — el mensaje identifica el
+ * producto exacto que falló.
+ */
+export async function confirmarAceptacionMaterial(cotizacionId: string, fechaVencimiento?: Date) {
+  return prisma.$transaction(async (tx) => {
+    const cotizacion = await tx.cotizacion.findUniqueOrThrow({
+      where: { id: cotizacionId },
+      include: {
+        lineasMaterial: {
+          include: { producto: { include: { movimientos: { select: { tipo: true, cantidad: true } } } } },
+        },
+        cuentaPorCobrar: true,
+      },
+    });
+
+    const cantidadPorProducto = new Map<string, number>();
+    const productoPorId = new Map(cotizacion.lineasMaterial.map((l) => [l.productoId, l.producto]));
+    for (const linea of cotizacion.lineasMaterial) {
+      cantidadPorProducto.set(linea.productoId, (cantidadPorProducto.get(linea.productoId) ?? 0) + linea.cantidad);
+    }
+
+    for (const [productoId, cantidadTotal] of cantidadPorProducto) {
+      const producto = productoPorId.get(productoId)!;
+      const stock = calcularStock(producto.movimientos);
+      if (cantidadTotal > stock) {
+        throw new Error(
+          `Stock insuficiente de "${producto.nombre}": disponible ${stock}, se requieren ${cantidadTotal}.`
+        );
+      }
+    }
+
+    for (const linea of cotizacion.lineasMaterial) {
+      await tx.movimientoInventario.create({
+        data: {
+          productoId: linea.productoId,
+          tipo: "SALIDA",
+          fecha: new Date(),
+          cantidad: linea.cantidad,
+          motivoSalida: "VENTA_CLIENTE",
+          referencia: cotizacion.folio,
+        },
+      });
+    }
+
+    await tx.cotizacion.update({ where: { id: cotizacionId }, data: { estado: "ACEPTADA" } });
+
+    if (!cotizacion.cuentaPorCobrar) {
+      if (!fechaVencimiento) throw new Error("Falta la fecha de vencimiento.");
+      await tx.cuentaPorCobrar.create({
+        data: { cotizacionId, montoTotal: cotizacion.netoARecibir, fechaVencimiento },
+      });
+    }
+  });
 }

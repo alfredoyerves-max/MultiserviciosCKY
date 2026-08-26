@@ -164,19 +164,37 @@ model Cliente {
   cotizaciones Cotizacion[]
 }
 
-/// Cotización (Fases 4-7). estado: BORRADOR | ENVIADA | ACEPTADA | RECHAZADA
-/// (validado en zod) — son también las 4 columnas del kanban de
-/// seguimiento (Fase 6). Cuando estado pasa a ACEPTADA, desde su detalle
-/// se puede generar una CuentaPorCobrar (Fase 7) — relación 1:1 opcional.
+/// Cotización (Fases 4-7, tipo agregado en Fase 9). estado: BORRADOR |
+/// ENVIADA | ACEPTADA | RECHAZADA (validado en zod) — son también las 4
+/// columnas del kanban de seguimiento (Fase 6). Cuando estado pasa a
+/// ACEPTADA, desde su detalle se puede generar una CuentaPorCobrar
+/// (Fase 7) — relación 1:1 opcional.
+///
+/// tipo: SERVICIO | MATERIAL (Fase 9, validado en zod) — decide cuál de
+/// las dos relaciones de líneas aplica. Nunca se mezclan en un mismo
+/// documento: una cotización SERVICIO solo tiene `lineas`
+/// (LineaCotizacion), una MATERIAL solo `lineasMaterial`
+/// (LineaCotizacionMaterial) — no hay constraint de BD para esto, se
+/// garantiza en la capa de datos (createCotizacion/createCotizacionMaterial
+/// nunca llenan la relación del otro tipo). Ambos tipos comparten el mismo
+/// pipeline de estados, kanban, modal de confirmación y generación de
+/// cuenta por cobrar — por eso viven en el mismo modelo en vez de uno
+/// paralelo completo.
 model Cotizacion {
   id     String @id @default(cuid())
   folio  String @unique
+  tipo   String @default("SERVICIO")
 
   clienteId String
   cliente   Cliente @relation(fields: [clienteId], references: [id])
   proyecto  String?
 
-  margenUtilidadPct Float // snapshot editable por cotización
+  /// Snapshot editable por cotización. Solo aplica a tipo SERVICIO — el
+  /// costo real ahí viene del motor de nómina/IMSS/INFONAVIT (Fase 2). Las
+  /// cotizaciones MATERIAL no tienen ese concepto de margen: el precio de
+  /// venta se captura directo por línea (ver LineaCotizacionMaterial), así
+  /// que este campo queda null.
+  margenUtilidadPct Float?
 
   subtotal     Float @default(0)
   iva          Float @default(0)
@@ -200,13 +218,14 @@ model Cotizacion {
   updatedAt DateTime @updatedAt
 
   lineas          LineaCotizacion[]
+  lineasMaterial  LineaCotizacionMaterial[]
   cuentaPorCobrar CuentaPorCobrar?
 }
 
-/// Línea de servicio dentro de una cotización. Guarda un snapshot del
-/// costo real unitario calculado en el momento (las tasas de Configuración
-/// cambian cada año — una cotización vieja no debe recalcularse con tasas
-/// nuevas). modalidad: HORA | DIA | SEMANA | MES.
+/// Línea de servicio dentro de una cotización tipo SERVICIO. Guarda un
+/// snapshot del costo real unitario calculado en el momento (las tasas de
+/// Configuración cambian cada año — una cotización vieja no debe
+/// recalcularse con tasas nuevas). modalidad: HORA | DIA | SEMANA | MES.
 model LineaCotizacion {
   id String @id @default(cuid())
 
@@ -223,6 +242,29 @@ model LineaCotizacion {
   costoRealUnitarioSnapshot Float
   costoRealTotal            Float
   precioVenta               Float
+
+  createdAt DateTime @default(now())
+}
+
+/// Línea de material dentro de una cotización tipo MATERIAL (Fase 9).
+/// `precioUnitario` se precarga desde Producto.precioVentaSugerido pero es
+/// editable en la cotización; `importe` (cantidad × precioUnitario) se
+/// guarda como snapshot, igual que precioVenta en LineaCotizacion — no se
+/// recalcula si el precio sugerido del producto cambia después. Al aceptar
+/// la cotización (confirmarAceptacionMaterial), cada línea genera una
+/// salida de MovimientoInventario por "Venta a cliente".
+model LineaCotizacionMaterial {
+  id String @id @default(cuid())
+
+  cotizacionId String
+  cotizacion   Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
+
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id])
+
+  cantidad       Float
+  precioUnitario Float
+  importe        Float
 
   createdAt DateTime @default(now())
 }
@@ -331,7 +373,8 @@ model Producto {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  movimientos MovimientoInventario[]
+  movimientos    MovimientoInventario[]
+  lineasMaterial LineaCotizacionMaterial[]
 }
 
 /// Movimiento de inventario — entrada (compra) o salida (venta a cliente o

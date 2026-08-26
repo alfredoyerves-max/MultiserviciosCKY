@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 interface CotizacionParaSelect {
   id: string;
   folio: string;
+  tipo: string;
   estado: string;
   totalAPagar: number;
   cliente: { nombreRazonSocial: string };
@@ -52,6 +53,7 @@ export function EstadoSelect({
   const resumen = {
     id: cotizacion.id,
     folio: cotizacion.folio,
+    tipo: cotizacion.tipo,
     clienteNombre: cotizacion.cliente.nombreRazonSocial,
     totalAPagar: cotizacion.totalAPagar,
   };

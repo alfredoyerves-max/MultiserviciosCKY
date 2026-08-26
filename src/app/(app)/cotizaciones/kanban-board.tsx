@@ -9,10 +9,19 @@ import {
   ESTADOS_COTIZACION,
   ESTADO_COTIZACION_LABELS,
   TIPO_CLIENTE_LABELS,
+  TIPOS_COTIZACION,
+  TIPO_COTIZACION_LABELS,
   type TipoCliente,
+  type TipoCotizacion,
 } from "@/lib/enums";
+import { Select } from "@/components/ui/input";
 import type { AbonoPorCobrar, Cliente, Cotizacion, CuentaPorCobrar } from "@/generated/prisma/client";
 import Link from "next/link";
+
+const TIPO_COTIZACION_TONE: Record<TipoCotizacion, "primary" | "secondary"> = {
+  SERVICIO: "primary",
+  MATERIAL: "secondary",
+};
 
 type CotizacionConCliente = Cotizacion & {
   cliente: Cliente;
@@ -44,11 +53,13 @@ export function KanbanBoard({
   anio,
   mes,
   incluirSoporte,
+  tipo,
 }: {
   cotizaciones: CotizacionConCliente[];
   anio: number;
   mes: number;
   incluirSoporte: boolean;
+  tipo?: TipoCotizacion;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -91,15 +102,30 @@ export function KanbanBoard({
           )}
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-text-muted">
-          <input
-            type="checkbox"
-            checked={incluirSoporte}
-            onChange={(e) => setParam("soporte", e.target.checked ? "1" : null)}
-            className="h-4 w-4 rounded border-border-strong bg-surface-2 accent-[var(--color-primary)]"
-          />
-          Mostrar cotizaciones de soporte
-        </label>
+        <div className="flex items-center gap-3">
+          <Select
+            className="h-9 w-auto"
+            value={tipo ?? "TODOS"}
+            onChange={(e) => setParam("tipo", e.target.value === "TODOS" ? null : e.target.value)}
+          >
+            <option value="TODOS">Todos los tipos</option>
+            {TIPOS_COTIZACION.map((t) => (
+              <option key={t} value={t}>
+                {TIPO_COTIZACION_LABELS[t]}
+              </option>
+            ))}
+          </Select>
+
+          <label className="flex items-center gap-2 text-sm text-text-muted">
+            <input
+              type="checkbox"
+              checked={incluirSoporte}
+              onChange={(e) => setParam("soporte", e.target.checked ? "1" : null)}
+              className="h-4 w-4 rounded border-border-strong bg-surface-2 accent-[var(--color-primary)]"
+            />
+            Mostrar cotizaciones de soporte
+          </label>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -147,7 +173,12 @@ function KanbanCard({ cotizacion }: { cotizacion: CotizacionConCliente }) {
           >
             {cotizacion.folio}
           </Link>
-          {cotizacion.esSoporte && <Badge tone="secondary">Soporte</Badge>}
+          <div className="flex flex-wrap items-center gap-1">
+            <Badge tone={TIPO_COTIZACION_TONE[cotizacion.tipo as TipoCotizacion]}>
+              {TIPO_COTIZACION_LABELS[cotizacion.tipo as TipoCotizacion]}
+            </Badge>
+            {cotizacion.esSoporte && <Badge tone="secondary">Soporte</Badge>}
+          </div>
         </div>
 
         <p className="text-sm text-text">{cotizacion.cliente.nombreRazonSocial}</p>
