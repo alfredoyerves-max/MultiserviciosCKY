@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { saveSystemConfigAction, type ConfigActionState } from "./actions";
 import { FiscalSectionHeader } from "./fiscal-lock";
-import { Field, FieldError, FieldLabel, Input } from "@/components/ui/input";
+import { Field, FieldError, FieldLabel, Input, Textarea } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { SystemConfig } from "@/generated/prisma/client";
@@ -97,6 +97,33 @@ export function ConfigForm({
 
       <Section title="Margen de utilidad">
         <NumField name="margenUtilidadDefaultPct" label="Margen de utilidad por defecto (%)" defaultValue={toPctDisplay(config.margenUtilidadDefaultPct)} error={state.fieldErrors?.margenUtilidadDefaultPct} />
+      </Section>
+
+      <Section
+        title="Datos del prestador de servicio"
+        hint="Solo se usan en el membrete de las cotizaciones exportadas a Word/PDF — no participan en ningún cálculo."
+      >
+        <Field>
+          <FieldLabel htmlFor="prestadorNombre">Nombre / razón social</FieldLabel>
+          <Input id="prestadorNombre" name="prestadorNombre" defaultValue={config.prestadorNombre} required />
+          <FieldError>{state.fieldErrors?.prestadorNombre}</FieldError>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="prestadorRfc">RFC (opcional)</FieldLabel>
+          <Input id="prestadorRfc" name="prestadorRfc" defaultValue={config.prestadorRfc ?? ""} />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="prestadorTelefono">Teléfono (opcional)</FieldLabel>
+          <Input id="prestadorTelefono" name="prestadorTelefono" defaultValue={config.prestadorTelefono ?? ""} />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="prestadorEmail">Correo (opcional)</FieldLabel>
+          <Input id="prestadorEmail" name="prestadorEmail" defaultValue={config.prestadorEmail ?? ""} />
+        </Field>
+        <Field className="sm:col-span-2">
+          <FieldLabel htmlFor="prestadorDireccion">Dirección (opcional)</FieldLabel>
+          <Textarea id="prestadorDireccion" name="prestadorDireccion" defaultValue={config.prestadorDireccion ?? ""} />
+        </Field>
       </Section>
 
       {state.error && (

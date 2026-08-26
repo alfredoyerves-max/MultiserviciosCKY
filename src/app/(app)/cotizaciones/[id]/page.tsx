@@ -1,6 +1,6 @@
 import { getCotizacion } from "@/lib/data/cotizaciones";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ButtonLink } from "@/components/ui/button";
+import { AnchorButton, ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate, formatPercent } from "@/lib/format";
 import {
@@ -56,9 +56,17 @@ export default async function CotizacionDetallePage({
             <p className="text-sm text-text-dim">Proyecto: {cotizacion.proyecto}</p>
           )}
         </div>
-        <ButtonLink href="/cotizaciones" variant="secondary" size="sm">
-          ← Volver
-        </ButtonLink>
+        <div className="flex shrink-0 items-center gap-2">
+          <AnchorButton href={`/api/cotizaciones/${cotizacion.id}/export?format=docx`} download>
+            Exportar Word
+          </AnchorButton>
+          <AnchorButton href={`/api/cotizaciones/${cotizacion.id}/export?format=pdf`} download>
+            Exportar PDF
+          </AnchorButton>
+          <ButtonLink href="/cotizaciones" variant="secondary" size="sm">
+            ← Volver
+          </ButtonLink>
+        </div>
       </div>
 
       {tipo === "SERVICIO" ? (

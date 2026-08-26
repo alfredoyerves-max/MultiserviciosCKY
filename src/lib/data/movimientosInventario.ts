@@ -2,6 +2,16 @@ import { prisma } from "@/lib/prisma";
 import { calcularStock } from "@/lib/inventario";
 import type { EntradaInventarioInput, SalidaInventarioInput } from "@/lib/schemas/movimientoInventario";
 
+/** Todos los movimientos de todos los productos, para la exportación a
+ *  Excel (Fase 11) — no hay vista de "todos los movimientos" en la app,
+ *  solo por producto, así que este listado es exclusivo de esa exportación. */
+export function listMovimientosInventario() {
+  return prisma.movimientoInventario.findMany({
+    include: { producto: { select: { nombre: true, unidadMedida: true } } },
+    orderBy: { fecha: "desc" },
+  });
+}
+
 /**
  * Registra una entrada (compra) y, en la misma transacción, actualiza
  * `costoCompraReciente` del producto con el costoUnitario de esta compra —

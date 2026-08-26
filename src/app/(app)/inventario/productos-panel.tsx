@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { saveProductoAction, toggleProductoActivoAction } from "./actions";
 import { initialFormState } from "./form-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { AnchorButton, Button, ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Field, FieldError, FieldLabel, Input, Select, Textarea } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/format";
@@ -22,11 +22,19 @@ export function ProductosPanel({ productos }: { productos: ProductoConMovimiento
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-text-muted">Catálogo de productos y stock actual.</p>
-        {!creating && (
-          <Button size="sm" onClick={() => setCreating(true)}>
-            + Nuevo producto
-          </Button>
-        )}
+        <div className="flex gap-2">
+          <AnchorButton href="/api/inventario/productos/export" download>
+            Exportar catálogo
+          </AnchorButton>
+          <AnchorButton href="/api/inventario/movimientos/export" download>
+            Exportar movimientos
+          </AnchorButton>
+          {!creating && (
+            <Button size="sm" onClick={() => setCreating(true)}>
+              + Nuevo producto
+            </Button>
+          )}
+        </div>
       </div>
 
       {creating && <ProductoForm onDone={() => setCreating(false)} onCancel={() => setCreating(false)} />}

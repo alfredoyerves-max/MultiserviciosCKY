@@ -1,6 +1,6 @@
 import { cn } from "@/lib/cn";
 import Link from "next/link";
-import type { ButtonHTMLAttributes, ComponentProps } from "react";
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ComponentProps } from "react";
 
 const base =
   "inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap";
@@ -41,4 +41,18 @@ export function ButtonLink({
   ...props
 }: ButtonLinkProps) {
   return <Link className={cn(base, variants[variant], sizes[size], className)} {...props} />;
+}
+
+/** Como ButtonLink, pero un `<a>` plano — para descargas (rutas de API que
+ *  devuelven un archivo, ej. exportaciones) donde no aplica la navegación
+ *  SPA de next/link. */
+type AnchorButtonProps = ButtonOwnProps & AnchorHTMLAttributes<HTMLAnchorElement>;
+
+export function AnchorButton({
+  className,
+  variant = "secondary",
+  size = "sm",
+  ...props
+}: AnchorButtonProps) {
+  return <a className={cn(base, variants[variant], sizes[size], className)} {...props} />;
 }

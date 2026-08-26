@@ -46,6 +46,12 @@ export const systemConfigSchema = z.object({
   diasPorSemana: positiveInt,
 
   margenUtilidadDefaultPct: pct,
+
+  prestadorNombre: z.string().trim().min(1, "Requerido"),
+  prestadorRfc: z.string().trim().optional(),
+  prestadorDireccion: z.string().trim().optional(),
+  prestadorTelefono: z.string().trim().optional(),
+  prestadorEmail: z.string().trim().optional(),
 });
 
 export type SystemConfigInput = z.infer<typeof systemConfigSchema>;

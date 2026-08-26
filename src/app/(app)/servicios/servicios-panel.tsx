@@ -4,7 +4,7 @@ import { useActionState, useMemo, useState } from "react";
 import { saveServicioAction, toggleServicioActivoAction } from "./actions";
 import { initialFormState } from "./form-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { AnchorButton, Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Field, FieldError, FieldLabel, Input, Select, Textarea } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/format";
@@ -37,11 +37,16 @@ export function ServiciosPanel({
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-text-muted">Catálogo de servicios ofrecidos.</p>
-        {!creating && (
-          <Button size="sm" onClick={() => setCreating(true)}>
-            + Nuevo servicio
-          </Button>
-        )}
+        <div className="flex gap-2">
+          <AnchorButton href="/api/servicios/export" download>
+            Exportar a Excel
+          </AnchorButton>
+          {!creating && (
+            <Button size="sm" onClick={() => setCreating(true)}>
+              + Nuevo servicio
+            </Button>
+          )}
+        </div>
       </div>
 
       {creating && (
