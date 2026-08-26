@@ -1,24 +1,24 @@
-import { Document, Page, View, Text, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
+import fs from "fs";
+import path from "path";
+import { Document, Page, View, Text, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { CotizacionExportData } from "./cotizacionData";
 
-const CYAN = "#00dbe9";
 const GRAY = "#6b7280";
 const DARK = "#1a1a1a";
 const BORDER = "#e5e7eb";
 
+// Monograma "CK" recortado, fondo blanco intencional (se funde con la
+// página) — ver public/branding/logo-icon.png. Para cambiar el logotipo
+// después, basta con reemplazar ese archivo (o apuntar esta ruta a otro).
+// Se lee una sola vez al cargar el módulo, no en cada render.
+const LOGO_PATH = path.join(process.cwd(), "public", "branding", "logo-icon.png");
+const LOGO_DATA_URI = `data:image/png;base64,${fs.readFileSync(LOGO_PATH).toString("base64")}`;
+
 const styles = StyleSheet.create({
   page: { padding: 36, fontSize: 10, color: DARK, fontFamily: "Helvetica" },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  logo: {
-    width: 44,
-    height: 44,
-    backgroundColor: CYAN,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 4,
-  },
-  logoText: { color: "#ffffff", fontSize: 16, fontFamily: "Helvetica-Bold" },
+  logo: { width: 40, height: 43 },
   brandName: { fontSize: 14, fontFamily: "Helvetica-Bold", marginTop: 8 },
   tagline: { fontSize: 8, color: GRAY, fontStyle: "italic", marginTop: 2 },
   folioLabel: { fontSize: 8, color: GRAY, textAlign: "right" },
@@ -48,18 +48,9 @@ const styles = StyleSheet.create({
   footerText: { fontSize: 8, color: GRAY },
 });
 
-/**
- * Logo placeholder — cuadro cyan con "MY", dibujado con primitivas de
- * react-pdf (sin archivo de imagen). Para el logotipo real, reemplaza este
- * componente por un <Image src="/ruta/al/logo.png" style={styles.logo} />
- * — es el único lugar a tocar.
- */
 function Logo() {
-  return (
-    <View style={styles.logo}>
-      <Text style={styles.logoText}>MY</Text>
-    </View>
-  );
+  // eslint-disable-next-line jsx-a11y/alt-text -- <Image> de @react-pdf/renderer (genera un PDF, no HTML); no acepta `alt`.
+  return <Image src={LOGO_DATA_URI} style={styles.logo} />;
 }
 
 function InfoLine({ label, value }: { label: string; value: string | null }) {
@@ -125,7 +116,7 @@ function CotizacionPdfDocument({ data }: { data: CotizacionExportData }) {
         <View style={styles.headerRow}>
           <View>
             <Logo />
-            <Text style={styles.brandName}>Multiservicios Yerves</Text>
+            <Text style={styles.brandName}>Carlos Yerves Multiservicios</Text>
             <Text style={styles.tagline}>Limpieza · Seguridad · Mantenimiento · Fumigación</Text>
           </View>
           <View>
@@ -141,6 +132,7 @@ function CotizacionPdfDocument({ data }: { data: CotizacionExportData }) {
             <Text style={styles.infoTitle}>Prestador de servicio</Text>
             <Text style={styles.infoLine}>{data.prestador.nombre}</Text>
             <InfoLine label="RFC" value={data.prestador.rfc} />
+            <InfoLine label="Régimen fiscal" value={data.prestador.regimenFiscal} />
             <InfoLine label="Dirección" value={data.prestador.direccion} />
             <InfoLine label="Teléfono" value={data.prestador.telefono} />
             <InfoLine label="Correo" value={data.prestador.email} />

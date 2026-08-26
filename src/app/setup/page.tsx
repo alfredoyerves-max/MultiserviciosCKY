@@ -1,5 +1,6 @@
 import { countUsuarios } from "@/lib/data/usuarios";
 import { redirect } from "next/navigation";
+import Image from "next/image";
 import { SetupForm } from "./setup-form";
 
 export default async function SetupPage() {
@@ -10,8 +11,14 @@ export default async function SetupPage() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center text-center">
-          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-sm font-bold text-on-primary">
-            MY
+          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-white p-1.5 shadow-sm">
+            <Image
+              src="/branding/logo-icon.png"
+              alt="Carlos Yerves Multiservicios"
+              width={44}
+              height={44}
+              className="h-full w-full object-contain"
+            />
           </div>
           <h1 className="text-lg font-semibold text-text">Configura tu cuenta</h1>
           <p className="mt-1 text-sm text-text-muted">

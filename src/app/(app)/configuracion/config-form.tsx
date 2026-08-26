@@ -123,6 +123,14 @@ export function ConfigForm({
           <Input id="prestadorRfc" name="prestadorRfc" defaultValue={config.prestadorRfc ?? ""} />
         </Field>
         <Field>
+          <FieldLabel htmlFor="prestadorRegimenFiscal">Régimen fiscal (opcional)</FieldLabel>
+          <Input
+            id="prestadorRegimenFiscal"
+            name="prestadorRegimenFiscal"
+            defaultValue={config.prestadorRegimenFiscal ?? ""}
+          />
+        </Field>
+        <Field>
           <FieldLabel htmlFor="prestadorTelefono">Teléfono (opcional)</FieldLabel>
           <Input id="prestadorTelefono" name="prestadorTelefono" defaultValue={config.prestadorTelefono ?? ""} />
         </Field>

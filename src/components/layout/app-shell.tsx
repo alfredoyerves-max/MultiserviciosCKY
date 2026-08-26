@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/cn";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { logoutAction } from "@/lib/auth/actions";
 import type { ReactNode } from "react";
@@ -15,24 +16,26 @@ const NAV_ITEMS = [
   { href: "/configuracion", label: "Configuración", icon: SettingsIcon },
 ];
 
-interface SessionUser {
-  email: string;
-  nombre: string | null;
-}
-
-export function AppShell({ children, user }: { children: ReactNode; user: SessionUser }) {
+export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   return (
     <div className="flex min-h-screen">
       <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-surface px-4 py-5">
         <div className="mb-6 flex items-center gap-2.5 px-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-sm font-bold text-on-primary">
-            MY
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm">
+            <Image
+              src="/branding/logo-icon.png"
+              alt="Carlos Yerves Multiservicios"
+              width={36}
+              height={36}
+              className="h-full w-full object-contain"
+              priority
+            />
           </div>
           <div>
             <p className="text-sm font-semibold text-text leading-tight">Quotly</p>
-            <p className="text-[11px] text-text-dim leading-tight">Multiservicios Yerves</p>
+            <p className="text-[11px] text-text-dim leading-tight">Carlos Yerves Multiservicios</p>
           </div>
         </div>
 
@@ -60,9 +63,7 @@ export function AppShell({ children, user }: { children: ReactNode; user: Sessio
         </nav>
 
         <div className="mt-auto flex flex-col gap-2 border-t border-border pt-4">
-          <p className="truncate px-2 text-xs text-text-dim" title={user.email}>
-            {user.nombre || user.email}
-          </p>
+          <p className="px-2 text-[11px] text-text-dim">© 2026 Carlos Yerves Multiservicios</p>
           <form action={logoutAction}>
             <button
               type="submit"

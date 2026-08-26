@@ -69,11 +69,12 @@ model SystemConfig {
   /// cotización, no participan en ningún cálculo. Sembrados con un nombre
   /// placeholder y el resto vacío — el usuario los completa una vez en
   /// /configuracion, sin candado (no son datos fiscales sensibles).
-  prestadorNombre     String  @default("Multiservicios Yerves")
-  prestadorRfc        String?
-  prestadorDireccion  String?
-  prestadorTelefono   String?
-  prestadorEmail      String?
+  prestadorNombre        String  @default("Multiservicios Yerves")
+  prestadorRfc           String?
+  prestadorRegimenFiscal String?
+  prestadorDireccion     String?
+  prestadorTelefono      String?
+  prestadorEmail         String?
 
   updatedAt DateTime @updatedAt
 }

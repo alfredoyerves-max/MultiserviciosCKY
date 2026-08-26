@@ -12,7 +12,7 @@ export function LoginForm() {
   const [state, formAction, pending] = useActionState(loginAction, initialState);
 
   return (
-    <Card>
+    <Card className="border-border-strong shadow-xl shadow-black/30">
       <CardContent className="p-6">
         <form action={formAction} className="flex flex-col gap-4">
           <Field>

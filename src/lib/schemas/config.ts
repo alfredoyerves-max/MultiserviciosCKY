@@ -83,6 +83,7 @@ const systemConfigFieldsSchema = z.object({
 
   prestadorNombre: z.string().trim().min(1, "Requerido"),
   prestadorRfc: z.string().trim().optional(),
+  prestadorRegimenFiscal: z.string().trim().optional(),
   prestadorDireccion: z.string().trim().optional(),
   prestadorTelefono: z.string().trim().optional(),
   prestadorEmail: z.string().trim().optional(),

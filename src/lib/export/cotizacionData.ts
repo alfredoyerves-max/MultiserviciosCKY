@@ -14,6 +14,7 @@ export interface CotizacionExportData {
   prestador: {
     nombre: string;
     rfc: string | null;
+    regimenFiscal: string | null;
     direccion: string | null;
     telefono: string | null;
     email: string | null;
@@ -60,7 +61,10 @@ export interface CotizacionExportData {
  */
 export function buildCotizacionExportData(
   cotizacion: CotizacionConLineas,
-  config: Pick<SystemConfig, "prestadorNombre" | "prestadorRfc" | "prestadorDireccion" | "prestadorTelefono" | "prestadorEmail">
+  config: Pick<
+    SystemConfig,
+    "prestadorNombre" | "prestadorRfc" | "prestadorRegimenFiscal" | "prestadorDireccion" | "prestadorTelefono" | "prestadorEmail"
+  >
 ): CotizacionExportData {
   return {
     folio: cotizacion.folio,
@@ -72,6 +76,7 @@ export function buildCotizacionExportData(
     prestador: {
       nombre: config.prestadorNombre,
       rfc: config.prestadorRfc,
+      regimenFiscal: config.prestadorRegimenFiscal,
       direccion: config.prestadorDireccion,
       telefono: config.prestadorTelefono,
       email: config.prestadorEmail,

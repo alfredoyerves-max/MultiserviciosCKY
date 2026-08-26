@@ -1,8 +1,10 @@
+import fs from "fs";
+import path from "path";
 import {
   AlignmentType,
   BorderStyle,
   Document,
-  HeightRule,
+  ImageRun,
   Packer,
   Paragraph,
   ShadingType,
@@ -16,40 +18,24 @@ import {
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { CotizacionExportData } from "./cotizacionData";
 
-const CYAN = "00dbe9";
 const GRAY = "6b7280";
 const DARK = "1a1a1a";
 const NO_BORDER = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
 const NO_BORDERS = { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: NO_BORDER };
 
-/**
- * Logo placeholder — cuadro cyan con "MY" en blanco, reconstruido con
- * primitivas de docx (sin archivo de imagen) para no depender de un asset
- * binario todavía. Cuando el dueño suba su logotipo real, esta función es
- * el único lugar a tocar: reemplázala por un ImageRun leyendo el archivo
- * (docx soporta PNG/JPG vía `new ImageRun({ data: fs.readFileSync(...), ... })`).
- */
-function logoBlock(): Table {
-  return new Table({
-    width: { size: 900, type: WidthType.DXA },
-    borders: NO_BORDERS,
-    rows: [
-      new TableRow({
-        height: { value: 900, rule: HeightRule.EXACT },
-        children: [
-          new TableCell({
-            width: { size: 900, type: WidthType.DXA },
-            shading: { type: ShadingType.CLEAR, color: "auto", fill: CYAN },
-            verticalAlign: VerticalAlign.CENTER,
-            borders: NO_BORDERS,
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: "MY", bold: true, size: 32, color: "FFFFFF" })],
-              }),
-            ],
-          }),
-        ],
+// Monograma "CK" recortado, fondo blanco intencional (se funde con la
+// hoja) — ver public/branding/logo-icon.png. Para cambiar el logotipo
+// después, basta con reemplazar ese archivo (o apuntar esta ruta a otro).
+const LOGO_PATH = path.join(process.cwd(), "public", "branding", "logo-icon.png");
+
+function logoBlock(): Paragraph {
+  const data = fs.readFileSync(LOGO_PATH);
+  return new Paragraph({
+    children: [
+      new ImageRun({
+        data,
+        type: "png",
+        transformation: { width: 56, height: 61 },
       }),
     ],
   });
@@ -69,7 +55,7 @@ function headerBlock(data: CotizacionExportData): Table {
               logoBlock(),
               new Paragraph({
                 spacing: { before: 120 },
-                children: [new TextRun({ text: "Multiservicios Yerves", bold: true, size: 28 })],
+                children: [new TextRun({ text: "Carlos Yerves Multiservicios", bold: true, size: 28 })],
               }),
               new Paragraph({
                 children: [
@@ -123,6 +109,7 @@ function prestadorClienteBlock(data: CotizacionExportData): Table {
     }),
     new Paragraph({ spacing: { after: 40 }, children: [new TextRun({ text: data.prestador.nombre, size: 18 })] }),
     infoLine("RFC", data.prestador.rfc),
+    infoLine("Régimen fiscal", data.prestador.regimenFiscal),
     infoLine("Dirección", data.prestador.direccion),
     infoLine("Teléfono", data.prestador.telefono),
     infoLine("Correo", data.prestador.email),
