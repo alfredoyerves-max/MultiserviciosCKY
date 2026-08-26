@@ -20,9 +20,9 @@ export default async function DashboardPage() {
   const now = new Date();
   const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1);
   const delMes = cotizaciones.filter((c) => c.createdAt >= inicioMes);
-  const totalMes = delMes.reduce((sum, c) => sum + c.totalAPagar, 0);
+  const totalMes = delMes.reduce((sum, c) => sum + c.netoARecibir, 0);
   const aceptadasMes = delMes.filter((c) => c.estado === "ACEPTADA");
-  const totalAceptado = aceptadasMes.reduce((sum, c) => sum + c.totalAPagar, 0);
+  const totalAceptado = aceptadasMes.reduce((sum, c) => sum + c.netoARecibir, 0);
 
   return (
     <div className="flex flex-col gap-6">
@@ -81,7 +81,7 @@ export default async function DashboardPage() {
                     </Badge>
                   </td>
                   <td className="px-5 py-3 text-right font-mono tabular-nums text-text">
-                    {formatCurrency(c.totalAPagar)}
+                    {formatCurrency(c.netoARecibir)}
                   </td>
                 </tr>
               ))}

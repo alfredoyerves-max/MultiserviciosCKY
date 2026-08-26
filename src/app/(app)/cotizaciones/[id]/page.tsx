@@ -144,12 +144,11 @@ export default async function CotizacionDetallePage({
         <CardContent className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <Resumen label="Subtotal" value={formatCurrency(cotizacion.subtotal)} />
-            <Resumen label="IVA (16%)" value={formatCurrency(cotizacion.iva)} />
-            <Resumen label="Total a pagar" value={formatCurrency(cotizacion.totalAPagar)} accent />
+            <Resumen label="IVA trasladado (16%)" value={formatCurrency(cotizacion.iva)} />
             {cotizacion.retencionIsr > 0 && (
-              <Resumen label="Retención ISR" value={`- ${formatCurrency(cotizacion.retencionIsr)}`} />
+              <Resumen label="Retención ISR (1.25%)" value={`- ${formatCurrency(cotizacion.retencionIsr)}`} />
             )}
-            <Resumen label="Neto a recibir" value={formatCurrency(cotizacion.netoARecibir)} />
+            <Resumen label="Total" value={formatCurrency(cotizacion.netoARecibir)} accent />
             {cotizacion.margenUtilidadPct != null && (
               <Resumen label="Margen aplicado" value={formatPercent(cotizacion.margenUtilidadPct)} />
             )}

@@ -20,7 +20,7 @@ interface CotizacionResumen {
   folio: string;
   tipo: string;
   clienteNombre: string;
-  totalAPagar: number;
+  total: number;
 }
 
 export function ConfirmarAceptacionModal({
@@ -48,7 +48,7 @@ export function ConfirmarAceptacionModal({
         <div>
           <h3 className="text-sm font-semibold text-text">Confirmar cotización aceptada</h3>
           <p className="mt-1 text-xs text-text-dim">
-            {cotizacion.folio} · {cotizacion.clienteNombre} · {formatCurrency(cotizacion.totalAPagar)}
+            {cotizacion.folio} · {cotizacion.clienteNombre} · {formatCurrency(cotizacion.total)}
           </p>
         </div>
 
@@ -114,7 +114,7 @@ export function ConfirmarRechazoModal({
         <div>
           <h3 className="text-sm font-semibold text-text">Confirmar cotización rechazada</h3>
           <p className="mt-1 text-xs text-text-dim">
-            {cotizacion.folio} · {cotizacion.clienteNombre} · {formatCurrency(cotizacion.totalAPagar)}
+            {cotizacion.folio} · {cotizacion.clienteNombre} · {formatCurrency(cotizacion.total)}
           </p>
         </div>
 

@@ -12,7 +12,7 @@ interface CotizacionParaSelect {
   folio: string;
   tipo: string;
   estado: string;
-  totalAPagar: number;
+  netoARecibir: number;
   cliente: { nombreRazonSocial: string };
   /** ¿Ya existe una cuenta por cobrar para esta cotización? Si sí, el
    *  modal de "Aceptada" la reutiliza en vez de pedir una fecha nueva. */
@@ -55,7 +55,7 @@ export function EstadoSelect({
     folio: cotizacion.folio,
     tipo: cotizacion.tipo,
     clienteNombre: cotizacion.cliente.nombreRazonSocial,
-    totalAPagar: cotizacion.totalAPagar,
+    total: cotizacion.netoARecibir,
   };
 
   return (

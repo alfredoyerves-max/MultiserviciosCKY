@@ -187,7 +187,7 @@ function KanbanCard({ cotizacion }: { cotizacion: CotizacionConCliente }) {
         </p>
 
         <p className="font-mono text-base font-semibold tabular-nums text-text">
-          {formatCurrency(cotizacion.totalAPagar)}
+          {formatCurrency(cotizacion.netoARecibir)}
         </p>
 
         <p className="text-xs text-text-dim">Vigente hasta {formatDate(cotizacion.fechaVigencia)}</p>

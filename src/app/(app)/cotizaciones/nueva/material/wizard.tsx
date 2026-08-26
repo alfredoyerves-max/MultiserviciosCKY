@@ -273,15 +273,14 @@ export function Wizard({
 
           <div className="grid grid-cols-2 gap-4 border-t border-border pt-4 sm:grid-cols-3">
             <Resumen label="Subtotal" value={formatCurrency(subtotal)} />
-            <Resumen label={`IVA (${formatPercent(ivaPct)})`} value={formatCurrency(iva)} />
-            <Resumen label="Total a pagar" value={formatCurrency(totalAPagar)} accent />
+            <Resumen label={`IVA trasladado (${formatPercent(ivaPct)})`} value={formatCurrency(iva)} />
             {tipoClienteActivo === "PERSONA_MORAL" && (
               <Resumen
                 label={`Retención ISR (${formatPercent(retencionIsrPct)})`}
                 value={`- ${formatCurrency(retencionIsr)}`}
               />
             )}
-            <Resumen label="Neto a recibir" value={formatCurrency(netoARecibir)} />
+            <Resumen label="Total" value={formatCurrency(netoARecibir)} accent />
           </div>
 
           {state.error && <p className="text-sm text-danger">{state.error}</p>}

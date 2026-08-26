@@ -24,6 +24,7 @@ export interface CotizacionExportData {
     nombre: string;
     rfc: string | null;
     contacto: string | null;
+    tipoCliente: TipoCliente;
     tipoLabel: string;
   };
 
@@ -46,7 +47,13 @@ export interface CotizacionExportData {
   subtotal: number;
   iva: number;
   retencionIsr: number;
+  /** NUNCA se muestra — se conserva solo como referencia interna (el
+   *  monto bruto antes de descontar la retención). El documento y toda
+   *  la UI de la app muestran un solo "Total": `netoARecibir`, igual que
+   *  el campo "Total" de un CFDI real con retención ya viene neto. */
   totalAPagar: number;
+  /** El único total que se muestra al usuario: subtotal + iva −
+   *  retención. Etiquétalo siempre "Total", nunca "Neto a recibir". */
   netoARecibir: number;
 }
 
@@ -86,6 +93,7 @@ export function buildCotizacionExportData(
       nombre: cotizacion.cliente.nombreRazonSocial,
       rfc: cotizacion.cliente.rfc,
       contacto: cotizacion.cliente.contacto,
+      tipoCliente: cotizacion.cliente.tipoCliente as TipoCliente,
       tipoLabel: TIPO_CLIENTE_LABELS[cotizacion.cliente.tipoCliente as TipoCliente],
     },
 

@@ -4,9 +4,13 @@ import { Document, Page, View, Text, Image, StyleSheet, renderToBuffer } from "@
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { CotizacionExportData } from "./cotizacionData";
 
+const ACCENT = "#00b8c9"; // versión ligeramente más saturada del cyan de marca (#00dbe9), para que el texto/bordes tengan suficiente contraste sobre blanco
+const ACCENT_SOFT = "#e5fafc";
 const GRAY = "#6b7280";
-const DARK = "#1a1a1a";
-const BORDER = "#e5e7eb";
+const GRAY_SOFT = "#9ca3af";
+const DARK = "#16191c";
+const BORDER = "#e2e5e9";
+const ROW_ALT = "#f7f9fa";
 
 // Monograma "CK" recortado, fondo blanco intencional (se funde con la
 // página) — ver public/branding/logo-icon.png. Para cambiar el logotipo
@@ -16,36 +20,101 @@ const LOGO_PATH = path.join(process.cwd(), "public", "branding", "logo-icon.png"
 const LOGO_DATA_URI = `data:image/png;base64,${fs.readFileSync(LOGO_PATH).toString("base64")}`;
 
 const styles = StyleSheet.create({
-  page: { padding: 36, fontSize: 10, color: DARK, fontFamily: "Helvetica" },
+  page: { fontSize: 9.5, color: DARK, fontFamily: "Helvetica" },
+  topBar: { height: 7, backgroundColor: ACCENT },
+  body: { padding: 34, paddingTop: 24 },
+
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  logo: { width: 40, height: 43 },
-  brandName: { fontSize: 14, fontFamily: "Helvetica-Bold", marginTop: 8 },
-  tagline: { fontSize: 8, color: GRAY, fontStyle: "italic", marginTop: 2 },
-  folioLabel: { fontSize: 8, color: GRAY, textAlign: "right" },
-  folioValue: { fontSize: 16, fontFamily: "Helvetica-Bold", textAlign: "right", marginTop: 2 },
-  divider: { borderBottomWidth: 1, borderBottomColor: BORDER, marginVertical: 16 },
-  infoRow: { flexDirection: "row", justifyContent: "space-between" },
-  infoCol: { width: "48%" },
-  infoTitle: { fontSize: 11, fontFamily: "Helvetica-Bold", marginBottom: 6 },
-  infoLine: { fontSize: 9, marginBottom: 3 },
+  logoBrandRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  logo: { width: 38, height: 41 },
+  brandName: { fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK },
+  tagline: { fontSize: 7.5, color: GRAY, fontStyle: "italic", marginTop: 2 },
+
+  folioBox: {
+    borderWidth: 1,
+    borderColor: ACCENT,
+    borderRadius: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    alignItems: "flex-end",
+  },
+  folioLabel: { fontSize: 7, color: GRAY, letterSpacing: 1 },
+  folioValue: { fontSize: 15, fontFamily: "Helvetica-Bold", color: DARK, marginTop: 2 },
+  folioTipo: { fontSize: 7, color: ACCENT, fontFamily: "Helvetica-Bold", marginTop: 3, letterSpacing: 0.5 },
+
+  infoBox: {
+    flexDirection: "row",
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 4,
+  },
+  infoCol: { flex: 1, padding: 12 },
+  infoColDivider: { borderLeftWidth: 1, borderLeftColor: BORDER },
+  infoTitle: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: ACCENT,
+    letterSpacing: 0.8,
+    marginBottom: 7,
+  },
+  infoName: { fontSize: 10.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 4 },
+  infoLine: { fontSize: 8.5, marginBottom: 3, color: DARK },
   infoLineLabel: { color: GRAY },
-  sectionTitle: { fontSize: 12, fontFamily: "Helvetica-Bold", marginTop: 20, marginBottom: 8 },
-  table: { borderWidth: 1, borderColor: BORDER },
-  tableHeaderRow: { flexDirection: "row", backgroundColor: "#f3f4f6" },
+
+  sectionTitle: {
+    fontSize: 8.5,
+    fontFamily: "Helvetica-Bold",
+    color: DARK,
+    letterSpacing: 0.6,
+    marginTop: 20,
+    marginBottom: 8,
+  },
+
+  table: { borderWidth: 1, borderColor: BORDER, borderRadius: 3 },
+  tableHeaderRow: { flexDirection: "row", backgroundColor: DARK },
   tableRow: { flexDirection: "row", borderTopWidth: 1, borderTopColor: BORDER },
-  th: { padding: 6, fontSize: 9, fontFamily: "Helvetica-Bold" },
-  td: { padding: 6, fontSize: 9 },
+  tableRowAlt: { backgroundColor: ROW_ALT },
+  th: { padding: 7, fontSize: 8, fontFamily: "Helvetica-Bold", color: "#ffffff" },
+  td: { padding: 7, fontSize: 8.5 },
   right: { textAlign: "right" },
-  fiscalBlock: { marginTop: 16, alignItems: "flex-end" },
-  fiscalRow: { flexDirection: "row", marginBottom: 4 },
-  fiscalLabel: { fontSize: 9, marginRight: 6 },
-  fiscalValue: { fontSize: 9 },
-  totalLabel: { fontSize: 12, marginRight: 6 },
-  totalValue: { fontSize: 12, fontFamily: "Helvetica-Bold" },
-  netoLabel: { fontSize: 8, color: GRAY, marginRight: 6 },
-  netoValue: { fontSize: 8, color: GRAY },
-  footer: { marginTop: 32, borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 8 },
-  footerText: { fontSize: 8, color: GRAY },
+
+  fiscalWrap: { marginTop: 18, flexDirection: "row", justifyContent: "flex-end" },
+  fiscalBox: { width: "52%", borderWidth: 1, borderColor: BORDER, borderRadius: 4, overflow: "hidden" },
+  fiscalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  fiscalLabel: { fontSize: 8.5, color: GRAY },
+  fiscalValue: { fontSize: 8.5, color: DARK },
+  totalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    backgroundColor: ACCENT_SOFT,
+  },
+  totalLabel: { fontSize: 10.5, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5 },
+  totalValue: { fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK },
+
+  legalBox: {
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderLeftWidth: 3,
+    borderLeftColor: ACCENT,
+    borderRadius: 2,
+    padding: 10,
+  },
+  legalText: { fontSize: 7.5, color: GRAY, fontStyle: "italic", lineHeight: 1.5 },
+
+  footer: { marginTop: 28, borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 8 },
+  footerText: { fontSize: 7.5, color: GRAY_SOFT },
 });
 
 function Logo() {
@@ -74,7 +143,7 @@ function LineasServicioTable({ data }: { data: CotizacionExportData }) {
         <Text style={[styles.th, styles.right, { width: "24%" }]}>Importe</Text>
       </View>
       {data.lineasServicio.map((l, i) => (
-        <View style={styles.tableRow} key={i}>
+        <View style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : undefined]} key={i}>
           <Text style={[styles.td, { width: "34%" }]}>{l.servicioNombre}</Text>
           <Text style={[styles.td, { width: "18%" }]}>{l.modalidadLabel}</Text>
           <Text style={[styles.td, { width: "12%" }]}>{l.personas}</Text>
@@ -96,7 +165,7 @@ function LineasMaterialTable({ data }: { data: CotizacionExportData }) {
         <Text style={[styles.th, styles.right, { width: "25%" }]}>Importe</Text>
       </View>
       {data.lineasMaterial.map((l, i) => (
-        <View style={styles.tableRow} key={i}>
+        <View style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : undefined]} key={i}>
           <Text style={[styles.td, { width: "40%" }]}>{l.productoNombre}</Text>
           <Text style={[styles.td, { width: "15%" }]}>
             {l.cantidad} {l.unidadLabel}
@@ -109,78 +178,91 @@ function LineasMaterialTable({ data }: { data: CotizacionExportData }) {
   );
 }
 
+const LEYENDA_RETENCION =
+  "De conformidad con el Artículo 113-J de la Ley del ISR, al ser usted Persona Moral, se aplicará la retención obligatoria del 1.25% de ISR sobre el subtotal de esta operación. Dicho monto se reflejará descontado en el total neto de su factura para que proceda con su entero directo al SAT.";
+
 function CotizacionPdfDocument({ data }: { data: CotizacionExportData }) {
+  const esPersonaMoral = data.cliente.tipoCliente === "PERSONA_MORAL";
+
   return (
     <Document>
       <Page size="LETTER" style={styles.page}>
-        <View style={styles.headerRow}>
-          <View>
-            <Logo />
-            <Text style={styles.brandName}>Carlos Yerves Multiservicios</Text>
-            <Text style={styles.tagline}>Limpieza · Seguridad · Mantenimiento · Fumigación</Text>
+        <View style={styles.topBar} />
+        <View style={styles.body}>
+          <View style={styles.headerRow}>
+            <View style={styles.logoBrandRow}>
+              <Logo />
+              <View>
+                <Text style={styles.brandName}>Carlos Yerves Multiservicios</Text>
+                <Text style={styles.tagline}>Limpieza · Seguridad · Mantenimiento · Fumigación</Text>
+              </View>
+            </View>
+            <View style={styles.folioBox}>
+              <Text style={styles.folioLabel}>FOLIO</Text>
+              <Text style={styles.folioValue}>{data.folio}</Text>
+              <Text style={styles.folioTipo}>{data.tipo === "SERVICIO" ? "COTIZACIÓN DE SERVICIO" : "COTIZACIÓN DE MATERIAL"}</Text>
+            </View>
           </View>
-          <View>
-            <Text style={styles.folioLabel}>FOLIO</Text>
-            <Text style={styles.folioValue}>{data.folio}</Text>
-          </View>
-        </View>
 
-        <View style={styles.divider} />
+          <View style={styles.infoBox}>
+            <View style={styles.infoCol}>
+              <Text style={styles.infoTitle}>PRESTADOR DE SERVICIO</Text>
+              <Text style={styles.infoName}>{data.prestador.nombre}</Text>
+              <InfoLine label="RFC" value={data.prestador.rfc} />
+              <InfoLine label="Régimen fiscal" value={data.prestador.regimenFiscal} />
+              <InfoLine label="Dirección" value={data.prestador.direccion} />
+              <InfoLine label="Teléfono" value={data.prestador.telefono} />
+              <InfoLine label="Correo" value={data.prestador.email} />
+            </View>
+            <View style={[styles.infoCol, styles.infoColDivider]}>
+              <Text style={styles.infoTitle}>CLIENTE</Text>
+              <Text style={styles.infoName}>{data.cliente.nombre}</Text>
+              <InfoLine label="Tipo" value={data.cliente.tipoLabel} />
+              <InfoLine label="RFC" value={data.cliente.rfc} />
+              <InfoLine label="Contacto" value={data.cliente.contacto} />
+              <InfoLine label="Proyecto" value={data.proyecto} />
+            </View>
+          </View>
 
-        <View style={styles.infoRow}>
-          <View style={styles.infoCol}>
-            <Text style={styles.infoTitle}>Prestador de servicio</Text>
-            <Text style={styles.infoLine}>{data.prestador.nombre}</Text>
-            <InfoLine label="RFC" value={data.prestador.rfc} />
-            <InfoLine label="Régimen fiscal" value={data.prestador.regimenFiscal} />
-            <InfoLine label="Dirección" value={data.prestador.direccion} />
-            <InfoLine label="Teléfono" value={data.prestador.telefono} />
-            <InfoLine label="Correo" value={data.prestador.email} />
-          </View>
-          <View style={styles.infoCol}>
-            <Text style={styles.infoTitle}>Cliente</Text>
-            <Text style={styles.infoLine}>{data.cliente.nombre}</Text>
-            <InfoLine label="Tipo" value={data.cliente.tipoLabel} />
-            <InfoLine label="RFC" value={data.cliente.rfc} />
-            <InfoLine label="Contacto" value={data.cliente.contacto} />
-            <InfoLine label="Proyecto" value={data.proyecto} />
-          </View>
-        </View>
+          <Text style={styles.sectionTitle}>
+            {data.tipo === "SERVICIO" ? "SERVICIOS COTIZADOS" : "MATERIALES COTIZADOS"}
+          </Text>
+          {data.tipo === "SERVICIO" ? <LineasServicioTable data={data} /> : <LineasMaterialTable data={data} />}
 
-        <Text style={styles.sectionTitle}>
-          {data.tipo === "SERVICIO" ? "Servicios cotizados" : "Materiales cotizados"}
-        </Text>
-        {data.tipo === "SERVICIO" ? <LineasServicioTable data={data} /> : <LineasMaterialTable data={data} />}
+          <View style={styles.fiscalWrap}>
+            <View style={styles.fiscalBox}>
+              <View style={styles.fiscalRow}>
+                <Text style={styles.fiscalLabel}>Subtotal</Text>
+                <Text style={styles.fiscalValue}>{formatCurrency(data.subtotal)}</Text>
+              </View>
+              <View style={styles.fiscalRow}>
+                <Text style={styles.fiscalLabel}>IVA trasladado (16%)</Text>
+                <Text style={styles.fiscalValue}>{formatCurrency(data.iva)}</Text>
+              </View>
+              {data.retencionIsr > 0 && (
+                <View style={styles.fiscalRow}>
+                  <Text style={styles.fiscalLabel}>Retención ISR (1.25%)</Text>
+                  <Text style={styles.fiscalValue}>- {formatCurrency(data.retencionIsr)}</Text>
+                </View>
+              )}
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>TOTAL</Text>
+                <Text style={styles.totalValue}>{formatCurrency(data.netoARecibir)}</Text>
+              </View>
+            </View>
+          </View>
 
-        <View style={styles.fiscalBlock}>
-          <View style={styles.fiscalRow}>
-            <Text style={styles.fiscalLabel}>Subtotal:</Text>
-            <Text style={styles.fiscalValue}>{formatCurrency(data.subtotal)}</Text>
-          </View>
-          <View style={styles.fiscalRow}>
-            <Text style={styles.fiscalLabel}>IVA (16%):</Text>
-            <Text style={styles.fiscalValue}>{formatCurrency(data.iva)}</Text>
-          </View>
-          {data.retencionIsr > 0 && (
-            <View style={styles.fiscalRow}>
-              <Text style={styles.fiscalLabel}>Retención ISR (1.25%):</Text>
-              <Text style={styles.fiscalValue}>- {formatCurrency(data.retencionIsr)}</Text>
+          {esPersonaMoral && (
+            <View style={styles.legalBox}>
+              <Text style={styles.legalText}>{LEYENDA_RETENCION}</Text>
             </View>
           )}
-          <View style={styles.fiscalRow}>
-            <Text style={styles.totalLabel}>Total a pagar:</Text>
-            <Text style={styles.totalValue}>{formatCurrency(data.totalAPagar)}</Text>
-          </View>
-          <View style={styles.fiscalRow}>
-            <Text style={styles.netoLabel}>Neto a recibir:</Text>
-            <Text style={styles.netoValue}>{formatCurrency(data.netoARecibir)}</Text>
-          </View>
-        </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Fecha de emisión: {formatDate(data.fechaEmision)}  ·  Vigente hasta: {formatDate(data.fechaVigencia)}
-          </Text>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>
+              Fecha de emisión: {formatDate(data.fechaEmision)}  ·  Vigente hasta: {formatDate(data.fechaVigencia)}
+            </Text>
+          </View>
         </View>
       </Page>
     </Document>
