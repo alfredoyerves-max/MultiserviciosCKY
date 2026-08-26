@@ -1,5 +1,8 @@
-import { prisma } from "@/lib/prisma";
+import { advisoryLock, prisma } from "@/lib/prisma";
+import { calcularSaldo } from "@/lib/cuentas";
 import type { GenerarCuentaPorCobrarInput, AbonoInput } from "@/lib/schemas/cuentas";
+
+const TOLERANCIA_SALDO = 0.01; // centavos, por acumulación de floats
 
 export async function generarCuentaPorCobrar(input: GenerarCuentaPorCobrarInput) {
   const cotizacion = await prisma.cotizacion.findUniqueOrThrow({
@@ -95,21 +98,40 @@ export function getCuentaPorCobrar(id: string) {
   });
 }
 
+/**
+ * Registra un abono. Corre dentro de una transacción con un advisory lock
+ * por cuenta (mismo criterio que lockProducto en lib/inventario.ts) para
+ * que dos abonos concurrentes sobre la misma cuenta no puedan ambos leer
+ * el saldo "antes" de que el otro escriba — y rechaza el abono si excede
+ * el saldo pendiente (dejar un saldo negativo no tiene sentido de
+ * negocio: no representa ninguna transacción real posible).
+ */
 export async function registrarAbonoPorCobrar(cuentaPorCobrarId: string, input: AbonoInput) {
-  const cuenta = await prisma.cuentaPorCobrar.findUniqueOrThrow({
-    where: { id: cuentaPorCobrarId },
-    select: { cancelada: true },
-  });
-  if (cuenta.cancelada) {
-    throw new Error("No se pueden registrar abonos en una cuenta cancelada.");
-  }
+  return prisma.$transaction(async (tx) => {
+    await advisoryLock(tx, "cuentaPorCobrar", cuentaPorCobrarId);
 
-  return prisma.abonoPorCobrar.create({
-    data: {
-      cuentaPorCobrarId,
-      fecha: input.fecha,
-      monto: input.monto,
-      nota: input.nota || null,
-    },
+    const cuenta = await tx.cuentaPorCobrar.findUniqueOrThrow({
+      where: { id: cuentaPorCobrarId },
+      include: { abonos: { select: { monto: true } } },
+    });
+    if (cuenta.cancelada) {
+      throw new Error("No se pueden registrar abonos en una cuenta cancelada.");
+    }
+
+    const saldo = calcularSaldo(cuenta.montoTotal, cuenta.abonos);
+    if (input.monto > saldo + TOLERANCIA_SALDO) {
+      throw new Error(
+        `El abono ($${input.monto.toFixed(2)}) excede el saldo pendiente ($${saldo.toFixed(2)}).`
+      );
+    }
+
+    return tx.abonoPorCobrar.create({
+      data: {
+        cuentaPorCobrarId,
+        fecha: input.fecha,
+        monto: input.monto,
+        nota: input.nota || null,
+      },
+    });
   });
 }

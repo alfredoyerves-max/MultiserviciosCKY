@@ -112,7 +112,12 @@ export async function registrarAbonoPorPagarAction(
     return { ok: false, error: "Revisa los campos.", fieldErrors: toFieldErrors(parsed.success ? [] : parsed.error.issues) };
   }
 
-  await registrarAbonoPorPagar(cuentaId, parsed.data);
+  try {
+    await registrarAbonoPorPagar(cuentaId, parsed.data);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Error al registrar el abono." };
+  }
+
   revalidatePath(`/pagos/pagar/${cuentaId}`);
   revalidatePath("/pagos");
   return { ok: true };

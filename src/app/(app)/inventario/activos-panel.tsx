@@ -111,8 +111,11 @@ function ActivoRow({ activo, onEdit }: { activo: Activo; onEdit: () => void }) {
           {activo.descripcion && <p className="mt-1 text-sm text-text-dim">{activo.descripcion}</p>}
           <p className="mt-2 text-xs text-text-muted">
             Adquirido {formatDate(activo.fechaAdquisicion)}
-            {activo.notas && <> · {activo.notas}</>}
+            {activo.proveedor && <> · Proveedor: {activo.proveedor}</>}
+            {activo.numeroFactura && <> · Factura: {activo.numeroFactura}</>}
+            {activo.estado === "DADO_DE_BAJA" && activo.fechaBaja && <> · Baja: {formatDate(activo.fechaBaja)}</>}
           </p>
+          {activo.notas && <p className="mt-1 text-xs text-text-dim">{activo.notas}</p>}
         </div>
 
         <div className="text-right">
@@ -149,6 +152,7 @@ function ActivoForm({
     },
     initialFormState
   );
+  const [estado, setEstado] = useState<EstadoActivo>((activo?.estado as EstadoActivo) ?? "FUNCIONAL");
 
   return (
     <Card className="border-primary/30">
@@ -210,7 +214,13 @@ function ActivoForm({
             </Field>
             <Field>
               <FieldLabel htmlFor="estado">Estado</FieldLabel>
-              <Select id="estado" name="estado" defaultValue={activo?.estado ?? "FUNCIONAL"} required>
+              <Select
+                id="estado"
+                name="estado"
+                value={estado}
+                onChange={(e) => setEstado(e.target.value as EstadoActivo)}
+                required
+              >
                 {ESTADOS_ACTIVO.map((e) => (
                   <option key={e} value={e}>
                     {ESTADO_ACTIVO_LABELS[e]}
@@ -219,6 +229,30 @@ function ActivoForm({
               </Select>
               <FieldError>{state.fieldErrors?.estado}</FieldError>
             </Field>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Field>
+              <FieldLabel htmlFor="proveedor">Proveedor (opcional)</FieldLabel>
+              <Input id="proveedor" name="proveedor" defaultValue={activo?.proveedor ?? ""} />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="numeroFactura">Número de factura (opcional)</FieldLabel>
+              <Input id="numeroFactura" name="numeroFactura" defaultValue={activo?.numeroFactura ?? ""} />
+            </Field>
+            {estado === "DADO_DE_BAJA" && (
+              <Field>
+                <FieldLabel htmlFor="fechaBaja">Fecha de baja</FieldLabel>
+                <Input
+                  id="fechaBaja"
+                  name="fechaBaja"
+                  type="date"
+                  defaultValue={activo?.fechaBaja ? new Date(activo.fechaBaja).toISOString().slice(0, 10) : ""}
+                  required
+                />
+                <FieldError>{state.fieldErrors?.fechaBaja}</FieldError>
+              </Field>
+            )}
           </div>
 
           <Field>

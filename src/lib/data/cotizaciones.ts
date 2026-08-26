@@ -4,6 +4,8 @@ import { calcularCostoReal, costoRealPorModalidad } from "@/lib/costEngine";
 import { calcularTotalesFiscales } from "@/lib/fiscalEngine";
 import { sueldoMensualEfectivo } from "@/lib/servicioCosto";
 import { calcularStock } from "@/lib/inventario";
+import { lockProducto } from "@/lib/data/locks";
+import { createCliente } from "./clientes";
 import type { CotizacionInput, CotizacionMaterialInput } from "@/lib/schemas/cotizacion";
 import type { TipoCliente, TipoCotizacion } from "@/lib/enums";
 
@@ -33,7 +35,7 @@ export async function createCotizacion(input: CotizacionInput) {
     const cliente = await prisma.cliente.findUniqueOrThrow({ where: { id: clienteId } });
     tipoCliente = cliente.tipoCliente as TipoCliente;
   } else if (input.clienteNuevo) {
-    const cliente = await prisma.cliente.create({ data: input.clienteNuevo });
+    const cliente = await createCliente(input.clienteNuevo);
     clienteId = cliente.id;
     tipoCliente = cliente.tipoCliente as TipoCliente;
   } else {
@@ -119,7 +121,7 @@ export async function createCotizacionMaterial(input: CotizacionMaterialInput) {
     const cliente = await prisma.cliente.findUniqueOrThrow({ where: { id: clienteId } });
     tipoCliente = cliente.tipoCliente as TipoCliente;
   } else if (input.clienteNuevo) {
-    const cliente = await prisma.cliente.create({ data: input.clienteNuevo });
+    const cliente = await createCliente(input.clienteNuevo);
     clienteId = cliente.id;
     tipoCliente = cliente.tipoCliente as TipoCliente;
   } else {
@@ -261,6 +263,23 @@ export async function asegurarCambioEstadoPermitido(cotizacionId: string, nuevoE
  */
 export async function confirmarAceptacionMaterial(cotizacionId: string, fechaVencimiento?: Date) {
   return prisma.$transaction(async (tx) => {
+    const cotizacionPrevia = await tx.cotizacion.findUniqueOrThrow({
+      where: { id: cotizacionId },
+      include: { lineasMaterial: { select: { productoId: true } }, cuentaPorCobrar: true },
+    });
+
+    // Bloquea TODOS los productos involucrados, en orden determinístico
+    // (evita deadlocks contra otra transacción que bloquee los mismos
+    // productos en orden distinto), ANTES de leer su stock — así ninguna
+    // otra salida/aceptación concurrente del mismo producto puede leerlo
+    // "antes" de que esta transacción escriba (ver lib/inventario.ts).
+    const productoIdsOrdenados = [...new Set(cotizacionPrevia.lineasMaterial.map((l) => l.productoId))].sort();
+    for (const productoId of productoIdsOrdenados) {
+      await lockProducto(tx, productoId);
+    }
+
+    // Con los locks ya tomados, se vuelve a leer la cotización completa —
+    // el stock de la primera lectura (antes del lock) no es confiable.
     const cotizacion = await tx.cotizacion.findUniqueOrThrow({
       where: { id: cotizacionId },
       include: {
@@ -271,38 +290,48 @@ export async function confirmarAceptacionMaterial(cotizacionId: string, fechaVen
       },
     });
 
-    const cantidadPorProducto = new Map<string, number>();
-    const productoPorId = new Map(cotizacion.lineasMaterial.map((l) => [l.productoId, l.producto]));
-    for (const linea of cotizacion.lineasMaterial) {
-      cantidadPorProducto.set(linea.productoId, (cantidadPorProducto.get(linea.productoId) ?? 0) + linea.cantidad);
-    }
+    // Las salidas de inventario y la cuenta por cobrar SOLO se generan la
+    // primera vez que esta cotización se acepta de verdad. Si ya existe
+    // una cuenta (re-aceptar idempotente tras pasar por Borrador sin
+    // abonos, o una segunda petición concurrente que quedó detrás del
+    // lock y llegó después de que la primera ya terminó), esta corrida es
+    // un no-op — nunca se vuelve a descontar stock ni a duplicar nada.
+    const esPrimeraAceptacion = !cotizacion.cuentaPorCobrar;
 
-    for (const [productoId, cantidadTotal] of cantidadPorProducto) {
-      const producto = productoPorId.get(productoId)!;
-      const stock = calcularStock(producto.movimientos);
-      if (cantidadTotal > stock) {
-        throw new Error(
-          `Stock insuficiente de "${producto.nombre}": disponible ${stock}, se requieren ${cantidadTotal}.`
-        );
+    if (esPrimeraAceptacion) {
+      const cantidadPorProducto = new Map<string, number>();
+      const productoPorId = new Map(cotizacion.lineasMaterial.map((l) => [l.productoId, l.producto]));
+      for (const linea of cotizacion.lineasMaterial) {
+        cantidadPorProducto.set(linea.productoId, (cantidadPorProducto.get(linea.productoId) ?? 0) + linea.cantidad);
       }
-    }
 
-    for (const linea of cotizacion.lineasMaterial) {
-      await tx.movimientoInventario.create({
-        data: {
-          productoId: linea.productoId,
-          tipo: "SALIDA",
-          fecha: new Date(),
-          cantidad: linea.cantidad,
-          motivoSalida: "VENTA_CLIENTE",
-          referencia: cotizacion.folio,
-        },
-      });
+      for (const [productoId, cantidadTotal] of cantidadPorProducto) {
+        const producto = productoPorId.get(productoId)!;
+        const stock = calcularStock(producto.movimientos);
+        if (cantidadTotal > stock) {
+          throw new Error(
+            `Stock insuficiente de "${producto.nombre}": disponible ${stock}, se requieren ${cantidadTotal}.`
+          );
+        }
+      }
     }
 
     await tx.cotizacion.update({ where: { id: cotizacionId }, data: { estado: "ACEPTADA" } });
 
-    if (!cotizacion.cuentaPorCobrar) {
+    if (esPrimeraAceptacion) {
+      for (const linea of cotizacion.lineasMaterial) {
+        await tx.movimientoInventario.create({
+          data: {
+            productoId: linea.productoId,
+            tipo: "SALIDA",
+            fecha: new Date(),
+            cantidad: linea.cantidad,
+            motivoSalida: "VENTA_CLIENTE",
+            referencia: cotizacion.folio,
+          },
+        });
+      }
+
       if (!fechaVencimiento) throw new Error("Falta la fecha de vencimiento.");
       await tx.cuentaPorCobrar.create({
         data: { cotizacionId, montoTotal: cotizacion.netoARecibir, fechaVencimiento },
