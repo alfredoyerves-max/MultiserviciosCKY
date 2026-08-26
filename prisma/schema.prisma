@@ -1,10 +1,15 @@
-// Quotly — esquema de datos (Fases 1-5 del spec)
+// Quotly — esquema de datos (Fases 1-7 del spec). Corre en Postgres
+// (Supabase) desde el cambio a producción; antes corría en SQLite local.
 //
-// Nota de portabilidad: SQLite no soporta enums nativos ni arrays, así que
-// los campos "tipo enum" (categoria, tipoCliente, modalidad, estado, tier)
-// se guardan como String validado en la capa de aplicación (zod), y las
-// listas (modalidades disponibles) como JSON serializado. Esto mantiene el
-// esquema compatible sin cambios cuando se migre a Postgres/Supabase.
+// Nota de portabilidad: los campos "tipo enum" (categoria, tipoCliente,
+// modalidad, estado, tier) se guardan como String validado en la capa de
+// aplicación (zod), y las listas (modalidades disponibles) como JSON
+// serializado, en vez de usar enums/arrays nativos de Postgres — así el
+// esquema se mantuvo idéntico durante la migración de SQLite a Postgres,
+// sin tener que tocar ningún modelo.
+//
+// Las URLs de conexión (DATABASE_URL pooled + DIRECT_URL directa) viven en
+// prisma.config.ts, no aquí — así funciona la configuración en Prisma 7.
 
 generator client {
   provider = "prisma-client"
@@ -12,7 +17,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 /// Parámetros generales del sistema (Fase 1). Fila única (id fijo = 1).
