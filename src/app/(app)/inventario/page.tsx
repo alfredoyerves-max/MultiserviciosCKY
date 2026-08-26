@@ -1,8 +1,9 @@
 import { listProductosConMovimientos } from "@/lib/data/productos";
+import { listActivos } from "@/lib/data/activos";
 import { InventarioTabs } from "./inventario-tabs";
 
 export default async function InventarioPage() {
-  const productos = await listProductosConMovimientos();
+  const [productos, activos] = await Promise.all([listProductosConMovimientos(), listActivos()]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -14,7 +15,7 @@ export default async function InventarioPage() {
         </p>
       </div>
 
-      <InventarioTabs productos={productos} />
+      <InventarioTabs productos={productos} activos={activos} />
     </div>
   );
 }

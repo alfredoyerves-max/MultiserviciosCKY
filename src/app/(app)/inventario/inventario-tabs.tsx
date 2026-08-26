@@ -2,13 +2,19 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/cn";
-import { Card } from "@/components/ui/card";
 import { ProductosPanel } from "./productos-panel";
-import type { Producto } from "@/generated/prisma/client";
+import { ActivosPanel } from "./activos-panel";
+import type { Activo, Producto } from "@/generated/prisma/client";
 
 type ProductoConMovimientos = Producto & { movimientos: { tipo: string; cantidad: number }[] };
 
-export function InventarioTabs({ productos }: { productos: ProductoConMovimientos[] }) {
+export function InventarioTabs({
+  productos,
+  activos,
+}: {
+  productos: ProductoConMovimientos[];
+  activos: Activo[];
+}) {
   const [tab, setTab] = useState<"inventario" | "activos">("inventario");
 
   return (
@@ -22,13 +28,7 @@ export function InventarioTabs({ productos }: { productos: ProductoConMovimiento
         </TabButton>
       </div>
 
-      {tab === "inventario" ? (
-        <ProductosPanel productos={productos} />
-      ) : (
-        <Card className="p-6 text-center text-sm text-text-dim">
-          Control de Activos — próximamente (Fase 10).
-        </Card>
-      )}
+      {tab === "inventario" ? <ProductosPanel productos={productos} /> : <ActivosPanel activos={activos} />}
     </div>
   );
 }

@@ -2,8 +2,10 @@
 
 import { createProducto, setProductoActivo, updateProducto } from "@/lib/data/productos";
 import { registrarEntrada, registrarSalida } from "@/lib/data/movimientosInventario";
+import { createActivo, updateActivo } from "@/lib/data/activos";
 import { productoSchema } from "@/lib/schemas/producto";
 import { entradaInventarioSchema, salidaInventarioSchema } from "@/lib/schemas/movimientoInventario";
+import { activoSchema } from "@/lib/schemas/activo";
 import { requireSession } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import type { FormActionState } from "./form-state";
@@ -78,6 +80,27 @@ export async function registrarSalidaAction(
   }
 
   revalidatePath(`/inventario/${productoId}`);
+  revalidatePath("/inventario");
+  return { ok: true };
+}
+
+export async function saveActivoAction(
+  _prev: FormActionState,
+  formData: FormData
+): Promise<FormActionState> {
+  await requireSession();
+
+  const id = formData.get("id");
+  const parsed = activoSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) {
+    return { ok: false, error: "Revisa los campos.", fieldErrors: toFieldErrors(parsed.error.issues) };
+  }
+
+  if (id && typeof id === "string") {
+    await updateActivo(id, parsed.data);
+  } else {
+    await createActivo(parsed.data);
+  }
   revalidatePath("/inventario");
   return { ok: true };
 }

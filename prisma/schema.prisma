@@ -407,6 +407,32 @@ model MovimientoInventario {
   createdAt DateTime @default(now())
 }
 
+/// Registro de control de Activos de la empresa (Fase 10) — vehículos,
+/// equipo, herramientas, mobiliario, equipo de cómputo. Registro general
+/// de la empresa, sin asignación a empleado específico (confirmado que no
+/// se necesita ese nivel de detalle). Sin depreciación ni cálculos
+/// financieros — solo captura y consulta, no es un módulo contable.
+/// `estado` (FUNCIONAL | EN_REPARACION | DADO_DE_BAJA, validado en zod)
+/// nunca borra el registro: "dado de baja" se conserva para historial,
+/// solo deja de contar como activo funcional — sigue visible en el
+/// listado con el filtro de estado.
+model Activo {
+  id          String  @id @default(cuid())
+  nombre      String
+  descripcion String?
+  categoria   String // VEHICULO | EQUIPO_LIMPIEZA | HERRAMIENTA | MOBILIARIO | EQUIPO_COMPUTO | OTRO
+
+  fechaAdquisicion DateTime
+  valorAdquisicion Float
+
+  estado String @default("FUNCIONAL")
+
+  notas String? // ubicación / notas libres, ej. "en bodega principal"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 /// Sesión activa. `usuarioId` es único a propósito: una sola fila por
 /// usuario, así que iniciar sesión en un segundo lugar reemplaza el token
 /// (upsert) y el anterior deja de ser válido en su siguiente request.

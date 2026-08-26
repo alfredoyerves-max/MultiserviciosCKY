@@ -111,3 +111,33 @@ export const TIPO_COTIZACION_LABELS: Record<TipoCotizacion, string> = {
   SERVICIO: "Servicio",
   MATERIAL: "Material",
 };
+
+export const ACTIVO_CATEGORIAS = [
+  "VEHICULO",
+  "EQUIPO_LIMPIEZA",
+  "HERRAMIENTA",
+  "MOBILIARIO",
+  "EQUIPO_COMPUTO",
+  "OTRO",
+] as const;
+export const activoCategoriaSchema = z.enum(ACTIVO_CATEGORIAS);
+export type ActivoCategoria = z.infer<typeof activoCategoriaSchema>;
+
+export const ACTIVO_CATEGORIA_LABELS: Record<ActivoCategoria, string> = {
+  VEHICULO: "Vehículo",
+  EQUIPO_LIMPIEZA: "Equipo de limpieza",
+  HERRAMIENTA: "Herramienta",
+  MOBILIARIO: "Mobiliario",
+  EQUIPO_COMPUTO: "Equipo de cómputo",
+  OTRO: "Otro",
+};
+
+export const ESTADOS_ACTIVO = ["FUNCIONAL", "EN_REPARACION", "DADO_DE_BAJA"] as const;
+export const estadoActivoSchema = z.enum(ESTADOS_ACTIVO);
+export type EstadoActivo = z.infer<typeof estadoActivoSchema>;
+
+export const ESTADO_ACTIVO_LABELS: Record<EstadoActivo, string> = {
+  FUNCIONAL: "Funcional",
+  EN_REPARACION: "En reparación",
+  DADO_DE_BAJA: "Dado de baja",
+};
