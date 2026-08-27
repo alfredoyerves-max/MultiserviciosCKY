@@ -100,6 +100,13 @@ model SystemConfig {
   condicionesOperativasServicio String @default("El servicio incluye personal uniformado y monitoreo de calidad en sitio. Los insumos y consumibles de limpieza corren por cuenta del cliente, salvo solicitud expresa de suministro independiente.")
   condicionesOperativasMaterial String @default("Precios exclusivos para la venta y entrega de materiales o productos solicitados. No incluye aplicación ni servicios operativos.")
 
+  /// Fecha de "creación de la empresa/sistema" — límite inferior de
+  /// navegación del Dashboard (Sección 4 del pedido de bugs/mejoras): no
+  /// tiene sentido dejar navegar a un mes anterior a que el sistema
+  /// existiera. Sembrada en la migración con la fecha real más antigua
+  /// disponible (primer Usuario o primera Cotización), no con la fecha de
+  /// la migración en sí.
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 

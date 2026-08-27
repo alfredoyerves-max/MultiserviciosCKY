@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel, Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Modal } from "@/components/ui/modal";
 import type { CuentaBancaria } from "@/generated/prisma/client";
 
 const initialState: CuentaBancariaActionState = { ok: false };
@@ -38,7 +39,9 @@ export function CuentasBancariasPanel({
       </div>
 
       {creating && (
-        <CuentaBancariaForm fiscalPassword={fiscalPassword} onDone={() => setCreating(false)} onCancel={() => setCreating(false)} />
+        <Modal onClose={() => setCreating(false)}>
+          <CuentaBancariaForm fiscalPassword={fiscalPassword} onDone={() => setCreating(false)} onCancel={() => setCreating(false)} />
+        </Modal>
       )}
 
       <div className="overflow-x-auto rounded-lg border border-border">
@@ -128,29 +131,28 @@ function CuentaBancariaForm({
   );
 
   return (
-    <form action={formAction} className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-surface-2 p-4">
+    <form action={formAction} className="flex flex-col gap-4 p-5">
       <input type="hidden" name="fiscalPassword" value={fiscalPassword} />
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field>
-          <FieldLabel htmlFor="banco">Banco</FieldLabel>
-          <Input id="banco" name="banco" required />
-          <FieldError>{state.fieldErrors?.banco}</FieldError>
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="clabe">CLABE (18 dígitos)</FieldLabel>
-          <Input id="clabe" name="clabe" inputMode="numeric" maxLength={18} required />
-          <FieldError>{state.fieldErrors?.clabe}</FieldError>
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="numeroCuenta">Número de cuenta (opcional)</FieldLabel>
-          <Input id="numeroCuenta" name="numeroCuenta" />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="titular">Titular</FieldLabel>
-          <Input id="titular" name="titular" required />
-          <FieldError>{state.fieldErrors?.titular}</FieldError>
-        </Field>
-      </div>
+      <h3 className="text-sm font-semibold text-text">Agregar cuenta bancaria</h3>
+      <Field>
+        <FieldLabel htmlFor="banco">Banco</FieldLabel>
+        <Input id="banco" name="banco" required />
+        <FieldError>{state.fieldErrors?.banco}</FieldError>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="clabe">CLABE (18 dígitos)</FieldLabel>
+        <Input id="clabe" name="clabe" inputMode="numeric" maxLength={18} required />
+        <FieldError>{state.fieldErrors?.clabe}</FieldError>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="numeroCuenta">Número de cuenta (opcional)</FieldLabel>
+        <Input id="numeroCuenta" name="numeroCuenta" />
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="titular">Titular</FieldLabel>
+        <Input id="titular" name="titular" required />
+        <FieldError>{state.fieldErrors?.titular}</FieldError>
+      </Field>
       {state.error && <p className="text-sm text-danger">{state.error}</p>}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={onCancel}>

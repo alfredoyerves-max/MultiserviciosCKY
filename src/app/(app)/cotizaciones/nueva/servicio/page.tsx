@@ -2,7 +2,7 @@ import { listServiciosActivos, parseModalidades } from "@/lib/data/servicios";
 import { listClientes } from "@/lib/data/clientes";
 import { getSystemConfigConCeav } from "@/lib/data/config";
 import { calcularCostoReal, costoRealPorModalidad } from "@/lib/costEngine";
-import { sueldoMensualEfectivo } from "@/lib/servicioCosto";
+import { sueldoMensualEfectivo, esSueldoBajoMinimo } from "@/lib/servicioCosto";
 import { MODALIDADES } from "@/lib/enums";
 import { Wizard, type ServicioOption } from "./wizard";
 
@@ -14,8 +14,9 @@ export default async function NuevaCotizacionServicioPage() {
   ]);
 
   const servicioOptions: ServicioOption[] = servicios.map((s) => {
+    const sueldoMensual = sueldoMensualEfectivo(s);
     const costo = calcularCostoReal(config, {
-      sueldoMensualPuesto: sueldoMensualEfectivo(s),
+      sueldoMensualPuesto: sueldoMensual,
       incluyeUniforme: s.incluyeUniforme,
       costoUniforme: s.costoUniforme,
       vidaUtilUniformeMeses: s.vidaUtilUniformeMeses,
@@ -34,6 +35,7 @@ export default async function NuevaCotizacionServicioPage() {
       categoria: s.categoria,
       modalidadesDisponibles: parseModalidades(s.modalidadesJson),
       costoPorModalidad,
+      bajoMinimo: esSueldoBajoMinimo(sueldoMensual, config.salarioMinimoMensual),
     };
   });
 

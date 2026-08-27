@@ -7,13 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel, Input, Select } from "@/components/ui/input";
 import { formatCurrency, formatPercent } from "@/lib/format";
-import {
-  MODALIDAD_LABELS,
-  SERVICIO_CATEGORIA_LABELS,
-  type Modalidad,
-  type ServicioCategoria,
-  type TipoCliente,
-} from "@/lib/enums";
+import { MODALIDAD_LABELS, type Modalidad, type TipoCliente } from "@/lib/enums";
 import type { Cliente } from "@/generated/prisma/client";
 
 export interface ServicioOption {
@@ -22,6 +16,23 @@ export interface ServicioOption {
   categoria: string;
   modalidadesDisponibles: Modalidad[];
   costoPorModalidad: Record<Modalidad, number>;
+  /** Sueldo base del puesto por debajo del salario mínimo mensual vigente
+   *  — se muestra como ícono de aviso junto a esta opción específica en el
+   *  selector, para no tener que seleccionarla primero para descubrirlo. */
+  bajoMinimo: boolean;
+}
+
+/** Texto de una opción del selector: nombre + costo real de la modalidad
+ *  base (la primera disponible, ej. "$53.41/hora") — así dos servicios
+ *  con el mismo nombre pero sueldos/costos distintos se distinguen sin
+ *  tener que seleccionarlos primero. */
+function servicioOptionLabel(s: ServicioOption): string {
+  const modalidadBase = s.modalidadesDisponibles[0];
+  if (!modalidadBase) return s.nombre;
+  const costo = s.costoPorModalidad[modalidadBase];
+  const unidad = MODALIDAD_LABELS[modalidadBase].toLowerCase();
+  const aviso = s.bajoMinimo ? " ⚠" : "";
+  return `${s.nombre} — ${formatCurrency(costo)}/${unidad}${aviso}`;
 }
 
 interface LineaState {
@@ -185,7 +196,7 @@ export function Wizard({
                   >
                     {servicios.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.nombre} ({SERVICIO_CATEGORIA_LABELS[s.categoria as ServicioCategoria]})
+                        {servicioOptionLabel(s)}
                       </option>
                     ))}
                   </Select>

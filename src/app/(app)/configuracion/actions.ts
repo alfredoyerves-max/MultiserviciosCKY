@@ -167,7 +167,12 @@ export async function addCuentaBancariaAction(
     return { ok: false, error: "Revisa los campos marcados.", fieldErrors };
   }
 
-  await createCuentaBancaria(parsed.data);
+  try {
+    await createCuentaBancaria(parsed.data);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "No se pudo guardar la cuenta bancaria." };
+  }
+
   revalidatePath("/configuracion");
   return { ok: true };
 }
