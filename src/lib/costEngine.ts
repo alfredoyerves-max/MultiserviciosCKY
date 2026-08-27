@@ -2,6 +2,17 @@
 // Funciones puras, sin dependencias de UI ni de base de datos, para poder
 // verificarlas a mano contra las fórmulas del documento de especificación.
 
+import {
+  IMSS_ENF_MAT_CUOTA_FIJA_PCT,
+  IMSS_ENF_MAT_CUOTA_ADIC_PCT,
+  IMSS_PRESTACIONES_DINERO_PCT,
+  IMSS_GASTOS_MED_PENS_PCT,
+  IMSS_INVALIDEZ_VIDA_PCT,
+  IMSS_GUARDERIAS_PCT,
+  IMSS_RETIRO_PCT,
+  INFONAVIT_PCT,
+} from "./imssConstants";
+
 /** Una banda de la tabla CEAV (ver modelo Prisma CeavBanda). */
 export interface CeavBandaInput {
   orden: number;
@@ -16,14 +27,6 @@ export interface CostConfigInput {
   topeSbcUmas: number;
   salarioMinimoMensual: number;
   primaRiesgoPct: number;
-  imssEnfMatCuotaFijaPct: number;
-  imssEnfMatCuotaAdicPct: number;
-  imssEnfMatDineroPct: number;
-  imssGastosMedPensPct: number;
-  imssInvalidezVidaPct: number;
-  imssGuarderiasPct: number;
-  imssRetiroPct: number;
-  infonavitPct: number;
   isnPct: number;
   impuestoAdicionalPct: number;
   // Factor de integración por antigüedad — Addendum v4 punto 2: DECISIÓN
@@ -83,19 +86,42 @@ export interface CostoRealResult {
   primaVacDiario: number;
   sdi: number;
   sdiTopado: boolean;
+  /** SBC mensual real — calculado a partir del sueldo pactado, sin piso. */
   sbcMensual: number;
-  cuotasImssMensual: number;
+  /** max(sbcMensual, salario mínimo mensual vigente) — Art. 28 LSS: la
+   *  base de cálculo de TODAS las cargas patronales nunca puede ser menor
+   *  al salario mínimo, sin importar qué tan bajo sea el sueldo pactado.
+   *  El sueldo real que se le paga al trabajador (remuneracionMensualTotal
+   *  abajo) nunca se toca — el piso solo afecta esta base fiscal. */
+  baseCalculoFiscal: number;
+  /** true cuando el sueldo pactado está por debajo del mínimo y por lo
+   *  tanto el piso legal quedó activo (baseCalculoFiscal > sbcMensual). */
+  pisoSalarioMinimoAplicado: boolean;
+
+  /** IMSS (sin RCV) — riesgos de trabajo + enfermedad y maternidad (cuota
+   *  fija + adicional + prestaciones en dinero) + invalidez y vida +
+   *  guarderías + gastos médicos de pensionados. Todo sobre
+   *  baseCalculoFiscal salvo la cuota fija (% de 1 UMA, no depende del
+   *  sueldo). */
+  imssMensual: number;
+  /** RCV — retiro + cesantía y vejez (banda CEAV), separado de imssMensual
+   *  para poder exponerlo como su propia línea en el desglose. */
+  rcvMensual: number;
   infonavitMensual: number;
-  remuneracionMensualTotal: number;
   isnMensual: number;
   impuestoAdicionalMensual: number;
+  /** Suma de imssMensual + rcvMensual + infonavitMensual + isnMensual +
+   *  impuestoAdicionalMensual — la línea de cierre del desglose. */
+  totalCargasPatronales: number;
+
+  remuneracionMensualTotal: number;
   uniformeMensual: number;
   materialMensual: number;
   costoRealMensual: number;
   costoRealDiario: number;
   costoRealHora: number;
   costoRealSemanal: number;
-  /** Banda CEAV aplicada a este SBC — para transparencia/auditoría. */
+  /** Banda CEAV aplicada — para transparencia/auditoría. */
   ceavBandaEtiqueta: string;
   ceavPorcentajeAplicado: number;
 }
@@ -119,47 +145,63 @@ export function calcularCostoReal(
 
   const sbcMensual = sdi * DIAS_MES;
 
-  // IMSS — enfermedad y maternidad: cuota fija (% de 1 UMA mensual) +
-  // cuota adicional (% del excedente sobre 3 UMA) + especie en dinero (%
-  // del SBC). El resto de los ramos son % directo del SBC.
-  const umaMensual = config.umaDiaria * DIAS_MES;
-  const excedenteSobre3Uma = Math.max(sbcMensual - 3 * umaMensual, 0);
+  // Piso de salario mínimo (Art. 28 LSS): la base de cálculo de TODAS las
+  // cargas patronales (IMSS, RCV/CEAV, INFONAVIT, ISN, impuesto adicional)
+  // nunca puede ser menor al salario mínimo mensual vigente, sin importar
+  // qué tan bajo sea el sueldo pactado — es un piso, nunca un tope hacia
+  // arriba (si el sueldo real ya supera el mínimo, se usa el sueldo real
+  // tal cual, sin modificar el tope de topeSbcUmas ya aplicado arriba).
+  const baseCalculoFiscal = Math.max(sbcMensual, config.salarioMinimoMensual);
+  const pisoSalarioMinimoAplicado = baseCalculoFiscal > sbcMensual;
 
-  const imssEnfMatCuotaFija = config.imssEnfMatCuotaFijaPct * umaMensual;
-  const imssEnfMatCuotaAdic = config.imssEnfMatCuotaAdicPct * excedenteSobre3Uma;
-  const imssEnfMatDinero = config.imssEnfMatDineroPct * sbcMensual;
-  const imssGastosMedPens = config.imssGastosMedPensPct * sbcMensual;
-  const imssInvalidezVida = config.imssInvalidezVidaPct * sbcMensual;
-  const imssGuarderias = config.imssGuarderiasPct * sbcMensual;
-  const imssRetiro = config.imssRetiroPct * sbcMensual;
-  const primaRiesgo = config.primaRiesgoPct * sbcMensual;
+  // IMSS — enfermedad y maternidad: cuota fija (% de 1 UMA mensual, no
+  // depende del sueldo) + cuota adicional (% del excedente sobre 3 UMA) +
+  // especie en dinero (% de la base). El resto de los ramos son % directo
+  // de la base — todos sobre baseCalculoFiscal, ya con el piso aplicado.
+  const umaMensual = config.umaDiaria * DIAS_MES;
+  const excedenteSobre3Uma = Math.max(baseCalculoFiscal - 3 * umaMensual, 0);
+
+  const imssEnfMatCuotaFija = IMSS_ENF_MAT_CUOTA_FIJA_PCT * umaMensual;
+  const imssEnfMatCuotaAdic = IMSS_ENF_MAT_CUOTA_ADIC_PCT * excedenteSobre3Uma;
+  const imssEnfMatDinero = IMSS_PRESTACIONES_DINERO_PCT * baseCalculoFiscal;
+  const imssGastosMedPens = IMSS_GASTOS_MED_PENS_PCT * baseCalculoFiscal;
+  const imssInvalidezVida = IMSS_INVALIDEZ_VIDA_PCT * baseCalculoFiscal;
+  const imssGuarderias = IMSS_GUARDERIAS_PCT * baseCalculoFiscal;
+  const imssRetiro = IMSS_RETIRO_PCT * baseCalculoFiscal;
+  const primaRiesgo = config.primaRiesgoPct * baseCalculoFiscal;
 
   if (config.bandasCeav.length === 0) {
     throw new Error(
       "No hay bandas CEAV configuradas. Corre el seed o revisa /configuracion."
     );
   }
-  const bandaCeav = buscarBandaCeav(config.bandasCeav, sbcMensual, config.salarioMinimoMensual, umaMensual);
-  const imssCesantiaVejez = bandaCeav.porcentajePatronal * sbcMensual;
+  const bandaCeav = buscarBandaCeav(config.bandasCeav, baseCalculoFiscal, config.salarioMinimoMensual, umaMensual);
+  const imssCesantiaVejez = bandaCeav.porcentajePatronal * baseCalculoFiscal;
 
-  const cuotasImssMensual =
+  // IMSS (sin RCV) — ver comentario de la interfaz sobre por qué RCV vive
+  // aparte: es su propia línea en el desglose de cargas patronales.
+  const imssMensual =
+    primaRiesgo +
     imssEnfMatCuotaFija +
     imssEnfMatCuotaAdic +
     imssEnfMatDinero +
     imssGastosMedPens +
     imssInvalidezVida +
-    imssGuarderias +
-    imssRetiro +
-    imssCesantiaVejez +
-    primaRiesgo;
+    imssGuarderias;
+  const rcvMensual = imssRetiro + imssCesantiaVejez;
 
-  const infonavitMensual = config.infonavitPct * sbcMensual;
+  const infonavitMensual = INFONAVIT_PCT * baseCalculoFiscal;
 
+  // El sueldo REAL que se le paga al trabajador (con aguinaldo/prima
+  // vacacional reales, no la base fiscal) — nunca se toca por el piso.
   const remuneracionMensualTotal =
     servicio.sueldoMensualPuesto + aguinaldoDiario * DIAS_MES + primaVacDiario * DIAS_MES;
 
-  const isnMensual = config.isnPct * remuneracionMensualTotal;
+  const isnMensual = config.isnPct * baseCalculoFiscal;
   const impuestoAdicionalMensual = config.impuestoAdicionalPct * isnMensual;
+
+  const totalCargasPatronales =
+    imssMensual + rcvMensual + infonavitMensual + isnMensual + impuestoAdicionalMensual;
 
   const uniformeMensual =
     servicio.incluyeUniforme && servicio.costoUniforme && servicio.vidaUtilUniformeMeses
@@ -171,13 +213,7 @@ export function calcularCostoReal(
       : 0;
 
   const costoRealMensual =
-    remuneracionMensualTotal +
-    cuotasImssMensual +
-    infonavitMensual +
-    isnMensual +
-    impuestoAdicionalMensual +
-    uniformeMensual +
-    materialMensual;
+    remuneracionMensualTotal + totalCargasPatronales + uniformeMensual + materialMensual;
 
   const costoRealDiario = costoRealMensual / DIAS_MES;
   const costoRealHora = costoRealDiario / config.horasPorDia;
@@ -190,11 +226,15 @@ export function calcularCostoReal(
     sdi,
     sdiTopado,
     sbcMensual,
-    cuotasImssMensual,
+    baseCalculoFiscal,
+    pisoSalarioMinimoAplicado,
+    imssMensual,
+    rcvMensual,
     infonavitMensual,
-    remuneracionMensualTotal,
     isnMensual,
     impuestoAdicionalMensual,
+    totalCargasPatronales,
+    remuneracionMensualTotal,
     uniformeMensual,
     materialMensual,
     costoRealMensual,

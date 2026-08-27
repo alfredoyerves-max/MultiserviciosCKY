@@ -9,6 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CuentaBancaria, SystemConfig } from "@/generated/prisma/client";
 import type { CeavBandaInput } from "@/lib/costEngine";
+import {
+  IMSS_ENF_MAT_CUOTA_FIJA_PCT,
+  IMSS_ENF_MAT_CUOTA_ADIC_PCT,
+  IMSS_PRESTACIONES_DINERO_PCT,
+  IMSS_GASTOS_MED_PENS_PCT,
+  IMSS_INVALIDEZ_VIDA_PCT,
+  IMSS_GUARDERIAS_PCT,
+  IMSS_RETIRO_PCT,
+  INFONAVIT_PCT,
+} from "@/lib/imssConstants";
 
 const initialState: ConfigActionState = { ok: false };
 
@@ -63,27 +73,25 @@ export function ConfigForm({
         <CeavBandasTable bandas={bandasCeav} locked={!fiscalUnlocked} />
       </FiscalSection>
 
-      <FiscalSection
-        title="IMSS (cuotas normativas)"
-        hint="Todos en % del SBC, salvo donde se indica. La prima de riesgo es un dato de negocio y se edita aparte, sin candado."
-        unlocked={fiscalUnlocked}
-        onUnlock={handleUnlock}
+      <Section
+        title="IMSS e INFONAVIT (cuotas fijas de ley)"
+        hint="Fijas en la Ley del Seguro Social y la Ley del INFONAVIT — no se indexan año con año, así que no son editables. Solo de referencia."
       >
-        <NumField locked={!fiscalUnlocked} name="imssEnfMatCuotaFijaPct" label="Enf. y maternidad — cuota fija (% de 1 UMA mensual)" defaultValue={toPctDisplay(config.imssEnfMatCuotaFijaPct)} error={state.fieldErrors?.imssEnfMatCuotaFijaPct} suffix="%" />
-        <NumField locked={!fiscalUnlocked} name="imssEnfMatCuotaAdicPct" label="Enf. y maternidad — cuota adicional (% excedente sobre 3 UMA)" defaultValue={toPctDisplay(config.imssEnfMatCuotaAdicPct)} error={state.fieldErrors?.imssEnfMatCuotaAdicPct} suffix="%" />
-        <NumField locked={!fiscalUnlocked} name="imssEnfMatDineroPct" label="Enf. y maternidad — en dinero (%)" defaultValue={toPctDisplay(config.imssEnfMatDineroPct)} error={state.fieldErrors?.imssEnfMatDineroPct} suffix="%" />
-        <NumField locked={!fiscalUnlocked} name="imssGastosMedPensPct" label="Gastos médicos pensionados (%)" defaultValue={toPctDisplay(config.imssGastosMedPensPct)} error={state.fieldErrors?.imssGastosMedPensPct} suffix="%" />
-        <NumField locked={!fiscalUnlocked} name="imssInvalidezVidaPct" label="Invalidez y vida (%)" defaultValue={toPctDisplay(config.imssInvalidezVidaPct)} error={state.fieldErrors?.imssInvalidezVidaPct} suffix="%" />
-        <NumField locked={!fiscalUnlocked} name="imssGuarderiasPct" label="Guarderías y prestaciones sociales (%)" defaultValue={toPctDisplay(config.imssGuarderiasPct)} error={state.fieldErrors?.imssGuarderiasPct} suffix="%" />
-        <NumField locked={!fiscalUnlocked} name="imssRetiroPct" label="Retiro — RCV (%)" defaultValue={toPctDisplay(config.imssRetiroPct)} error={state.fieldErrors?.imssRetiroPct} suffix="%" />
-      </FiscalSection>
+        <ReadOnlyRate label="Enf. y maternidad — cuota fija (% de 1 UMA mensual)" fraction={IMSS_ENF_MAT_CUOTA_FIJA_PCT} />
+        <ReadOnlyRate label="Enf. y maternidad — cuota adicional (% excedente sobre 3 UMA)" fraction={IMSS_ENF_MAT_CUOTA_ADIC_PCT} />
+        <ReadOnlyRate label="Enf. y maternidad — en dinero (%)" fraction={IMSS_PRESTACIONES_DINERO_PCT} />
+        <ReadOnlyRate label="Gastos médicos pensionados (%)" fraction={IMSS_GASTOS_MED_PENS_PCT} />
+        <ReadOnlyRate label="Invalidez y vida (%)" fraction={IMSS_INVALIDEZ_VIDA_PCT} />
+        <ReadOnlyRate label="Guarderías y prestaciones sociales (%)" fraction={IMSS_GUARDERIAS_PCT} />
+        <ReadOnlyRate label="Retiro — RCV (%)" fraction={IMSS_RETIRO_PCT} />
+        <ReadOnlyRate label="INFONAVIT (% del SBC)" fraction={INFONAVIT_PCT} />
+      </Section>
 
       <FiscalSection
-        title="INFONAVIT, ISN e impuestos estatales"
+        title="ISN e impuestos estatales"
         unlocked={fiscalUnlocked}
         onUnlock={handleUnlock}
       >
-        <NumField locked={!fiscalUnlocked} name="infonavitPct" label="INFONAVIT (% del SBC)" defaultValue={toPctDisplay(config.infonavitPct)} error={state.fieldErrors?.infonavitPct} suffix="%" />
         <NumField locked={!fiscalUnlocked} name="isnPct" label="ISN Campeche (% de la nómina)" defaultValue={toPctDisplay(config.isnPct)} error={state.fieldErrors?.isnPct} suffix="%" />
         <NumField locked={!fiscalUnlocked} name="impuestoAdicionalPct" label="Impuesto adicional Cultura/Infraestructura/Deporte (% del ISN)" defaultValue={toPctDisplay(config.impuestoAdicionalPct)} error={state.fieldErrors?.impuestoAdicionalPct} suffix="%" />
       </FiscalSection>
@@ -353,6 +361,19 @@ function CeavBandasTable({ bandas, locked }: { bandas: CeavBandaInput[]; locked:
         })}
       </tbody>
     </table>
+  );
+}
+
+/** Tasa fija de ley (IMSS/INFONAVIT) — solo lectura, sin candado ni name
+ *  (nunca se envía en el form; su único origen es la constante de código). */
+function ReadOnlyRate({ label, fraction }: { label: string; fraction: number }) {
+  return (
+    <Field>
+      <FieldLabel>{label}</FieldLabel>
+      <div className="flex h-10 items-center rounded-lg border border-border bg-surface px-3 text-sm text-text-muted">
+        {toPctDisplay(fraction)}%
+      </div>
+    </Field>
   );
 }
 

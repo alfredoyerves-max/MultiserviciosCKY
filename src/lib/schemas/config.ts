@@ -38,14 +38,6 @@ export const PROTECTED_FISCAL_FIELDS = [
   "topeSbcUmas",
   "salarioMinimoDiario",
   "salarioMinimoMensual",
-  "imssEnfMatCuotaFijaPct",
-  "imssEnfMatCuotaAdicPct",
-  "imssEnfMatDineroPct",
-  "imssGastosMedPensPct",
-  "imssInvalidezVidaPct",
-  "imssGuarderiasPct",
-  "imssRetiroPct",
-  "infonavitPct",
   "isnPct",
   "impuestoAdicionalPct",
 
@@ -79,17 +71,9 @@ const systemConfigFieldsSchema = z.object({
   salarioMinimoMensual: positive,
 
   primaRiesgoPct: pct,
-
-  imssEnfMatCuotaFijaPct: pct,
-  imssEnfMatCuotaAdicPct: pct,
-  imssEnfMatDineroPct: pct,
-  imssGastosMedPensPct: pct,
-  imssInvalidezVidaPct: pct,
-  imssGuarderiasPct: pct,
-  imssRetiroPct: pct,
+  // Las 7 cuotas IMSS + INFONAVIT son tasas fijas de ley — constantes en
+  // src/lib/imssConstants.ts, ya no forman parte de este formulario.
   // Cesantía y Vejez: ver ceavBandasSchema — ya no es un campo único.
-
-  infonavitPct: pct,
 
   isnPct: pct,
   impuestoAdicionalPct: pct,

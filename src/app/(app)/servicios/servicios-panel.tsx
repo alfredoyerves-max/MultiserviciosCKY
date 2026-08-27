@@ -15,9 +15,10 @@ import {
   SERVICIO_CATEGORIAS,
   SERVICIO_CATEGORIA_LABELS,
 } from "@/lib/enums";
-import { calcularCostoReal, type CostConfigInput } from "@/lib/costEngine";
+import { calcularCostoReal, type CostConfigInput, type CostoRealResult } from "@/lib/costEngine";
 import { parseModalidades } from "@/lib/modalidades";
 import { sueldoMensualEfectivo, nombrePuestoEfectivo, esSueldoBajoMinimo } from "@/lib/servicioCosto";
+import { cn } from "@/lib/cn";
 import type { Puesto, Servicio } from "@/generated/prisma/client";
 
 type ServicioConPuesto = Servicio & { puesto: Puesto | null };
@@ -38,6 +39,67 @@ function SalarioBajoAviso({ salarioMinimoMensual }: { salarioMinimoMensual: numb
         <path d="M10.29 3.86 1.82 18a1 1 0 0 0 .86 1.5h18.64a1 1 0 0 0 .86-1.5L13.71 3.86a1 1 0 0 0-1.72 0Z" />
       </svg>
     </span>
+  );
+}
+
+/**
+ * Desglose de cargas patronales (Punto 2) — cada categoría que el motor
+ * ya calcula internamente, expuesta en vez de escondida dentro de un solo
+ * total. Se reutiliza tal cual en el catálogo (fila expandible) y en el
+ * formulario de alta/edición (junto al costo real estimado).
+ */
+function DesgloseCargasPatronales({ costo }: { costo: CostoRealResult }) {
+  return (
+    <div className="rounded-lg border border-border-strong bg-surface-2 p-3">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-dim">
+        Desglose de cargas patronales (mensual)
+      </p>
+      {costo.pisoSalarioMinimoAplicado && (
+        <p className="mb-3 text-xs italic text-warning-soft">
+          Cuotas patronales calculadas sobre salario mínimo (piso legal), no sobre el sueldo
+          pactado.
+        </p>
+      )}
+      <dl className="flex flex-col gap-1.5 text-sm">
+        <DesgloseLinea label="IMSS" value={costo.imssMensual} />
+        <DesgloseLinea label="RCV (retiro + cesantía y vejez)" value={costo.rcvMensual} />
+        <DesgloseLinea label="INFONAVIT" value={costo.infonavitMensual} />
+        <DesgloseLinea label="ISN" value={costo.isnMensual} />
+        <DesgloseLinea label="Impuesto adicional" value={costo.impuestoAdicionalMensual} />
+        <div className="my-1 border-t border-border" />
+        <DesgloseLinea label="Total de cargas patronales" value={costo.totalCargasPatronales} bold />
+        <div className="my-1 border-t border-border" />
+        <DesgloseLinea label="Sueldo pactado + prestaciones" value={costo.remuneracionMensualTotal} />
+        <DesgloseLinea label="Costo real total" value={costo.costoRealMensual} bold accent />
+      </dl>
+    </div>
+  );
+}
+
+function DesgloseLinea({
+  label,
+  value,
+  bold = false,
+  accent = false,
+}: {
+  label: string;
+  value: number;
+  bold?: boolean;
+  accent?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <dt className="text-text-muted">{label}</dt>
+      <dd
+        className={cn(
+          "font-mono tabular-nums",
+          bold && "font-semibold",
+          accent ? "text-primary" : "text-text"
+        )}
+      >
+        {formatCurrency(value)}
+      </dd>
+    </div>
   );
 }
 
@@ -142,6 +204,7 @@ function ServicioRow({
   config: CostConfigInput;
   onEdit: () => void;
 }) {
+  const [expandido, setExpandido] = useState(false);
   const sueldoMensual = sueldoMensualEfectivo(servicio);
   const bajoMinimo = esSueldoBajoMinimo(sueldoMensual, config.salarioMinimoMensual);
 
@@ -157,53 +220,65 @@ function ServicioRow({
   const modalidades = parseModalidades(servicio.modalidadesJson);
 
   return (
-    <tr className="border-b border-border last:border-0">
-      <td className="px-5 py-3">
-        <div className="flex items-center gap-2">
-          <p className="font-medium text-text">{servicio.nombre}</p>
-          {!servicio.activo && <Badge tone="danger">Inactivo</Badge>}
-        </div>
-        {servicio.descripcion && <p className="mt-0.5 text-xs text-text-dim">{servicio.descripcion}</p>}
-        {(servicio.incluyeUniforme || servicio.incluyeMaterial) && (
-          <p className="mt-0.5 text-xs text-text-dim">
-            {servicio.incluyeUniforme && "Incluye uniforme"}
-            {servicio.incluyeUniforme && servicio.incluyeMaterial && " · "}
-            {servicio.incluyeMaterial && "Incluye material"}
-          </p>
-        )}
-      </td>
-      <td className="px-5 py-3">
-        <Badge tone="neutral">{SERVICIO_CATEGORIA_LABELS[servicio.categoria as keyof typeof SERVICIO_CATEGORIA_LABELS]}</Badge>
-      </td>
-      <td className="px-5 py-3 text-text-muted">
-        {nombrePuestoEfectivo(servicio)}
-        <span className="block text-xs text-text-dim">{servicio.personalPorUnidad} persona(s)/unidad</span>
-      </td>
-      <td className="px-5 py-3 text-text-muted">{modalidades.map((m) => MODALIDAD_LABELS[m]).join(", ")}</td>
-      <td className="px-5 py-3 text-right">
-        <div className="flex items-center justify-end gap-1.5">
-          {bajoMinimo && <SalarioBajoAviso salarioMinimoMensual={config.salarioMinimoMensual} />}
-          <p className="font-mono text-sm font-semibold tabular-nums text-primary">
-            {formatCurrency(costo.costoRealMensual)}
-          </p>
-        </div>
-        <p className="text-xs text-text-dim">{formatCurrency(costo.costoRealHora)}/hora</p>
-      </td>
-      <td className="px-5 py-3 text-right">
-        <div className="flex justify-end gap-2">
-          <Button size="sm" variant="ghost" onClick={onEdit}>
-            Editar
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => toggleServicioActivoAction(servicio.id, !servicio.activo)}
-          >
-            {servicio.activo ? "Desactivar" : "Activar"}
-          </Button>
-        </div>
-      </td>
-    </tr>
+    <>
+      <tr className="border-b border-border last:border-0">
+        <td className="px-5 py-3">
+          <div className="flex items-center gap-2">
+            <p className="font-medium text-text">{servicio.nombre}</p>
+            {!servicio.activo && <Badge tone="danger">Inactivo</Badge>}
+          </div>
+          {servicio.descripcion && <p className="mt-0.5 text-xs text-text-dim">{servicio.descripcion}</p>}
+          {(servicio.incluyeUniforme || servicio.incluyeMaterial) && (
+            <p className="mt-0.5 text-xs text-text-dim">
+              {servicio.incluyeUniforme && "Incluye uniforme"}
+              {servicio.incluyeUniforme && servicio.incluyeMaterial && " · "}
+              {servicio.incluyeMaterial && "Incluye material"}
+            </p>
+          )}
+        </td>
+        <td className="px-5 py-3">
+          <Badge tone="neutral">{SERVICIO_CATEGORIA_LABELS[servicio.categoria as keyof typeof SERVICIO_CATEGORIA_LABELS]}</Badge>
+        </td>
+        <td className="px-5 py-3 text-text-muted">
+          {nombrePuestoEfectivo(servicio)}
+          <span className="block text-xs text-text-dim">{servicio.personalPorUnidad} persona(s)/unidad</span>
+        </td>
+        <td className="px-5 py-3 text-text-muted">{modalidades.map((m) => MODALIDAD_LABELS[m]).join(", ")}</td>
+        <td className="px-5 py-3 text-right">
+          <div className="flex items-center justify-end gap-1.5">
+            {bajoMinimo && <SalarioBajoAviso salarioMinimoMensual={config.salarioMinimoMensual} />}
+            <p className="font-mono text-sm font-semibold tabular-nums text-primary">
+              {formatCurrency(costo.costoRealMensual)}
+            </p>
+          </div>
+          <p className="text-xs text-text-dim">{formatCurrency(costo.costoRealHora)}/hora</p>
+        </td>
+        <td className="px-5 py-3 text-right">
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setExpandido((v) => !v)}>
+              {expandido ? "Ocultar desglose" : "Ver desglose"}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={onEdit}>
+              Editar
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => toggleServicioActivoAction(servicio.id, !servicio.activo)}
+            >
+              {servicio.activo ? "Desactivar" : "Activar"}
+            </Button>
+          </div>
+        </td>
+      </tr>
+      {expandido && (
+        <tr className="border-b border-border last:border-0">
+          <td colSpan={COLS} className="bg-surface px-5 py-4">
+            <DesgloseCargasPatronales costo={costo} />
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
@@ -377,14 +452,17 @@ function ServicioForm({
               )}
 
               {costoPreview && (
-                <p className="mt-2 flex items-center gap-1.5 text-xs text-text-dim">
-                  {bajoMinimo && <SalarioBajoAviso salarioMinimoMensual={config.salarioMinimoMensual} />}
-                  Costo real estimado (sin uniforme/material):{" "}
-                  <span className="font-mono text-text-muted">
-                    {formatCurrency(costoPreview.costoRealMensual)}/mes ·{" "}
-                    {formatCurrency(costoPreview.costoRealHora)}/hora
-                  </span>
-                </p>
+                <div className="mt-3 flex flex-col gap-2">
+                  <p className="flex items-center gap-1.5 text-xs text-text-dim">
+                    {bajoMinimo && <SalarioBajoAviso salarioMinimoMensual={config.salarioMinimoMensual} />}
+                    Costo real estimado (sin uniforme/material):{" "}
+                    <span className="font-mono text-text-muted">
+                      {formatCurrency(costoPreview.costoRealMensual)}/mes ·{" "}
+                      {formatCurrency(costoPreview.costoRealHora)}/hora
+                    </span>
+                  </p>
+                  <DesgloseCargasPatronales costo={costoPreview} />
+                </div>
               )}
               <FieldError>{state.fieldErrors?.puestoId}</FieldError>
             </div>

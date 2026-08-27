@@ -36,18 +36,14 @@ model SystemConfig {
 
   primaRiesgoPct Float // editable — cambia según clasificación IMSS, dato de negocio (sin candado)
 
-  imssEnfMatCuotaFijaPct Float // % de 1 UMA mensual
-  imssEnfMatCuotaAdicPct Float // % del excedente sobre 3 UMA
-  imssEnfMatDineroPct    Float // % del SBC
-  imssGastosMedPensPct   Float // % del SBC
-  imssInvalidezVidaPct   Float // % del SBC
-  imssGuarderiasPct      Float // % del SBC
-  imssRetiroPct          Float // % del SBC
-  // Cesantía y Vejez (CEAV) ya NO es tasa fija — ver modelo CeavBanda.
+  // Las 7 cuotas IMSS (enf. y maternidad cuota fija/adicional/dinero,
+  // gastos médicos pensionados, invalidez y vida, guarderías, retiro) e
+  // INFONAVIT son tasas fijas de ley (LSS/Ley del INFONAVIT), no se
+  // indexan año con año — viven como constantes de código en
+  // src/lib/imssConstants.ts, no en esta tabla editable.
+  // Cesantía y Vejez (CEAV) sí cambia cada año — ver modelo CeavBanda.
   // Reforma LSS/LSAR (DOF 16-dic-2020), Art. 168 fracción II: la cuota
   // patronal depende del SBC del trabajador en múltiplos de UMA/SM.
-
-  infonavitPct Float // % del SBC
 
   isnPct                Float // % de la nómina
   impuestoAdicionalPct  Float // % del ISN

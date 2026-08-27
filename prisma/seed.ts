@@ -26,16 +26,9 @@ async function main() {
 
       primaRiesgoPct: 0.025,
 
-      imssEnfMatCuotaFijaPct: 0.204,
-      imssEnfMatCuotaAdicPct: 0.011,
-      imssEnfMatDineroPct: 0.007,
-      imssGastosMedPensPct: 0.0105,
-      imssInvalidezVidaPct: 0.0175,
-      imssGuarderiasPct: 0.01,
-      imssRetiroPct: 0.02,
+      // Las 7 cuotas IMSS + INFONAVIT son tasas fijas de ley — viven como
+      // constantes en src/lib/imssConstants.ts, no aquí.
       // Cesantía y Vejez: ver seedCeavBandas() más abajo.
-
-      infonavitPct: 0.05,
 
       isnPct: 0.03,
       impuestoAdicionalPct: 0.33,
