@@ -56,11 +56,11 @@ export interface CotizacionExportData {
    *  retención. Etiquétalo siempre "Total", nunca "Neto a recibir". */
   netoARecibir: number;
 
-  /** Condición de pago / condiciones comerciales / garantía — ya
+  /** Condiciones comerciales / condiciones operativas / garantía — ya
    *  seleccionadas según el tipo de cotización (Servicio o Material) al
    *  construir estos datos, para que el exportador no tenga que decidir. */
-  condicionPago: string;
   condicionesComerciales: string;
+  condicionesOperativas: string;
   garantia: string;
 
   cuentasBancarias: {
@@ -138,10 +138,12 @@ export function buildCotizacionExportData(
     totalAPagar: cotizacion.totalAPagar,
     netoARecibir: cotizacion.netoARecibir,
 
-    condicionPago: esServicio ? config.condicionPagoServicio : config.condicionPagoMaterial,
     condicionesComerciales: esServicio
       ? config.condicionesComercialesServicio
       : config.condicionesComercialesMaterial,
+    condicionesOperativas: esServicio
+      ? config.condicionesOperativasServicio
+      : config.condicionesOperativasMaterial,
     garantia: esServicio ? config.garantiaServicio : config.garantiaMaterial,
 
     cuentasBancarias: cuentasBancariasActivas.map((c) => ({

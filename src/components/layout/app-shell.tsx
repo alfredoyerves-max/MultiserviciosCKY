@@ -5,15 +5,32 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { logoutAction } from "@/lib/auth/actions";
+import { ThemeToggle } from "./theme-toggle";
 import type { ReactNode } from "react";
 
+/**
+ * Acento por módulo (Sección 1B + 4 del documento de diseño) — decora
+ * SOLO la barra lateral y los encabezados de página, nunca un badge de
+ * estado. Cotizaciones reutiliza el cian de marca (--color-primary) a
+ * propósito — es el módulo insignia. Dashboard/Configuración usan un tono
+ * neutro corporativo, sin acento de color. Los valores son literales
+ * completos (no interpolados) para que Tailwind los detecte al escanear.
+ */
+const NAV_ITEM_ACTIVE_STYLES: Record<string, string> = {
+  neutral: "bg-surface-2 text-text",
+  primary: "bg-primary/15 text-primary",
+  servicios: "bg-module-servicios/15 text-module-servicios",
+  inventario: "bg-module-inventario/15 text-module-inventario",
+  pagos: "bg-module-pagos/15 text-module-pagos",
+};
+
 const NAV_ITEMS = [
-  { href: "/", label: "Dashboard", icon: DashboardIcon },
-  { href: "/cotizaciones", label: "Cotizaciones", icon: QuoteIcon },
-  { href: "/servicios", label: "Servicios", icon: ServiceIcon },
-  { href: "/inventario", label: "Inventario y Activos", icon: InventarioIcon },
-  { href: "/pagos", label: "Pagos y Cobros", icon: PagosIcon },
-  { href: "/configuracion", label: "Configuración", icon: SettingsIcon },
+  { href: "/", label: "Dashboard", icon: DashboardIcon, moduleColor: "neutral" },
+  { href: "/cotizaciones", label: "Cotizaciones", icon: QuoteIcon, moduleColor: "primary" },
+  { href: "/servicios", label: "Servicios", icon: ServiceIcon, moduleColor: "servicios" },
+  { href: "/inventario", label: "Inventario y Activos", icon: InventarioIcon, moduleColor: "inventario" },
+  { href: "/pagos", label: "Pagos y Cobros", icon: PagosIcon, moduleColor: "pagos" },
+  { href: "/configuracion", label: "Configuración", icon: SettingsIcon, moduleColor: "neutral" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -21,7 +38,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-surface px-4 py-5">
+      <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col overflow-y-auto border-r border-border bg-surface px-4 py-5">
         <div className="mb-6 flex items-center gap-2.5 px-2">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm">
             <Image
@@ -33,10 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               priority
             />
           </div>
-          <div>
-            <p className="text-sm font-semibold text-text leading-tight">Quotly</p>
-            <p className="text-[11px] text-text-dim leading-tight">Carlos Yerves Multiservicios</p>
-          </div>
+          <p className="text-sm font-semibold text-text leading-tight">Carlos Yerves Multiservicios</p>
         </div>
 
         <nav className="flex flex-col gap-1">
@@ -51,7 +65,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                   active
-                    ? "bg-primary/15 text-primary"
+                    ? NAV_ITEM_ACTIVE_STYLES[item.moduleColor]
                     : "text-text-muted hover:bg-surface-2 hover:text-text"
                 )}
               >
@@ -63,6 +77,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="mt-auto flex flex-col gap-2 border-t border-border pt-4">
+          <ThemeToggle />
           <p className="px-2 text-[11px] text-text-dim">© 2026 Carlos Yerves Multiservicios</p>
           <form action={logoutAction}>
             <button

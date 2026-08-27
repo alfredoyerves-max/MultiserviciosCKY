@@ -38,7 +38,7 @@ export default async function PagosPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-text">Pagos y Cobros</h1>
+          <h1 className="text-xl font-semibold text-module-pagos">Pagos y Cobros</h1>
           <p className="text-sm text-text-muted">
             Cuentas por cobrar y por pagar, con abonos parciales y seguimiento de vencimiento.
           </p>

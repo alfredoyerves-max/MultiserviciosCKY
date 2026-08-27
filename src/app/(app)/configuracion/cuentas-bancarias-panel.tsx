@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel, Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { CuentaBancaria } from "@/generated/prisma/client";
 
 const initialState: CuentaBancariaActionState = { ok: false };
@@ -55,8 +56,8 @@ export function CuentasBancariasPanel({
           <tbody>
             {cuentas.length === 0 && (
               <tr>
-                <td colSpan={locked ? 5 : 6} className="px-4 py-5 text-center text-text-dim">
-                  Sin cuentas bancarias registradas.
+                <td colSpan={locked ? 5 : 6}>
+                  <EmptyState title="Sin cuentas bancarias registradas." />
                 </td>
               </tr>
             )}
@@ -67,7 +68,7 @@ export function CuentasBancariasPanel({
                 <td className="px-4 py-2 text-text-muted">{c.numeroCuenta || "—"}</td>
                 <td className="px-4 py-2 text-text-muted">{c.titular}</td>
                 <td className="px-4 py-2">
-                  <Badge tone={c.activa ? "primary" : "secondary"}>{c.activa ? "Activa" : "Inactiva"}</Badge>
+                  <Badge tone={c.activa ? "success" : "neutral"}>{c.activa ? "Activa" : "Inactiva"}</Badge>
                 </td>
                 {!locked && (
                   <td className="px-4 py-2 text-right">

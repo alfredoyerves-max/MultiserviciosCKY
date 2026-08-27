@@ -207,20 +207,6 @@ export function ConfigForm({
       >
         <LockedField
           locked={!fiscalUnlocked}
-          name="condicionPagoServicio"
-          label="Condición de pago — Servicio"
-          defaultValue={config.condicionPagoServicio}
-          textarea
-        />
-        <LockedField
-          locked={!fiscalUnlocked}
-          name="condicionPagoMaterial"
-          label="Condición de pago — Material"
-          defaultValue={config.condicionPagoMaterial}
-          textarea
-        />
-        <LockedField
-          locked={!fiscalUnlocked}
           name="condicionesComercialesServicio"
           label="Condiciones comerciales — Servicio"
           defaultValue={config.condicionesComercialesServicio}
@@ -231,6 +217,20 @@ export function ConfigForm({
           name="condicionesComercialesMaterial"
           label="Condiciones comerciales — Material"
           defaultValue={config.condicionesComercialesMaterial}
+          textarea
+        />
+        <LockedField
+          locked={!fiscalUnlocked}
+          name="condicionesOperativasServicio"
+          label="Condiciones operativas — Servicio"
+          defaultValue={config.condicionesOperativasServicio}
+          textarea
+        />
+        <LockedField
+          locked={!fiscalUnlocked}
+          name="condicionesOperativasMaterial"
+          label="Condiciones operativas — Material"
+          defaultValue={config.condicionesOperativasMaterial}
           textarea
         />
         <LockedField

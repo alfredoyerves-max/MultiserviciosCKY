@@ -3,6 +3,8 @@ import { calcularSaldo, calcularEstadoCuenta, estaVencida, ESTADO_CUENTA_LABELS_
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { registrarAbonoPorPagarAction } from "../../actions";
 import { AbonoForm } from "../../abono-form";
@@ -52,6 +54,7 @@ export default async function CuentaPorPagarDetallePage({
         <Resumen label="Abonado" value={formatCurrency(cuenta.montoTotal - saldo)} />
         <Resumen label="Saldo pendiente" value={formatCurrency(saldo)} accent />
       </div>
+      <ProgressBar pct={cuenta.montoTotal > 0 ? ((cuenta.montoTotal - saldo) / cuenta.montoTotal) * 100 : 0} />
 
       <Card>
         <CardHeader>
@@ -68,7 +71,7 @@ export default async function CuentaPorPagarDetallePage({
         </CardHeader>
         <CardContent className="p-0">
           {cuenta.abonos.length === 0 ? (
-            <p className="px-5 py-6 text-center text-sm text-text-dim">Sin abonos todavía.</p>
+            <EmptyState title="Sin abonos todavía." />
           ) : (
             <table className="w-full text-sm">
               <thead>

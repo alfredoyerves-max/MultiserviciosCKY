@@ -3,6 +3,7 @@ import { calcularStock } from "@/lib/inventario";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { UNIDAD_MEDIDA_LABELS, MOTIVO_SALIDA_LABELS, type UnidadMedida, type MotivoSalida } from "@/lib/enums";
 import { RegistrarEntradaButton, RegistrarSalidaButton } from "../movimiento-buttons";
@@ -23,7 +24,7 @@ export default async function ProductoDetallePage({
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-semibold text-text">{producto.nombre}</h1>
-            <Badge tone="primary">{unidadLabel}</Badge>
+            <Badge tone="neutral">{unidadLabel}</Badge>
             {!producto.activo && <Badge tone="danger">Inactivo</Badge>}
           </div>
           {producto.descripcion && (
@@ -57,7 +58,7 @@ export default async function ProductoDetallePage({
         </CardHeader>
         <CardContent className="p-0">
           {producto.movimientos.length === 0 ? (
-            <p className="px-5 py-6 text-center text-sm text-text-dim">Sin movimientos todavía.</p>
+            <EmptyState title="Sin movimientos todavía." />
           ) : (
             <table className="w-full text-sm">
               <thead>
@@ -73,7 +74,7 @@ export default async function ProductoDetallePage({
                   <tr key={m.id} className="border-b border-border last:border-0">
                     <td className="px-5 py-3 text-text-muted">{formatDate(m.fecha)}</td>
                     <td className="px-5 py-3">
-                      <Badge tone={m.tipo === "ENTRADA" ? "success" : "secondary"}>
+                      <Badge tone={m.tipo === "ENTRADA" ? "success" : "neutral"}>
                         {m.tipo === "ENTRADA" ? "Entrada" : "Salida"}
                       </Badge>
                     </td>

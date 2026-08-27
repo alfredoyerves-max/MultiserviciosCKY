@@ -64,10 +64,10 @@ export const PROTECTED_FISCAL_FIELDS = [
   "aceptaCheque",
   "garantiaServicio",
   "garantiaMaterial",
-  "condicionPagoServicio",
-  "condicionPagoMaterial",
   "condicionesComercialesServicio",
   "condicionesComercialesMaterial",
+  "condicionesOperativasServicio",
+  "condicionesOperativasMaterial",
 ] as const;
 
 const systemConfigFieldsSchema = z.object({
@@ -119,10 +119,10 @@ const systemConfigFieldsSchema = z.object({
 
   garantiaServicio: z.string().trim().min(1, "Requerido"),
   garantiaMaterial: z.string().trim().min(1, "Requerido"),
-  condicionPagoServicio: z.string().trim().min(1, "Requerido"),
-  condicionPagoMaterial: z.string().trim().min(1, "Requerido"),
   condicionesComercialesServicio: z.string().trim().min(1, "Requerido"),
   condicionesComercialesMaterial: z.string().trim().min(1, "Requerido"),
+  condicionesOperativasServicio: z.string().trim().min(1, "Requerido"),
+  condicionesOperativasMaterial: z.string().trim().min(1, "Requerido"),
 });
 
 export const systemConfigSchema = systemConfigFieldsSchema.partial(
@@ -133,6 +133,24 @@ export const systemConfigSchema = systemConfigFieldsSchema.partial(
 );
 
 export type SystemConfigInput = z.infer<typeof systemConfigSchema>;
+
+/**
+ * Paso 2 del asistente de arranque (/setup, Anexo G) — captura solo los
+ * datos de identidad de la empresa, no todo SystemConfig (los demás
+ * campos normativos ya tienen sus valores 2026 sembrados por db:seed).
+ * Esquema independiente y más simple que systemConfigSchema a propósito:
+ * este formulario nunca envía los demás campos requeridos de SystemConfig,
+ * así que no puede compartir ese schema (que sí los exige).
+ */
+export const datosEmpresaInicialSchema = z.object({
+  prestadorNombre: z.string().trim().min(1, "Requerido"),
+  prestadorRfc: z.string().trim().optional(),
+  prestadorRegimenFiscal: z.string().trim().optional(),
+  prestadorDireccion: z.string().trim().optional(),
+  prestadorTelefono: z.string().trim().optional(),
+  prestadorEmail: z.string().trim().optional(),
+});
+export type DatosEmpresaInicialInput = z.infer<typeof datosEmpresaInicialSchema>;
 
 // Las 8 bandas CEAV se editan como porcentaje humano (ej. "3.676") y se
 // guardan como fracción — mismo criterio que el resto de los campos "pct".

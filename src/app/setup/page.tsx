@@ -9,7 +9,7 @@ export default async function SetupPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
           <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-white p-1.5 shadow-sm">
             <Image
@@ -20,9 +20,9 @@ export default async function SetupPage() {
               className="h-full w-full object-contain"
             />
           </div>
-          <h1 className="text-lg font-semibold text-text">Configura tu cuenta</h1>
+          <h1 className="text-lg font-semibold text-text">Configuración inicial</h1>
           <p className="mt-1 text-sm text-text-muted">
-            Primer uso de Quotly — crea la única cuenta de acceso.
+            Primer uso del sistema — crea tu cuenta y los datos de tu empresa.
           </p>
         </div>
         <SetupForm />

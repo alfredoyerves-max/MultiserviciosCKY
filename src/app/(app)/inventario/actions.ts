@@ -2,10 +2,17 @@
 
 import { createProducto, setProductoActivo, updateProducto } from "@/lib/data/productos";
 import { registrarEntrada, registrarSalida } from "@/lib/data/movimientosInventario";
-import { createActivo, updateActivo } from "@/lib/data/activos";
+import {
+  createActivo,
+  updateActivo,
+  updateEstadoActivo,
+  darDeBajaActivo,
+  registrarEventoManual,
+} from "@/lib/data/activos";
 import { productoSchema } from "@/lib/schemas/producto";
 import { entradaInventarioSchema, salidaInventarioSchema } from "@/lib/schemas/movimientoInventario";
 import { activoSchema } from "@/lib/schemas/activo";
+import { eventoActivoManualSchema, darDeBajaActivoSchema } from "@/lib/schemas/eventoActivo";
 import { requireSession } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import type { FormActionState } from "./form-state";
@@ -102,5 +109,69 @@ export async function saveActivoAction(
     await createActivo(parsed.data);
   }
   revalidatePath("/inventario");
+  return { ok: true };
+}
+
+/** Transición simple de estado (Funcional <-> En reparación) desde el
+ *  detalle del activo — DADO_DE_BAJA nunca se selecciona aquí, tiene su
+ *  propio botón dedicado (ver darDeBajaActivoAction). */
+export async function updateEstadoActivoAction(id: string, estado: string) {
+  await requireSession();
+  if (estado !== "FUNCIONAL" && estado !== "EN_REPARACION") {
+    throw new Error("Usa el botón \"Dar de baja\" para ese cambio de estado.");
+  }
+  await updateEstadoActivo(id, estado);
+  revalidatePath(`/inventario/activos/${id}`);
+  revalidatePath("/inventario");
+}
+
+export async function darDeBajaActivoAction(
+  _prev: FormActionState,
+  formData: FormData
+): Promise<FormActionState> {
+  await requireSession();
+
+  const activoId = String(formData.get("activoId") ?? "");
+  if (!activoId) return { ok: false, error: "Falta el activo." };
+
+  const parsed = darDeBajaActivoSchema.safeParse({
+    fecha: formData.get("fecha"),
+    motivo: formData.get("motivo"),
+  });
+  if (!parsed.success) {
+    return { ok: false, error: "Revisa los campos.", fieldErrors: toFieldErrors(parsed.error.issues) };
+  }
+
+  try {
+    await darDeBajaActivo(activoId, parsed.data);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "No se pudo dar de baja el activo." };
+  }
+
+  revalidatePath(`/inventario/activos/${activoId}`);
+  revalidatePath("/inventario");
+  return { ok: true };
+}
+
+export async function registrarIncidenteActivoAction(
+  _prev: FormActionState,
+  formData: FormData
+): Promise<FormActionState> {
+  await requireSession();
+
+  const activoId = String(formData.get("activoId") ?? "");
+  if (!activoId) return { ok: false, error: "Falta el activo." };
+
+  const parsed = eventoActivoManualSchema.safeParse({
+    tipo: formData.get("tipo"),
+    descripcion: formData.get("descripcion"),
+    fecha: formData.get("fecha"),
+  });
+  if (!parsed.success) {
+    return { ok: false, error: "Revisa los campos.", fieldErrors: toFieldErrors(parsed.error.issues) };
+  }
+
+  await registrarEventoManual(activoId, parsed.data);
+  revalidatePath(`/inventario/activos/${activoId}`);
   return { ok: true };
 }

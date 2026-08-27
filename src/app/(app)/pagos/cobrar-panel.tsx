@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { calcularSaldo, calcularEstadoCuenta, estaVencida, ESTADO_CUENTA_LABELS_COBRAR } from "@/lib/cuentas";
 import type { AbonoPorCobrar, Cliente, Cotizacion, CuentaPorCobrar } from "@/generated/prisma/client";
@@ -22,9 +24,11 @@ const ESTADO_TONE = {
 export function CobrarPanel({ cuentas }: { cuentas: CuentaPorCobrarConDatos[] }) {
   if (cuentas.length === 0) {
     return (
-      <Card className="p-6 text-center text-sm text-text-dim">
-        Sin cuentas por cobrar todavía. Se generan desde el detalle de una cotización en
-        estado &quot;Aceptada&quot;.
+      <Card>
+        <EmptyState
+          title="Sin cuentas por cobrar todavía."
+          description='Se generan desde el detalle de una cotización en estado "Aceptada".'
+        />
       </Card>
     );
   }
@@ -35,6 +39,7 @@ export function CobrarPanel({ cuentas }: { cuentas: CuentaPorCobrarConDatos[] })
         const saldo = calcularSaldo(c.montoTotal, c.abonos);
         const estado = calcularEstadoCuenta(c.montoTotal, c.abonos, c.cancelada);
         const vencida = !c.cancelada && estaVencida(c.fechaVencimiento, saldo);
+        const pctAbonado = c.montoTotal > 0 ? ((c.montoTotal - saldo) / c.montoTotal) * 100 : 0;
 
         return (
           <Link key={c.id} href={`/pagos/cobrar/${c.id}`}>
@@ -54,6 +59,7 @@ export function CobrarPanel({ cuentas }: { cuentas: CuentaPorCobrarConDatos[] })
                   <p className="mt-0.5 text-xs text-text-dim">
                     Vence {formatDate(c.fechaVencimiento)} · {c.abonos.length} abono(s)
                   </p>
+                  <ProgressBar pct={pctAbonado} className="mt-2 max-w-48" />
                 </div>
                 <div className="text-right">
                   <p className="text-xs uppercase tracking-wide text-text-dim">Saldo pendiente</p>

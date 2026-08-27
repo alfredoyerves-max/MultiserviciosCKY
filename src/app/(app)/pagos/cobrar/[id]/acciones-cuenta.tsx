@@ -42,7 +42,7 @@ function EliminarCuentaButton({ cuentaId }: { cuentaId: string }) {
         Eliminar
       </Button>
       {open && (
-        <Modal onClose={() => setOpen(false)}>
+        <Modal onClose={() => setOpen(false)} danger>
           <form action={formAction} className="flex flex-col gap-4 p-5">
             <input type="hidden" name="cuentaId" value={cuentaId} />
             <h3 className="text-sm font-semibold text-text">Eliminar cuenta por cobrar</h3>
@@ -84,7 +84,7 @@ function CancelarCuentaButton({ cuentaId }: { cuentaId: string }) {
         Cancelar cuenta
       </Button>
       {open && (
-        <Modal onClose={() => setOpen(false)}>
+        <Modal onClose={() => setOpen(false)} danger>
           <form action={formAction} className="flex flex-col gap-4 p-5">
             <input type="hidden" name="cuentaId" value={cuentaId} />
             <h3 className="text-sm font-semibold text-text">Cancelar cuenta por cobrar</h3>

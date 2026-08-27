@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { SystemConfigInput, CeavBandaUpdate } from "@/lib/schemas/config";
+import type { SystemConfigInput, CeavBandaUpdate, DatosEmpresaInicialInput } from "@/lib/schemas/config";
 import type { CeavBandaInput } from "@/lib/costEngine";
 import type { SystemConfig } from "@/generated/prisma/client";
 
@@ -20,6 +20,12 @@ export async function getSystemConfig() {
 }
 
 export async function updateSystemConfig(input: SystemConfigInput) {
+  return prisma.systemConfig.update({ where: { id: 1 }, data: input });
+}
+
+/** Paso 2 del asistente de arranque (/setup, Anexo G) — ver
+ *  datosEmpresaInicialSchema en lib/schemas/config.ts. */
+export async function updateDatosEmpresaInicial(input: DatosEmpresaInicialInput) {
   return prisma.systemConfig.update({ where: { id: 1 }, data: input });
 }
 

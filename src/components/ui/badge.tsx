@@ -7,7 +7,7 @@ const tones = {
   success: "bg-success/15 text-success-soft border-success/30",
   danger: "bg-danger-strong/20 text-danger border-danger-strong/40",
   secondary: "bg-secondary/15 text-secondary-soft border-secondary/30",
-  warning: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+  warning: "bg-warning/15 text-warning-soft border-warning/30",
 };
 
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {

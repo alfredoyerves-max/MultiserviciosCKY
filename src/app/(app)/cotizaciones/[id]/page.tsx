@@ -18,11 +18,6 @@ import { EliminarCotizacionButton } from "../eliminar-cotizacion-button";
 import { CostDetail } from "./cost-detail";
 import Link from "next/link";
 
-const TIPO_COTIZACION_TONE: Record<TipoCotizacion, "primary" | "secondary"> = {
-  SERVICIO: "primary",
-  MATERIAL: "secondary",
-};
-
 export default async function CotizacionDetallePage({
   params,
 }: {
@@ -39,7 +34,7 @@ export default async function CotizacionDetallePage({
         <div>
           <div className="flex items-center gap-3">
             <h1 className="font-mono text-xl font-semibold text-text">{cotizacion.folio}</h1>
-            <Badge tone={TIPO_COTIZACION_TONE[tipo]}>{TIPO_COTIZACION_LABELS[tipo]}</Badge>
+            <Badge tone="neutral">{TIPO_COTIZACION_LABELS[tipo]}</Badge>
             <EstadoSelect
               cotizacion={{
                 ...cotizacion,
@@ -47,7 +42,7 @@ export default async function CotizacionDetallePage({
                 tieneAbonos: (cotizacion.cuentaPorCobrar?.abonos.length ?? 0) > 0,
               }}
             />
-            {cotizacion.esSoporte && <Badge tone="secondary">Soporte</Badge>}
+            {cotizacion.esSoporte && <Badge tone="neutral">Soporte</Badge>}
           </div>
           <p className="mt-1 text-sm text-text-muted">
             {cotizacion.cliente.nombreRazonSocial} ·{" "}

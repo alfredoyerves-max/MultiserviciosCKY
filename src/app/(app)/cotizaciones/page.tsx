@@ -27,7 +27,7 @@ export default async function CotizacionesPage({
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-text">Cotizaciones</h1>
+          <h1 className="text-xl font-semibold text-primary">Cotizaciones</h1>
           <p className="text-sm text-text-muted">
             Seguimiento del pipeline por estado. Usa el mes y el filtro de soporte para
             explorar el historial.

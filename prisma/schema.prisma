@@ -90,10 +90,15 @@ model SystemConfig {
   /// lib/export/cotizacionData.ts). Protegidas por el mismo candado.
   garantiaServicio              String @default("Nuestro compromiso es brindar un servicio profesional y supervisado, ejecutado por personal calificado bajo estrictos estándares de calidad, seguridad y cumplimiento en cada entrega.")
   garantiaMaterial              String @default("Garantizamos la calidad, especificaciones técnicas y óptimo estado de los materiales suministrados, asegurando un estricto control en tiempos de entrega y disponibilidad de inventario.")
-  condicionPagoServicio         String @default("Pago contra entrega / Liquidación al cierre del periodo convenido contra entrega del servicio.")
-  condicionPagoMaterial         String @default("Pago de contado (100% anticipado previo al suministro o entrega de material).")
-  condicionesComercialesServicio String @default("El servicio incluye personal uniformado y monitoreo de calidad en sitio. Los insumos y consumibles de limpieza corren por cuenta del cliente, salvo solicitud expresa de suministro independiente.")
-  condicionesComercialesMaterial String @default("Precios exclusivos para la venta y entrega de materiales o productos solicitados. No incluye aplicación ni servicios operativos.")
+  /// "Condiciones Comerciales" (precio/moneda/vigencia/modalidad de pago) —
+  /// antes se llamaba condicionPago*; renombrado y con texto nuevo en el
+  /// documento maestro de diseño.
+  condicionesComercialesServicio String @default("Precios en moneda nacional (MXN). Modalidad de pago de contado: liquidación contra entrega o al término del periodo acordado. Precios sujetos a vigencia de cotización.")
+  condicionesComercialesMaterial String @default("Precios en moneda nacional (MXN) sujetos a disponibilidad de inventario. Modalidad de pago 100% anticipado previo a la preparación de pedido y entrega/embarque.")
+  /// "Condiciones Operativas" (alcance del servicio/material) — antes se
+  /// llamaba condicionesComerciales*; mismo texto, solo renombrado.
+  condicionesOperativasServicio String @default("El servicio incluye personal uniformado y monitoreo de calidad en sitio. Los insumos y consumibles de limpieza corren por cuenta del cliente, salvo solicitud expresa de suministro independiente.")
+  condicionesOperativasMaterial String @default("Precios exclusivos para la venta y entrega de materiales o productos solicitados. No incluye aplicación ni servicios operativos.")
 
   updatedAt DateTime @updatedAt
 }
@@ -500,6 +505,29 @@ model Activo {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  eventos EventoActivo[]
+}
+
+/// Historial de eventos de un Activo (Anexo D del documento de diseño) —
+/// registro cronológico de cambios de estado (automático, en cada
+/// transición) e incidentes/notas manuales (botón "Registrar incidente").
+/// tipo: CAMBIO_ESTADO | INCIDENTE | NOTA (validado en zod).
+/// `estadoAnterior`/`estadoNuevo` solo se llenan para tipo CAMBIO_ESTADO —
+/// null en eventos manuales, que no cambian el estado del activo.
+model EventoActivo {
+  id       String @id @default(cuid())
+  activoId String
+  activo   Activo @relation(fields: [activoId], references: [id], onDelete: Cascade)
+
+  fecha       DateTime
+  tipo        String
+  descripcion String
+
+  estadoAnterior String?
+  estadoNuevo    String?
+
+  createdAt DateTime @default(now())
 }
 
 /// Sesión activa. `usuarioId` es único a propósito: una sola fila por

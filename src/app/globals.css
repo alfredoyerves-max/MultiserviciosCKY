@@ -1,7 +1,15 @@
 @import "tailwindcss";
 
-/* Tokens tomados del design system de Stitch "Smart Service Quote Builder"
-   (Modern Corporate + Glassmorphism, tema oscuro con acento cian). */
+/* Sistema de tokens de marca — Documento maestro de diseño, Secciones 1-2.
+   Dos familias separadas que NUNCA se mezclan:
+     A) Estado semántico (success/danger/warning + neutral/info) — significan
+        lo mismo en cualquier parte de la app, sin excepción.
+     B) Acento por módulo (--color-module-*) — solo decoran navegación y
+        encabezados de página, nunca aparecen dentro de un badge de estado.
+   Identidad de marca: oscuro por defecto (glassmorphism + acento cian),
+   con modo claro como alternancia explícita (data-theme="light" en <html>,
+   guardado en localStorage — ver ThemeToggle). Cada token tiene su
+   variante para ambos modos, con contraste verificado para WCAG AA. */
 :root {
   --color-bg: #0c0e12;
   --color-surface: #111317;
@@ -12,21 +20,74 @@
   --color-border-strong: rgba(255, 255, 255, 0.16);
 
   --color-text: #e2e2e8;
-  --color-text-muted: #b9cacb;
-  --color-text-dim: #849495;
+  --color-text-muted: #c3d3d4;
+  --color-text-dim: #93a3a4;
 
   --color-primary: #00dbe9;
   --color-primary-strong: #00f0ff;
   --color-on-primary: #00363a;
 
+  /* Secundario (morado) — solo usado como acento de badge de clasificación,
+     nunca como estado. */
   --color-secondary: #8a2be2;
   --color-secondary-soft: #dcb8ff;
 
+  /* Estado semántico — significan siempre lo mismo, en cualquier módulo. */
   --color-success: #2ae500;
-  --color-success-soft: #79ff5b;
+  --color-success-soft: #86ff6c;
 
   --color-danger: #ffb4ab;
   --color-danger-strong: #93000a;
+  --color-on-danger: #ffffff;
+
+  --color-warning: #f59e0b;
+  --color-warning-soft: #fbbf24;
+
+  /* Acento por módulo — SOLO decoran navegación/encabezados de página,
+     nunca un badge de estado (para no confundirse con los tokens de
+     arriba). Cotizaciones reutiliza el cian de marca (--color-primary) a
+     propósito: es el módulo insignia. Dashboard y Configuración usan un
+     tono neutro corporativo, sin acento de color. */
+  --color-module-servicios: #93a5ff;
+  --color-module-inventario: #cfa6ff;
+  --color-module-pagos: #4ade80;
+  --color-module-neutral: #c3d3d4;
+}
+
+:root[data-theme="light"] {
+  --color-bg: #f4f6f7;
+  --color-surface: #ffffff;
+  --color-surface-1: #ffffff;
+  --color-surface-2: #eef1f2;
+  --color-surface-3: #e1e6e8;
+  --color-border: rgba(15, 23, 27, 0.09);
+  --color-border-strong: rgba(15, 23, 27, 0.16);
+
+  --color-text: #10181a;
+  --color-text-muted: #3f4d50;
+  --color-text-dim: #5c6b6e;
+
+  --color-primary: #04707d;
+  --color-primary-strong: #035760;
+  --color-on-primary: #ffffff;
+
+  --color-secondary: #7c3aed;
+  --color-secondary-soft: #5b21b6;
+
+  --color-success: #16a34a;
+  --color-success-soft: #15803d;
+
+  --color-danger: #b3261e;
+  --color-danger-strong: #93000a;
+  --color-on-danger: #ffffff;
+
+  --color-warning: #d97706;
+  --color-warning-soft: #92400e;
+
+  --color-module-servicios: #3730a3;
+  --color-module-inventario: #6b21a8;
+  --color-module-pagos: #047857;
+  --color-module-neutral: #3f4d50;
 }
 
 @theme inline {
@@ -54,6 +115,15 @@
 
   --color-danger: var(--color-danger);
   --color-danger-strong: var(--color-danger-strong);
+  --color-on-danger: var(--color-on-danger);
+
+  --color-warning: var(--color-warning);
+  --color-warning-soft: var(--color-warning-soft);
+
+  --color-module-servicios: var(--color-module-servicios);
+  --color-module-inventario: var(--color-module-inventario);
+  --color-module-pagos: var(--color-module-pagos);
+  --color-module-neutral: var(--color-module-neutral);
 
   --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);

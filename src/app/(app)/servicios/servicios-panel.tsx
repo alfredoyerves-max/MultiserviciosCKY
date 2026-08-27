@@ -6,6 +6,7 @@ import { initialFormState } from "./form-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AnchorButton, Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Field, FieldError, FieldLabel, Input, Select, Textarea } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/format";
 import {
@@ -20,6 +21,25 @@ import { sueldoMensualEfectivo, nombrePuestoEfectivo, esSueldoBajoMinimo } from 
 import type { Puesto, Servicio } from "@/generated/prisma/client";
 
 type ServicioConPuesto = Servicio & { puesto: Puesto | null };
+
+const COLS = 6;
+
+/** Ícono de aviso discreto con tooltip nativo (Sección 7 del documento de
+ *  diseño) — reemplaza el badge grande "Por debajo del salario mínimo
+ *  vigente" que competía con el título; ahora vive junto al costo real. */
+function SalarioBajoAviso({ salarioMinimoMensual }: { salarioMinimoMensual: number }) {
+  return (
+    <span
+      className="inline-flex cursor-help text-warning-soft"
+      title={`El sueldo capturado está por debajo del salario mínimo mensual vigente (${formatCurrency(salarioMinimoMensual)}).`}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4">
+        <path d="M12 9v4M12 17h.01" />
+        <path d="M10.29 3.86 1.82 18a1 1 0 0 0 .86 1.5h18.64a1 1 0 0 0 .86-1.5L13.71 3.86a1 1 0 0 0-1.72 0Z" />
+      </svg>
+    </span>
+  );
+}
 
 export function ServiciosPanel({
   servicios,
@@ -58,25 +78,57 @@ export function ServiciosPanel({
         />
       )}
 
-      <div className="flex flex-col gap-3">
-        {servicios.length === 0 && (
-          <Card className="p-6 text-center text-sm text-text-dim">Sin servicios todavía.</Card>
-        )}
-        {servicios.map((s) =>
-          editing?.id === s.id ? (
-            <ServicioForm
-              key={s.id}
-              servicio={s}
-              puestos={puestos}
-              config={config}
-              onDone={() => setEditing(null)}
-              onCancel={() => setEditing(null)}
-            />
-          ) : (
-            <ServicioRow key={s.id} servicio={s} config={config} onEdit={() => setEditing(s)} />
-          )
-        )}
-      </div>
+      <Card className="p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-dim">
+                <th className="px-5 py-3 font-medium">Servicio</th>
+                <th className="px-5 py-3 font-medium">Categoría</th>
+                <th className="px-5 py-3 font-medium">Puesto</th>
+                <th className="px-5 py-3 font-medium">Modalidades</th>
+                <th className="px-5 py-3 text-right font-medium">Costo real / mes</th>
+                <th className="px-5 py-3 text-right font-medium">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {servicios.length === 0 && (
+                <tr>
+                  <td colSpan={COLS}>
+                    <EmptyState
+                      title="Sin servicios todavía."
+                      action={
+                        !creating && (
+                          <Button size="sm" onClick={() => setCreating(true)}>
+                            + Nuevo servicio
+                          </Button>
+                        )
+                      }
+                    />
+                  </td>
+                </tr>
+              )}
+              {servicios.map((s) =>
+                editing?.id === s.id ? (
+                  <tr key={s.id} className="border-b border-border last:border-0">
+                    <td colSpan={COLS} className="p-4">
+                      <ServicioForm
+                        servicio={s}
+                        puestos={puestos}
+                        config={config}
+                        onDone={() => setEditing(null)}
+                        onCancel={() => setEditing(null)}
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  <ServicioRow key={s.id} servicio={s} config={config} onEdit={() => setEditing(s)} />
+                )
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </div>
   );
 }
@@ -105,43 +157,40 @@ function ServicioRow({
   const modalidades = parseModalidades(servicio.modalidadesJson);
 
   return (
-    <Card>
-      <CardContent className="flex flex-wrap items-start justify-between gap-4 p-5">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h4 className="font-medium text-text">{servicio.nombre}</h4>
-            <Badge tone="primary">{SERVICIO_CATEGORIA_LABELS[servicio.categoria as keyof typeof SERVICIO_CATEGORIA_LABELS]}</Badge>
-            {!servicio.activo && <Badge tone="danger">Inactivo</Badge>}
-            {bajoMinimo && <Badge tone="danger">Por debajo del salario mínimo vigente</Badge>}
-          </div>
-          {servicio.descripcion && (
-            <p className="mt-1 text-sm text-text-dim">{servicio.descripcion}</p>
-          )}
-          <p className="mt-2 text-xs text-text-muted">
-            {servicio.puesto ? "Puesto" : "Sueldo capturado (sin puesto formal)"}:{" "}
-            {nombrePuestoEfectivo(servicio)} · {servicio.personalPorUnidad} persona(s) por
-            unidad · Modalidades: {modalidades.map((m) => MODALIDAD_LABELS[m]).join(", ")}
-          </p>
-          {(servicio.incluyeUniforme || servicio.incluyeMaterial) && (
-            <p className="mt-1 text-xs text-text-dim">
-              {servicio.incluyeUniforme && "Incluye uniforme"}
-              {servicio.incluyeUniforme && servicio.incluyeMaterial && " · "}
-              {servicio.incluyeMaterial && "Incluye material"}
-            </p>
-          )}
+    <tr className="border-b border-border last:border-0">
+      <td className="px-5 py-3">
+        <div className="flex items-center gap-2">
+          <p className="font-medium text-text">{servicio.nombre}</p>
+          {!servicio.activo && <Badge tone="danger">Inactivo</Badge>}
         </div>
-
-        <div className="text-right">
-          <p className="text-xs uppercase tracking-wide text-text-dim">Costo real / mes</p>
-          <p className="font-mono text-lg font-semibold tabular-nums text-primary">
+        {servicio.descripcion && <p className="mt-0.5 text-xs text-text-dim">{servicio.descripcion}</p>}
+        {(servicio.incluyeUniforme || servicio.incluyeMaterial) && (
+          <p className="mt-0.5 text-xs text-text-dim">
+            {servicio.incluyeUniforme && "Incluye uniforme"}
+            {servicio.incluyeUniforme && servicio.incluyeMaterial && " · "}
+            {servicio.incluyeMaterial && "Incluye material"}
+          </p>
+        )}
+      </td>
+      <td className="px-5 py-3">
+        <Badge tone="neutral">{SERVICIO_CATEGORIA_LABELS[servicio.categoria as keyof typeof SERVICIO_CATEGORIA_LABELS]}</Badge>
+      </td>
+      <td className="px-5 py-3 text-text-muted">
+        {nombrePuestoEfectivo(servicio)}
+        <span className="block text-xs text-text-dim">{servicio.personalPorUnidad} persona(s)/unidad</span>
+      </td>
+      <td className="px-5 py-3 text-text-muted">{modalidades.map((m) => MODALIDAD_LABELS[m]).join(", ")}</td>
+      <td className="px-5 py-3 text-right">
+        <div className="flex items-center justify-end gap-1.5">
+          {bajoMinimo && <SalarioBajoAviso salarioMinimoMensual={config.salarioMinimoMensual} />}
+          <p className="font-mono text-sm font-semibold tabular-nums text-primary">
             {formatCurrency(costo.costoRealMensual)}
           </p>
-          <p className="mt-0.5 text-xs text-text-dim">
-            {formatCurrency(costo.costoRealHora)}/hora
-          </p>
         </div>
-
-        <div className="flex shrink-0 gap-2">
+        <p className="text-xs text-text-dim">{formatCurrency(costo.costoRealHora)}/hora</p>
+      </td>
+      <td className="px-5 py-3 text-right">
+        <div className="flex justify-end gap-2">
           <Button size="sm" variant="ghost" onClick={onEdit}>
             Editar
           </Button>
@@ -153,8 +202,8 @@ function ServicioRow({
             {servicio.activo ? "Desactivar" : "Activar"}
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </td>
+    </tr>
   );
 }
 
@@ -327,13 +376,9 @@ function ServicioForm({
                 </div>
               )}
 
-              {bajoMinimo && (
-                <Badge tone="danger" className="mt-3">
-                  Por debajo del salario mínimo vigente ({formatCurrency(config.salarioMinimoMensual)}/mes)
-                </Badge>
-              )}
               {costoPreview && (
-                <p className="mt-2 text-xs text-text-dim">
+                <p className="mt-2 flex items-center gap-1.5 text-xs text-text-dim">
+                  {bajoMinimo && <SalarioBajoAviso salarioMinimoMensual={config.salarioMinimoMensual} />}
                   Costo real estimado (sin uniforme/material):{" "}
                   <span className="font-mono text-text-muted">
                     {formatCurrency(costoPreview.costoRealMensual)}/mes ·{" "}

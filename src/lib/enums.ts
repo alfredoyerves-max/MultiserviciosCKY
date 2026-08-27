@@ -141,3 +141,20 @@ export const ESTADO_ACTIVO_LABELS: Record<EstadoActivo, string> = {
   EN_REPARACION: "En reparación",
   DADO_DE_BAJA: "Dado de baja",
 };
+
+export const TIPOS_EVENTO_ACTIVO = ["CAMBIO_ESTADO", "INCIDENTE", "NOTA"] as const;
+export const tipoEventoActivoSchema = z.enum(TIPOS_EVENTO_ACTIVO);
+export type TipoEventoActivo = z.infer<typeof tipoEventoActivoSchema>;
+
+export const TIPO_EVENTO_ACTIVO_LABELS: Record<TipoEventoActivo, string> = {
+  CAMBIO_ESTADO: "Cambio de estado",
+  INCIDENTE: "Incidente",
+  NOTA: "Nota",
+};
+
+/** Subconjunto de tipos que el usuario puede elegir al "Registrar
+ *  incidente" — CAMBIO_ESTADO nunca se captura manualmente, siempre lo
+ *  genera el sistema (ver registrarEventoManual en lib/data/activos.ts). */
+export const TIPOS_EVENTO_ACTIVO_MANUAL = ["INCIDENTE", "NOTA"] as const;
+export const tipoEventoActivoManualSchema = z.enum(TIPOS_EVENTO_ACTIVO_MANUAL);
+export type TipoEventoActivoManual = z.infer<typeof tipoEventoActivoManualSchema>;

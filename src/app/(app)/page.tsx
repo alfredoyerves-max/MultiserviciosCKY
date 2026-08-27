@@ -3,6 +3,7 @@ import { StatTile } from "@/components/ui/stat-tile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { ESTADO_COTIZACION_LABELS, type EstadoCotizacion } from "@/lib/enums";
 import Link from "next/link";
@@ -61,8 +62,11 @@ export default async function DashboardPage() {
             <tbody>
               {cotizaciones.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-5 py-8 text-center text-text-dim">
-                    Sin cotizaciones todavía.
+                  <td colSpan={5}>
+                    <EmptyState
+                      title="Sin cotizaciones todavía."
+                      action={<ButtonLink href="/cotizaciones/nueva" size="sm">+ Nueva cotización</ButtonLink>}
+                    />
                   </td>
                 </tr>
               )}

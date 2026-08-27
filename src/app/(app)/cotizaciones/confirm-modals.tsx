@@ -168,7 +168,7 @@ export function ConfirmarEliminacionModal({
   );
 
   return (
-    <Modal onClose={onClose}>
+    <Modal onClose={onClose} danger>
       <form action={formAction} className="flex flex-col gap-4 p-5">
         <input type="hidden" name="cotizacionId" value={cotizacion.id} />
         <div>

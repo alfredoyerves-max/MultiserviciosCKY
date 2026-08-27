@@ -7,6 +7,7 @@ import { EliminarCotizacionButton } from "./eliminar-cotizacion-button";
 import { puedeEliminarseCotizacion } from "@/lib/cotizacionRules";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency, formatDate } from "@/lib/format";
 import {
   ESTADO_COTIZACION_LABELS,
@@ -23,11 +24,6 @@ import Link from "next/link";
 
 const ESTADOS_ACTIVOS: EstadoCotizacion[] = ["BORRADOR", "ENVIADA"];
 const ESTADOS_HISTORICOS: EstadoCotizacion[] = ["ACEPTADA", "RECHAZADA"];
-
-const TIPO_COTIZACION_TONE: Record<TipoCotizacion, "primary" | "secondary"> = {
-  SERVICIO: "primary",
-  MATERIAL: "secondary",
-};
 
 type CotizacionConCliente = Cotizacion & {
   cliente: Cliente;
@@ -204,8 +200,8 @@ export function KanbanBoard({
             <tbody>
               {historicas.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-text-dim">
-                    Sin cotizaciones históricas para este filtro.
+                  <td colSpan={7}>
+                    <EmptyState title="Sin cotizaciones históricas para este filtro." />
                   </td>
                 </tr>
               )}
@@ -229,7 +225,7 @@ function KanbanCard({ cotizacion }: { cotizacion: CotizacionConCliente }) {
         vigencia?.tone === "danger"
           ? "border-danger-strong/50"
           : vigencia?.tone === "warning"
-            ? "border-amber-500/40"
+            ? "border-warning/40"
             : undefined
       }
     >
@@ -242,10 +238,8 @@ function KanbanCard({ cotizacion }: { cotizacion: CotizacionConCliente }) {
             {cotizacion.folio}
           </Link>
           <div className="flex flex-wrap items-center gap-1">
-            <Badge tone={TIPO_COTIZACION_TONE[cotizacion.tipo as TipoCotizacion]}>
-              {TIPO_COTIZACION_LABELS[cotizacion.tipo as TipoCotizacion]}
-            </Badge>
-            {cotizacion.esSoporte && <Badge tone="secondary">Soporte</Badge>}
+            <Badge tone="neutral">{TIPO_COTIZACION_LABELS[cotizacion.tipo as TipoCotizacion]}</Badge>
+            {cotizacion.esSoporte && <Badge tone="neutral">Soporte</Badge>}
           </div>
         </div>
 
@@ -304,9 +298,7 @@ function HistoricoRow({ cotizacion }: { cotizacion: CotizacionConCliente }) {
       </td>
       <td className="px-4 py-3 text-text">{cotizacion.cliente.nombreRazonSocial}</td>
       <td className="px-4 py-3">
-        <Badge tone={TIPO_COTIZACION_TONE[cotizacion.tipo as TipoCotizacion]}>
-          {TIPO_COTIZACION_LABELS[cotizacion.tipo as TipoCotizacion]}
-        </Badge>
+        <Badge tone="neutral">{TIPO_COTIZACION_LABELS[cotizacion.tipo as TipoCotizacion]}</Badge>
       </td>
       <td className="px-4 py-3 text-right font-mono tabular-nums text-text">
         {formatCurrency(cotizacion.netoARecibir)}

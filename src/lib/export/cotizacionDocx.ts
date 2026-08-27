@@ -383,16 +383,21 @@ function leyendaRetencionBlock(): Paragraph {
   });
 }
 
-/** Bloque de nota con título en acento (mismo criterio visual que
- *  PRESTADOR/CLIENTE) seguido del texto en párrafo normal — usado para
- *  condición de pago, condiciones comerciales y garantía/calidad. */
+const NOTE_BORDER = { left: { style: BorderStyle.SINGLE, size: 18, color: ACCENT, space: 8 } };
+
+/** Bloque de nota con título en acento seguido del texto en párrafo
+ *  normal — usado para condiciones comerciales, condiciones operativas y
+ *  garantía/calidad. Mismo borde lateral de acento que la leyenda de
+ *  retención (leyendaRetencionBlock), aplicado a ambos párrafos para que
+ *  la barra de color se lea continua a lo largo de todo el bloque. */
 function notaBlock(titulo: string, texto: string): Paragraph[] {
   return [
     new Paragraph({
       spacing: { before: 240, after: 60 },
+      border: NOTE_BORDER,
       children: [new TextRun({ text: titulo, bold: true, size: 15, color: ACCENT, characterSpacing: 8 })],
     }),
-    new Paragraph({ children: [new TextRun({ text: texto, size: 17, color: DARK })] }),
+    new Paragraph({ border: NOTE_BORDER, children: [new TextRun({ text: texto, size: 17, color: DARK })] }),
   ];
 }
 
@@ -410,6 +415,7 @@ function datosBancariosBlock(data: CotizacionExportData): Paragraph[] {
     (c) =>
       new Paragraph({
         spacing: { after: 40 },
+        border: NOTE_BORDER,
         children: [
           new TextRun({ text: `${c.banco} — Titular: `, size: 17, color: GRAY }),
           new TextRun({ text: c.titular, size: 17, color: DARK }),
@@ -428,6 +434,7 @@ function datosBancariosBlock(data: CotizacionExportData): Paragraph[] {
   return [
     new Paragraph({
       spacing: { before: 240, after: 60 },
+      border: NOTE_BORDER,
       children: [
         new TextRun({ text: "DATOS BANCARIOS Y MÉTODOS DE PAGO", bold: true, size: 15, color: ACCENT, characterSpacing: 8 }),
       ],
@@ -435,6 +442,7 @@ function datosBancariosBlock(data: CotizacionExportData): Paragraph[] {
     ...cuentaLineas,
     new Paragraph({
       spacing: { before: 40 },
+      border: NOTE_BORDER,
       children: [
         new TextRun({ text: "Métodos de pago aceptados: ", size: 17, color: GRAY }),
         new TextRun({ text: metodosPagoLabel(data.metodosPago), size: 17, color: DARK }),
@@ -508,8 +516,8 @@ export async function generarCotizacionDocx(data: CotizacionExportData): Promise
           new Paragraph({ spacing: { before: 260 }, children: [] }),
           fiscalBlock(data),
           ...(esPersonaMoral ? [leyendaRetencionBlock()] : []),
-          ...notaBlock("CONDICIÓN DE PAGO", data.condicionPago),
           ...notaBlock("CONDICIONES COMERCIALES", data.condicionesComerciales),
+          ...notaBlock("CONDICIONES OPERATIVAS", data.condicionesOperativas),
           ...datosBancariosBlock(data),
           ...notaBlock("GARANTÍA Y CALIDAD", data.garantia),
           firmasBlock(data),

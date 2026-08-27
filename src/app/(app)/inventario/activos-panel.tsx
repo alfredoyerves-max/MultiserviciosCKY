@@ -6,6 +6,7 @@ import { initialFormState } from "./form-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Field, FieldError, FieldLabel, Input, Select, Textarea } from "@/components/ui/input";
 import { formatCurrency, formatDate } from "@/lib/format";
 import {
@@ -17,12 +18,15 @@ import {
   type EstadoActivo,
 } from "@/lib/enums";
 import type { Activo } from "@/generated/prisma/client";
+import Link from "next/link";
 
 const ESTADO_TONE: Record<EstadoActivo, "success" | "warning" | "neutral"> = {
   FUNCIONAL: "success",
   EN_REPARACION: "warning",
   DADO_DE_BAJA: "neutral",
 };
+
+const COLS = 7;
 
 export function ActivosPanel({ activos }: { activos: Activo[] }) {
   const [editing, setEditing] = useState<Activo | null>(null);
@@ -78,60 +82,96 @@ export function ActivosPanel({ activos }: { activos: Activo[] }) {
 
       {creating && <ActivoForm onDone={() => setCreating(false)} onCancel={() => setCreating(false)} />}
 
-      <div className="flex flex-col gap-3">
-        {activosFiltrados.length === 0 && (
-          <Card className="p-6 text-center text-sm text-text-dim">
-            {activos.length === 0 ? "Sin activos todavía." : "Ningún activo coincide con el filtro."}
-          </Card>
-        )}
-        {activosFiltrados.map((a) =>
-          editing?.id === a.id ? (
-            <ActivoForm key={a.id} activo={a} onDone={() => setEditing(null)} onCancel={() => setEditing(null)} />
-          ) : (
-            <ActivoRow key={a.id} activo={a} onEdit={() => setEditing(a)} />
-          )
-        )}
-      </div>
+      <Card className="p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-dim">
+                <th className="px-5 py-3 font-medium">Nombre</th>
+                <th className="px-5 py-3 font-medium">Categoría</th>
+                <th className="px-5 py-3 font-medium">Estado</th>
+                <th className="px-5 py-3 text-right font-medium">Valor de adquisición</th>
+                <th className="px-5 py-3 font-medium">Adquirido</th>
+                <th className="px-5 py-3 font-medium">Proveedor</th>
+                <th className="px-5 py-3 text-right font-medium">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activosFiltrados.length === 0 && (
+                <tr>
+                  <td colSpan={COLS}>
+                    {activos.length === 0 ? (
+                      <EmptyState
+                        title="Sin activos todavía."
+                        action={
+                          !creating && (
+                            <Button size="sm" onClick={() => setCreating(true)}>
+                              + Nuevo activo
+                            </Button>
+                          )
+                        }
+                      />
+                    ) : (
+                      <EmptyState title="Ningún activo coincide con el filtro." />
+                    )}
+                  </td>
+                </tr>
+              )}
+              {activosFiltrados.map((a) =>
+                editing?.id === a.id ? (
+                  <tr key={a.id} className="border-b border-border last:border-0">
+                    <td colSpan={COLS} className="p-4">
+                      <ActivoForm activo={a} onDone={() => setEditing(null)} onCancel={() => setEditing(null)} />
+                    </td>
+                  </tr>
+                ) : (
+                  <ActivoRow key={a.id} activo={a} onEdit={() => setEditing(a)} />
+                )
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </div>
   );
 }
 
 function ActivoRow({ activo, onEdit }: { activo: Activo; onEdit: () => void }) {
   return (
-    <Card>
-      <CardContent className="flex flex-wrap items-start justify-between gap-4 p-5">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h4 className="font-medium text-text">{activo.nombre}</h4>
-            <Badge tone="primary">{ACTIVO_CATEGORIA_LABELS[activo.categoria as ActivoCategoria]}</Badge>
-            <Badge tone={ESTADO_TONE[activo.estado as EstadoActivo]}>
-              {ESTADO_ACTIVO_LABELS[activo.estado as EstadoActivo]}
-            </Badge>
-          </div>
-          {activo.descripcion && <p className="mt-1 text-sm text-text-dim">{activo.descripcion}</p>}
-          <p className="mt-2 text-xs text-text-muted">
-            Adquirido {formatDate(activo.fechaAdquisicion)}
-            {activo.proveedor && <> · Proveedor: {activo.proveedor}</>}
-            {activo.numeroFactura && <> · Factura: {activo.numeroFactura}</>}
-            {activo.estado === "DADO_DE_BAJA" && activo.fechaBaja && <> · Baja: {formatDate(activo.fechaBaja)}</>}
-          </p>
-          {activo.notas && <p className="mt-1 text-xs text-text-dim">{activo.notas}</p>}
-        </div>
-
-        <div className="text-right">
-          <p className="text-xs uppercase tracking-wide text-text-dim">Valor de adquisición</p>
-          <p className="font-mono text-lg font-semibold tabular-nums text-primary">
-            {formatCurrency(activo.valorAdquisicion)}
-          </p>
-        </div>
-
-        <div className="flex shrink-0 gap-2">
+    <tr className="border-b border-border last:border-0">
+      <td className="px-5 py-3">
+        <Link href={`/inventario/activos/${activo.id}`} className="font-medium text-primary hover:underline">
+          {activo.nombre}
+        </Link>
+        {activo.descripcion && <p className="mt-0.5 text-xs text-text-dim">{activo.descripcion}</p>}
+      </td>
+      <td className="px-5 py-3">
+        <Badge tone="neutral">{ACTIVO_CATEGORIA_LABELS[activo.categoria as ActivoCategoria]}</Badge>
+      </td>
+      <td className="px-5 py-3">
+        <Badge tone={ESTADO_TONE[activo.estado as EstadoActivo]}>
+          {ESTADO_ACTIVO_LABELS[activo.estado as EstadoActivo]}
+        </Badge>
+      </td>
+      <td className="px-5 py-3 text-right font-mono tabular-nums text-text">
+        {formatCurrency(activo.valorAdquisicion)}
+      </td>
+      <td className="px-5 py-3 text-text-muted">{formatDate(activo.fechaAdquisicion)}</td>
+      <td className="px-5 py-3 text-text-muted">{activo.proveedor || "—"}</td>
+      <td className="px-5 py-3 text-right">
+        <div className="flex justify-end gap-2">
+          <Link
+            href={`/inventario/activos/${activo.id}`}
+            className="inline-flex h-8 items-center rounded-lg px-3 text-sm font-medium text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
+          >
+            Historial
+          </Link>
           <Button size="sm" variant="ghost" onClick={onEdit}>
             Editar
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </td>
+    </tr>
   );
 }
 
@@ -152,7 +192,6 @@ function ActivoForm({
     },
     initialFormState
   );
-  const [estado, setEstado] = useState<EstadoActivo>((activo?.estado as EstadoActivo) ?? "FUNCIONAL");
 
   return (
     <Card className="border-primary/30">
@@ -187,7 +226,7 @@ function ActivoForm({
             <Textarea id="descripcion" name="descripcion" defaultValue={activo?.descripcion ?? ""} />
           </Field>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="fechaAdquisicion">Fecha de adquisición</FieldLabel>
               <Input
@@ -212,26 +251,16 @@ function ActivoForm({
               />
               <FieldError>{state.fieldErrors?.valorAdquisicion}</FieldError>
             </Field>
-            <Field>
-              <FieldLabel htmlFor="estado">Estado</FieldLabel>
-              <Select
-                id="estado"
-                name="estado"
-                value={estado}
-                onChange={(e) => setEstado(e.target.value as EstadoActivo)}
-                required
-              >
-                {ESTADOS_ACTIVO.map((e) => (
-                  <option key={e} value={e}>
-                    {ESTADO_ACTIVO_LABELS[e]}
-                  </option>
-                ))}
-              </Select>
-              <FieldError>{state.fieldErrors?.estado}</FieldError>
-            </Field>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {activo && (
+            <p className="text-xs text-text-dim">
+              El estado (Funcional / En reparación / Dado de baja) se cambia desde el detalle del
+              activo, no aquí — así queda siempre en su historial.
+            </p>
+          )}
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="proveedor">Proveedor (opcional)</FieldLabel>
               <Input id="proveedor" name="proveedor" defaultValue={activo?.proveedor ?? ""} />
@@ -240,19 +269,6 @@ function ActivoForm({
               <FieldLabel htmlFor="numeroFactura">Número de factura (opcional)</FieldLabel>
               <Input id="numeroFactura" name="numeroFactura" defaultValue={activo?.numeroFactura ?? ""} />
             </Field>
-            {estado === "DADO_DE_BAJA" && (
-              <Field>
-                <FieldLabel htmlFor="fechaBaja">Fecha de baja</FieldLabel>
-                <Input
-                  id="fechaBaja"
-                  name="fechaBaja"
-                  type="date"
-                  defaultValue={activo?.fechaBaja ? new Date(activo.fechaBaja).toISOString().slice(0, 10) : ""}
-                  required
-                />
-                <FieldError>{state.fieldErrors?.fechaBaja}</FieldError>
-              </Field>
-            )}
           </div>
 
           <Field>

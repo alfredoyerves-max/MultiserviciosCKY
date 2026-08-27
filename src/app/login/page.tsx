@@ -22,8 +22,7 @@ export default async function LoginPage() {
               priority
             />
           </div>
-          <h1 className="text-xl font-semibold text-text">Quotly</h1>
-          <p className="mt-1 text-sm text-text-muted">Carlos Yerves Multiservicios</p>
+          <h1 className="text-xl font-semibold text-text">Carlos Yerves Multiservicios</h1>
         </div>
         <LoginForm />
       </div>

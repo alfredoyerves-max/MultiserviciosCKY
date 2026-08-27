@@ -103,32 +103,46 @@ const styles = StyleSheet.create({
   totalValue: { fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK },
 
   legalBox: {
-    marginTop: 14,
+    marginTop: 10,
     borderWidth: 1,
     borderColor: BORDER,
     borderLeftWidth: 3,
     borderLeftColor: ACCENT,
     borderRadius: 2,
-    padding: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
   },
-  legalText: { fontSize: 7.5, color: GRAY, fontStyle: "italic", lineHeight: 1.5 },
+  legalText: { fontSize: 7.5, color: GRAY, fontStyle: "italic", lineHeight: 1.4 },
 
-  noteBlock: { marginTop: 13 },
-  noteTitle: { fontSize: 8, fontFamily: "Helvetica-Bold", color: ACCENT, letterSpacing: 0.8, marginBottom: 4 },
-  noteText: { fontSize: 8.5, color: DARK, lineHeight: 1.5 },
+  // Leyendas de condiciones/garantía — mismo tratamiento de recuadro con
+  // borde lateral de acento que legalBox, para que se lean como notas
+  // formales (no texto plano suelto), pero con texto normal (no itálica
+  // gris, reservada a la cita legal de retención).
+  noteBlock: {
+    marginTop: 7,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderLeftWidth: 3,
+    borderLeftColor: ACCENT,
+    borderRadius: 2,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  noteTitle: { fontSize: 7.5, fontFamily: "Helvetica-Bold", color: ACCENT, letterSpacing: 0.8, marginBottom: 3 },
+  noteText: { fontSize: 8, color: DARK, lineHeight: 1.35 },
 
-  bankRow: { fontSize: 8.5, color: DARK, marginBottom: 3, lineHeight: 1.4 },
+  bankRow: { fontSize: 8, color: DARK, marginBottom: 2, lineHeight: 1.3 },
   bankLabel: { color: GRAY },
-  methodsRow: { fontSize: 8.5, color: DARK, marginTop: 4 },
+  methodsRow: { fontSize: 8, color: DARK, marginTop: 3 },
 
-  signWrap: { marginTop: 22, flexDirection: "row", justifyContent: "space-between" },
+  signWrap: { marginTop: 16, flexDirection: "row", justifyContent: "space-between" },
   signCol: { width: "44%" },
-  signSpacer: { height: 16 },
-  signLine: { borderTopWidth: 1, borderTopColor: DARK, marginBottom: 6 },
+  signSpacer: { height: 10 },
+  signLine: { borderTopWidth: 1, borderTopColor: DARK, marginBottom: 5 },
   signLabel: { fontSize: 7, color: GRAY, letterSpacing: 0.8 },
   signValue: { fontSize: 9.5, fontFamily: "Helvetica-Bold", color: DARK, marginTop: 3 },
 
-  footer: { marginTop: 18, borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 8 },
+  footer: { marginTop: 12, borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 6 },
   footerText: { fontSize: 7.5, color: GRAY_SOFT },
 });
 
@@ -332,8 +346,8 @@ function CotizacionPdfDocument({ data }: { data: CotizacionExportData }) {
             </View>
           )}
 
-          <NoteBlock title="CONDICIÓN DE PAGO" text={data.condicionPago} />
           <NoteBlock title="CONDICIONES COMERCIALES" text={data.condicionesComerciales} />
+          <NoteBlock title="CONDICIONES OPERATIVAS" text={data.condicionesOperativas} />
           <DatosBancariosBlock data={data} />
           <NoteBlock title="GARANTÍA Y CALIDAD" text={data.garantia} />
 

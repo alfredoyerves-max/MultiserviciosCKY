@@ -6,6 +6,7 @@ import { initialFormState } from "./form-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel, Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency } from "@/lib/format";
 import type { Puesto } from "@/generated/prisma/client";
 
@@ -46,8 +47,17 @@ export function PuestosPanel({ puestos }: { puestos: Puesto[] }) {
             <tbody>
               {puestos.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-5 py-6 text-center text-text-dim">
-                    Sin puestos todavía.
+                  <td colSpan={3}>
+                    <EmptyState
+                      title="Sin puestos todavía."
+                      action={
+                        !creating && (
+                          <Button size="sm" onClick={() => setCreating(true)}>
+                            + Nuevo puesto
+                          </Button>
+                        )
+                      }
+                    />
                   </td>
                 </tr>
               )}
