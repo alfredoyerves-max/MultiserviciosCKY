@@ -138,13 +138,19 @@ export function buildCotizacionExportData(
     totalAPagar: cotizacion.totalAPagar,
     netoARecibir: cotizacion.netoARecibir,
 
+    // Cada leyenda tiene su propia casilla "Incluir en el documento"
+    // (Configuración > Leyendas) — si está apagada, se resuelve aquí a ""
+    // para que el exportador (notaBlock/NoteBlock) omita el bloque
+    // completo, igual que si el texto estuviera vacío.
     condicionesComerciales: esServicio
-      ? config.condicionesComercialesServicio
-      : config.condicionesComercialesMaterial,
+      ? (config.mostrarCondicionesComercialesServicio ? config.condicionesComercialesServicio : "")
+      : (config.mostrarCondicionesComercialesMaterial ? config.condicionesComercialesMaterial : ""),
     condicionesOperativas: esServicio
-      ? config.condicionesOperativasServicio
-      : config.condicionesOperativasMaterial,
-    garantia: esServicio ? config.garantiaServicio : config.garantiaMaterial,
+      ? (config.mostrarCondicionesOperativasServicio ? config.condicionesOperativasServicio : "")
+      : (config.mostrarCondicionesOperativasMaterial ? config.condicionesOperativasMaterial : ""),
+    garantia: esServicio
+      ? (config.mostrarGarantiaServicio ? config.garantiaServicio : "")
+      : (config.mostrarGarantiaMaterial ? config.garantiaMaterial : ""),
 
     cuentasBancarias: cuentasBancariasActivas.map((c) => ({
       banco: c.banco,

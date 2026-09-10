@@ -60,6 +60,16 @@ export const PROTECTED_FISCAL_FIELDS = [
   "condicionesComercialesMaterial",
   "condicionesOperativasServicio",
   "condicionesOperativasMaterial",
+
+  // Interruptor por leyenda — si está apagado, el bloque no aparece en el
+  // documento exportado para ese tipo, aunque el texto siga guardado.
+  // Mismo candado que el resto de esta sección.
+  "mostrarGarantiaServicio",
+  "mostrarGarantiaMaterial",
+  "mostrarCondicionesComercialesServicio",
+  "mostrarCondicionesComercialesMaterial",
+  "mostrarCondicionesOperativasServicio",
+  "mostrarCondicionesOperativasMaterial",
 ] as const;
 
 const systemConfigFieldsSchema = z.object({
@@ -101,12 +111,23 @@ const systemConfigFieldsSchema = z.object({
   aceptaTransferencia: boolFlag,
   aceptaCheque: boolFlag,
 
-  garantiaServicio: z.string().trim().min(1, "Requerido"),
-  garantiaMaterial: z.string().trim().min(1, "Requerido"),
-  condicionesComercialesServicio: z.string().trim().min(1, "Requerido"),
-  condicionesComercialesMaterial: z.string().trim().min(1, "Requerido"),
-  condicionesOperativasServicio: z.string().trim().min(1, "Requerido"),
-  condicionesOperativasMaterial: z.string().trim().min(1, "Requerido"),
+  // Sin .min(1): el dueño puede dejar cualquier leyenda en blanco a
+  // propósito — un texto vacío simplemente omite el bloque completo en el
+  // documento exportado (ver notaBlock/NoteBlock en los exportadores),
+  // nunca un encabezado huérfano sin contenido.
+  garantiaServicio: z.string().trim(),
+  garantiaMaterial: z.string().trim(),
+  condicionesComercialesServicio: z.string().trim(),
+  condicionesComercialesMaterial: z.string().trim(),
+  condicionesOperativasServicio: z.string().trim(),
+  condicionesOperativasMaterial: z.string().trim(),
+
+  mostrarGarantiaServicio: boolFlag,
+  mostrarGarantiaMaterial: boolFlag,
+  mostrarCondicionesComercialesServicio: boolFlag,
+  mostrarCondicionesComercialesMaterial: boolFlag,
+  mostrarCondicionesOperativasServicio: boolFlag,
+  mostrarCondicionesOperativasMaterial: boolFlag,
 });
 
 export const systemConfigSchema = systemConfigFieldsSchema.partial(

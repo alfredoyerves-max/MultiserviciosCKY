@@ -230,6 +230,8 @@ export function ConfigForm({
           name="condicionesComercialesServicio"
           label="Condiciones comerciales — Servicio"
           defaultValue={config.condicionesComercialesServicio}
+          mostrarName="mostrarCondicionesComercialesServicio"
+          mostrarDefaultChecked={config.mostrarCondicionesComercialesServicio}
           textarea
         />
         <LockedField
@@ -237,6 +239,8 @@ export function ConfigForm({
           name="condicionesComercialesMaterial"
           label="Condiciones comerciales — Material"
           defaultValue={config.condicionesComercialesMaterial}
+          mostrarName="mostrarCondicionesComercialesMaterial"
+          mostrarDefaultChecked={config.mostrarCondicionesComercialesMaterial}
           textarea
         />
         <LockedField
@@ -244,6 +248,8 @@ export function ConfigForm({
           name="condicionesOperativasServicio"
           label="Condiciones operativas — Servicio"
           defaultValue={config.condicionesOperativasServicio}
+          mostrarName="mostrarCondicionesOperativasServicio"
+          mostrarDefaultChecked={config.mostrarCondicionesOperativasServicio}
           textarea
         />
         <LockedField
@@ -251,6 +257,8 @@ export function ConfigForm({
           name="condicionesOperativasMaterial"
           label="Condiciones operativas — Material"
           defaultValue={config.condicionesOperativasMaterial}
+          mostrarName="mostrarCondicionesOperativasMaterial"
+          mostrarDefaultChecked={config.mostrarCondicionesOperativasMaterial}
           textarea
         />
         <LockedField
@@ -258,6 +266,8 @@ export function ConfigForm({
           name="garantiaServicio"
           label="Garantía / calidad — Servicio"
           defaultValue={config.garantiaServicio}
+          mostrarName="mostrarGarantiaServicio"
+          mostrarDefaultChecked={config.mostrarGarantiaServicio}
           textarea
         />
         <LockedField
@@ -265,6 +275,8 @@ export function ConfigForm({
           name="garantiaMaterial"
           label="Garantía / calidad — Material"
           defaultValue={config.garantiaMaterial}
+          mostrarName="mostrarGarantiaMaterial"
+          mostrarDefaultChecked={config.mostrarGarantiaMaterial}
           textarea
         />
       </FiscalSection>
@@ -441,7 +453,9 @@ function NumField({
 /** Igual que NumField pero para texto/textarea (identidad del prestador,
  *  leyendas de la cotización) — mismo criterio de candado: bloqueado
  *  omite `name` por completo, así que un envío sin desbloquear no toca
- *  el campo en el servidor. */
+ *  el campo en el servidor. `mostrarName`/`mostrarDefaultChecked`
+ *  (opcionales) agregan la casilla "Incluir en el documento" junto al
+ *  label — solo la usan las 6 leyendas de la cotización. */
 function LockedField({
   name,
   label,
@@ -451,6 +465,8 @@ function LockedField({
   required = false,
   textarea = false,
   className,
+  mostrarName,
+  mostrarDefaultChecked,
 }: {
   name: string;
   label: string;
@@ -460,11 +476,21 @@ function LockedField({
   required?: boolean;
   textarea?: boolean;
   className?: string;
+  mostrarName?: string;
+  mostrarDefaultChecked?: boolean;
 }) {
   if (locked) {
     return (
       <Field className={className}>
-        <FieldLabel>{label}</FieldLabel>
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <FieldLabel className="mb-0">{label}</FieldLabel>
+          {mostrarName && (
+            <span className="flex items-center gap-1.5 text-[11px] font-medium text-text-dim">
+              <span className={`h-2 w-2 rounded-full ${mostrarDefaultChecked ? "bg-success-soft" : "bg-text-dim"}`} />
+              {mostrarDefaultChecked ? "Incluida" : "Oculta"}
+            </span>
+          )}
+        </div>
         <div className="min-h-10 whitespace-pre-wrap rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-muted">
           {defaultValue || "—"}
         </div>
@@ -474,7 +500,12 @@ function LockedField({
 
   return (
     <Field className={className}>
-      <FieldLabel htmlFor={name}>{label}</FieldLabel>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <FieldLabel className="mb-0" htmlFor={name}>{label}</FieldLabel>
+        {mostrarName && (
+          <MostrarLeyendaCheckbox name={mostrarName} defaultChecked={mostrarDefaultChecked ?? true} />
+        )}
+      </div>
       {textarea ? (
         <Textarea id={name} name={name} defaultValue={defaultValue} required={required} />
       ) : (
@@ -522,6 +553,26 @@ function CheckboxField({
       />
       <input type="hidden" name={name} value={checked ? "on" : "off"} />
       {label}
+    </label>
+  );
+}
+
+/** Igual que CheckboxField pero compacto e inline, para "Incluir en el
+ *  documento" junto al label de cada una de las 6 leyendas — mismo patrón
+ *  de input oculto "on"/"off" (nunca ausente cuando está desbloqueada). */
+function MostrarLeyendaCheckbox({ name, defaultChecked }: { name: string; defaultChecked: boolean }) {
+  const [checked, setChecked] = useState(defaultChecked);
+
+  return (
+    <label className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-text-dim">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => setChecked(e.target.checked)}
+        className="h-3.5 w-3.5 rounded border-border-strong bg-surface-2 accent-[var(--color-primary)]"
+      />
+      <input type="hidden" name={name} value={checked ? "on" : "off"} />
+      Incluir en el documento
     </label>
   );
 }

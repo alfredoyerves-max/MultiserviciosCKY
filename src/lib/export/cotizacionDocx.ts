@@ -391,6 +391,10 @@ const NOTE_BORDER = { left: { style: BorderStyle.SINGLE, size: 18, color: ACCENT
  *  retención (leyendaRetencionBlock), aplicado a ambos párrafos para que
  *  la barra de color se lea continua a lo largo de todo el bloque. */
 function notaBlock(titulo: string, texto: string): Paragraph[] {
+  // Texto vacío (leyenda borrada, o su casilla "Incluir en el documento"
+  // desmarcada — cotizacionData.ts ya resuelve eso a "") -> el bloque
+  // completo desaparece, nunca un encabezado huérfano sin contenido.
+  if (texto.trim() === "") return [];
   return [
     new Paragraph({
       spacing: { before: 240, after: 60 },

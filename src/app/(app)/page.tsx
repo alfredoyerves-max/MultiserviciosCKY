@@ -122,17 +122,17 @@ export default async function DashboardPage({
               </tr>
             </thead>
             <tbody>
-              {cotizaciones.length === 0 && (
+              {delRango.length === 0 && (
                 <tr>
                   <td colSpan={5}>
                     <EmptyState
-                      title="Sin cotizaciones todavía."
+                      title={vista === "anual" ? `Sin cotizaciones en ${anio}.` : "Sin cotizaciones este mes."}
                       action={<ButtonLink href="/cotizaciones/nueva" size="sm">+ Nueva cotización</ButtonLink>}
                     />
                   </td>
                 </tr>
               )}
-              {cotizaciones.slice(0, 8).map((c) => (
+              {delRango.slice(0, 8).map((c) => (
                 <tr key={c.id} className="border-b border-border last:border-0 hover:bg-surface-2">
                   <td className="px-5 py-3">
                     <Link href={`/cotizaciones/${c.id}`} className="font-mono text-primary hover:underline">

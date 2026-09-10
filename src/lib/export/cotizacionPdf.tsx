@@ -211,6 +211,10 @@ const LEYENDA_RETENCION =
   "De conformidad con el Artículo 113-J de la Ley del ISR, al ser usted Persona Moral, se aplicará la retención obligatoria del 1.25% de ISR sobre el subtotal de esta operación. Dicho monto se reflejará descontado en el total neto de su factura para que proceda con su entero directo al SAT.";
 
 function NoteBlock({ title, text }: { title: string; text: string }) {
+  // Texto vacío (leyenda borrada, o su casilla "Incluir en el documento"
+  // desmarcada — cotizacionData.ts ya resuelve eso a "") -> el bloque
+  // completo desaparece, nunca un encabezado huérfano sin contenido.
+  if (text.trim() === "") return null;
   return (
     <View style={styles.noteBlock}>
       <Text style={styles.noteTitle}>{title}</Text>
