@@ -20,9 +20,12 @@ export function AbonoForm({
   }, [state.ok]);
 
   return (
-    <form ref={formRef} action={formAction} className="flex flex-wrap items-end gap-3">
+    // Grid de 2 columnas en móvil (fecha + monto lado a lado, nota y botón
+    // a todo el ancho debajo — cómodo con el teclado numérico/fecha del
+    // celular) — vuelve a la fila horizontal original desde sm.
+    <form ref={formRef} action={formAction} className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end">
       <input type="hidden" name="cuentaId" value={cuentaId} />
-      <Field>
+      <Field className="col-span-1 sm:w-40">
         <FieldLabel htmlFor="fecha">Fecha</FieldLabel>
         <Input
           id="fecha"
@@ -33,19 +36,19 @@ export function AbonoForm({
         />
         <FieldError>{state.fieldErrors?.fecha}</FieldError>
       </Field>
-      <Field>
+      <Field className="col-span-1 sm:w-40">
         <FieldLabel htmlFor="monto">Monto ($)</FieldLabel>
-        <Input id="monto" name="monto" type="number" step="0.01" min="0.01" required />
+        <Input id="monto" name="monto" type="number" step="0.01" min="0.01" inputMode="decimal" required />
         <FieldError>{state.fieldErrors?.monto}</FieldError>
       </Field>
-      <Field className="min-w-[160px] flex-1">
+      <Field className="col-span-2 sm:min-w-[160px] sm:flex-1">
         <FieldLabel htmlFor="nota">Nota (opcional)</FieldLabel>
         <Input id="nota" name="nota" placeholder="Ej. Anticipo" />
       </Field>
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" disabled={pending} className="col-span-2 sm:w-auto">
         {pending ? "Guardando…" : "+ Registrar abono"}
       </Button>
-      {state.error && <p className="w-full text-sm text-danger">{state.error}</p>}
+      {state.error && <p className="col-span-2 w-full text-sm text-danger sm:w-full">{state.error}</p>}
     </form>
   );
 }

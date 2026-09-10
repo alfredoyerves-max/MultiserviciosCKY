@@ -1,8 +1,11 @@
 import { cn } from "@/lib/cn";
 import type { InputHTMLAttributes, LabelHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 
+// text-base (16px) por debajo de sm: Safari en iOS hace zoom automático
+// al enfocar un input con font-size menor a 16px — con esto no aparece;
+// desde sm (escritorio) volvemos a text-sm para no engrosar los forms.
 const fieldBase =
-  "h-10 w-full rounded-lg border border-border-strong bg-surface-2 px-3 text-sm text-text placeholder:text-text-dim outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50";
+  "h-10 w-full rounded-lg border border-border-strong bg-surface-2 px-3 text-base sm:text-sm text-text placeholder:text-text-dim outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50";
 
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(fieldBase, className)} {...props} />;

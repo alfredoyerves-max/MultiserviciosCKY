@@ -37,16 +37,16 @@ export default async function ActivoDetallePage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-xl font-semibold text-text">{activo.nombre}</h1>
             <Badge tone="neutral">{ACTIVO_CATEGORIA_LABELS[activo.categoria as ActivoCategoria]}</Badge>
             <Badge tone={ESTADO_TONE[estado]}>{ESTADO_ACTIVO_LABELS[estado]}</Badge>
           </div>
           {activo.descripcion && <p className="mt-1 text-sm text-text-muted">{activo.descripcion}</p>}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {estado !== "DADO_DE_BAJA" && (
             <>
               <EstadoActivoSelect activoId={activo.id} estado={estado} />
@@ -76,7 +76,7 @@ export default async function ActivoDetallePage({
         <CardHeader>
           <CardTitle>Historial de eventos</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="overflow-x-auto p-0">
           {activo.eventos.length === 0 ? (
             <EmptyState title="Sin eventos todavía." />
           ) : (

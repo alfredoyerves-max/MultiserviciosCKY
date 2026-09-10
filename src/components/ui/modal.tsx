@@ -40,7 +40,11 @@ export function Modal({
       <div className="absolute inset-0" onClick={onClose} />
       <div
         className={cn(
-          "relative w-full max-w-sm rounded-2xl border bg-surface-1 shadow-xl",
+          // max-h + overflow: en pantallas chicas (o con el teclado del
+          // celular abierto, que reduce el viewport visual) un formulario
+          // largo no debe salirse ni cortar los botones — el modal entero
+          // hace scroll interno en vez de desbordar la pantalla.
+          "relative flex max-h-[calc(100dvh-2rem)] w-full max-w-sm flex-col overflow-y-auto rounded-2xl border bg-surface-1 shadow-xl",
           danger ? "border-danger-strong/50 border-t-4" : "border-border"
         )}
       >

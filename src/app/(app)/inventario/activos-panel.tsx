@@ -82,56 +82,67 @@ export function ActivosPanel({ activos }: { activos: Activo[] }) {
 
       {creating && <ActivoForm onDone={() => setCreating(false)} onCancel={() => setCreating(false)} />}
 
-      <Card className="p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-dim">
-                <th className="px-5 py-3 font-medium">Nombre</th>
-                <th className="px-5 py-3 font-medium">Categoría</th>
-                <th className="px-5 py-3 font-medium">Estado</th>
-                <th className="px-5 py-3 text-right font-medium">Valor de adquisición</th>
-                <th className="px-5 py-3 font-medium">Adquirido</th>
-                <th className="px-5 py-3 font-medium">Proveedor</th>
-                <th className="px-5 py-3 text-right font-medium">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {activosFiltrados.length === 0 && (
-                <tr>
-                  <td colSpan={COLS}>
-                    {activos.length === 0 ? (
-                      <EmptyState
-                        title="Sin activos todavía."
-                        action={
-                          !creating && (
-                            <Button size="sm" onClick={() => setCreating(true)}>
-                              + Nuevo activo
-                            </Button>
-                          )
-                        }
-                      />
-                    ) : (
-                      <EmptyState title="Ningún activo coincide con el filtro." />
-                    )}
-                  </td>
-                </tr>
-              )}
-              {activosFiltrados.map((a) =>
-                editing?.id === a.id ? (
-                  <tr key={a.id} className="border-b border-border last:border-0">
-                    <td colSpan={COLS} className="p-4">
-                      <ActivoForm activo={a} onDone={() => setEditing(null)} onCancel={() => setEditing(null)} />
-                    </td>
-                  </tr>
-                ) : (
-                  <ActivoRow key={a.id} activo={a} onEdit={() => setEditing(a)} />
+      {activosFiltrados.length === 0 ? (
+        <Card>
+          {activos.length === 0 ? (
+            <EmptyState
+              title="Sin activos todavía."
+              action={
+                !creating && (
+                  <Button size="sm" onClick={() => setCreating(true)}>
+                    + Nuevo activo
+                  </Button>
                 )
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+              }
+            />
+          ) : (
+            <EmptyState title="Ningún activo coincide con el filtro." />
+          )}
+        </Card>
+      ) : (
+        <>
+          <Card className="hidden p-0 md:block">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-dim">
+                    <th className="px-5 py-3 font-medium">Nombre</th>
+                    <th className="px-5 py-3 font-medium">Categoría</th>
+                    <th className="px-5 py-3 font-medium">Estado</th>
+                    <th className="px-5 py-3 text-right font-medium">Valor de adquisición</th>
+                    <th className="px-5 py-3 font-medium">Adquirido</th>
+                    <th className="px-5 py-3 font-medium">Proveedor</th>
+                    <th className="px-5 py-3 text-right font-medium">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activosFiltrados.map((a) =>
+                    editing?.id === a.id ? (
+                      <tr key={a.id} className="border-b border-border last:border-0">
+                        <td colSpan={COLS} className="p-4">
+                          <ActivoForm activo={a} onDone={() => setEditing(null)} onCancel={() => setEditing(null)} />
+                        </td>
+                      </tr>
+                    ) : (
+                      <ActivoRow key={a.id} activo={a} onEdit={() => setEditing(a)} />
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <div className="flex flex-col gap-3 md:hidden">
+            {activosFiltrados.map((a) =>
+              editing?.id === a.id ? (
+                <ActivoForm key={a.id} activo={a} onDone={() => setEditing(null)} onCancel={() => setEditing(null)} />
+              ) : (
+                <ActivoCardMobile key={a.id} activo={a} onEdit={() => setEditing(a)} />
+              )
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -172,6 +183,53 @@ function ActivoRow({ activo, onEdit }: { activo: Activo; onEdit: () => void }) {
         </div>
       </td>
     </tr>
+  );
+}
+
+/** Tarjeta de activo — misma información que ActivoRow, para la vista
+ *  apilada de celular (ver ActivosPanel, por debajo de md). */
+function ActivoCardMobile({ activo, onEdit }: { activo: Activo; onEdit: () => void }) {
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-2.5 p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <Link href={`/inventario/activos/${activo.id}`} className="font-medium text-primary hover:underline">
+              {activo.nombre}
+            </Link>
+            {activo.descripcion && <p className="mt-0.5 text-xs text-text-dim">{activo.descripcion}</p>}
+          </div>
+          <Badge tone={ESTADO_TONE[activo.estado as EstadoActivo]} className="shrink-0">
+            {ESTADO_ACTIVO_LABELS[activo.estado as EstadoActivo]}
+          </Badge>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Badge tone="neutral">{ACTIVO_CATEGORIA_LABELS[activo.categoria as ActivoCategoria]}</Badge>
+        </div>
+
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+          <dt className="text-text-dim">Valor de adquisición</dt>
+          <dd className="text-right font-mono tabular-nums text-text">{formatCurrency(activo.valorAdquisicion)}</dd>
+          <dt className="text-text-dim">Adquirido</dt>
+          <dd className="text-right text-text-muted">{formatDate(activo.fechaAdquisicion)}</dd>
+          <dt className="text-text-dim">Proveedor</dt>
+          <dd className="text-right text-text-muted">{activo.proveedor || "—"}</dd>
+        </dl>
+
+        <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-2.5">
+          <Link
+            href={`/inventario/activos/${activo.id}`}
+            className="inline-flex h-8 items-center rounded-lg px-3 text-sm font-medium text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
+          >
+            Historial
+          </Link>
+          <Button size="sm" variant="ghost" onClick={onEdit}>
+            Editar
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

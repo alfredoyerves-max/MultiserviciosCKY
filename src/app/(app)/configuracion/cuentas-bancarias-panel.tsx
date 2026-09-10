@@ -29,7 +29,7 @@ export function CuentasBancariasPanel({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs uppercase tracking-wide text-text-dim">Cuentas bancarias</p>
         {!locked && !creating && (
           <Button type="button" size="sm" variant="secondary" onClick={() => setCreating(true)}>

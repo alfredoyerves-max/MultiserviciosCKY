@@ -9,7 +9,7 @@ export default async function LoginPage() {
   if (await getSession()) redirect("/");
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
+    <div className="flex min-h-dvh items-center justify-center px-4 py-8">
       <div className="w-full max-w-sm">
         <div className="mb-7 flex flex-col items-center text-center">
           <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-white p-3 shadow-lg shadow-black/30 ring-1 ring-primary/20">

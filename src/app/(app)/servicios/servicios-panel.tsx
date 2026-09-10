@@ -117,9 +117,9 @@ export function ServiciosPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-text-muted">Catálogo de servicios ofrecidos.</p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <AnchorButton href="/api/servicios/export" download>
             Exportar a Excel
           </AnchorButton>
@@ -140,57 +140,80 @@ export function ServiciosPanel({
         />
       )}
 
-      <Card className="p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-dim">
-                <th className="px-5 py-3 font-medium">Servicio</th>
-                <th className="px-5 py-3 font-medium">Categoría</th>
-                <th className="px-5 py-3 font-medium">Puesto</th>
-                <th className="px-5 py-3 font-medium">Modalidades</th>
-                <th className="px-5 py-3 text-right font-medium">Costo real / mes</th>
-                <th className="px-5 py-3 text-right font-medium">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {servicios.length === 0 && (
-                <tr>
-                  <td colSpan={COLS}>
-                    <EmptyState
-                      title="Sin servicios todavía."
-                      action={
-                        !creating && (
-                          <Button size="sm" onClick={() => setCreating(true)}>
-                            + Nuevo servicio
-                          </Button>
-                        )
-                      }
-                    />
-                  </td>
-                </tr>
-              )}
-              {servicios.map((s) =>
-                editing?.id === s.id ? (
-                  <tr key={s.id} className="border-b border-border last:border-0">
-                    <td colSpan={COLS} className="p-4">
-                      <ServicioForm
-                        servicio={s}
-                        puestos={puestos}
-                        config={config}
-                        onDone={() => setEditing(null)}
-                        onCancel={() => setEditing(null)}
-                      />
-                    </td>
+      {servicios.length === 0 ? (
+        <Card>
+          <EmptyState
+            title="Sin servicios todavía."
+            action={
+              !creating && (
+                <Button size="sm" onClick={() => setCreating(true)}>
+                  + Nuevo servicio
+                </Button>
+              )
+            }
+          />
+        </Card>
+      ) : (
+        <>
+          {/* Tabla — desde md (tablet) para arriba, con scroll horizontal
+              propio como red de seguridad si algún día no cabe. */}
+          <Card className="hidden p-0 md:block">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-dim">
+                    <th className="px-5 py-3 font-medium">Servicio</th>
+                    <th className="px-5 py-3 font-medium">Categoría</th>
+                    <th className="px-5 py-3 font-medium">Puesto</th>
+                    <th className="px-5 py-3 font-medium">Modalidades</th>
+                    <th className="px-5 py-3 text-right font-medium">Costo real / mes</th>
+                    <th className="px-5 py-3 text-right font-medium">Acciones</th>
                   </tr>
-                ) : (
-                  <ServicioRow key={s.id} servicio={s} config={config} onEdit={() => setEditing(s)} />
-                )
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+                </thead>
+                <tbody>
+                  {servicios.map((s) =>
+                    editing?.id === s.id ? (
+                      <tr key={s.id} className="border-b border-border last:border-0">
+                        <td colSpan={COLS} className="p-4">
+                          <ServicioForm
+                            servicio={s}
+                            puestos={puestos}
+                            config={config}
+                            onDone={() => setEditing(null)}
+                            onCancel={() => setEditing(null)}
+                          />
+                        </td>
+                      </tr>
+                    ) : (
+                      <ServicioRow key={s.id} servicio={s} config={config} onEdit={() => setEditing(s)} />
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* Tarjetas apiladas — por debajo de md (celular): una tabla de 6
+              columnas ahí obliga a hacer zoom o se corta, así que cada
+              servicio es su propia tarjeta con la misma información. */}
+          <div className="flex flex-col gap-3 md:hidden">
+            {servicios.map((s) =>
+              editing?.id === s.id ? (
+                <ServicioForm
+                  key={s.id}
+                  servicio={s}
+                  puestos={puestos}
+                  config={config}
+                  onDone={() => setEditing(null)}
+                  onCancel={() => setEditing(null)}
+                />
+              ) : (
+                <ServicioCardMobile key={s.id} servicio={s} config={config} onEdit={() => setEditing(s)} />
+              )
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -279,6 +302,96 @@ function ServicioRow({
         </tr>
       )}
     </>
+  );
+}
+
+/** Tarjeta de servicio — misma información que ServicioRow, para la vista
+ *  apilada de celular (ver ServiciosPanel, por debajo de md). */
+function ServicioCardMobile({
+  servicio,
+  config,
+  onEdit,
+}: {
+  servicio: ServicioConPuesto;
+  config: CostConfigInput;
+  onEdit: () => void;
+}) {
+  const [expandido, setExpandido] = useState(false);
+  const sueldoMensual = sueldoMensualEfectivo(servicio);
+  const bajoMinimo = esSueldoBajoMinimo(sueldoMensual, config.salarioMinimoMensual);
+
+  const costo = calcularCostoReal(config, {
+    sueldoMensualPuesto: sueldoMensual,
+    incluyeUniforme: servicio.incluyeUniforme,
+    costoUniforme: servicio.costoUniforme,
+    vidaUtilUniformeMeses: servicio.vidaUtilUniformeMeses,
+    incluyeMaterial: servicio.incluyeMaterial,
+    costoMaterial: servicio.costoMaterial,
+    vidaUtilMaterialMeses: servicio.vidaUtilMaterialMeses,
+  });
+  const modalidades = parseModalidades(servicio.modalidadesJson);
+
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-2.5 p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-text">{servicio.nombre}</p>
+              {!servicio.activo && <Badge tone="danger">Inactivo</Badge>}
+            </div>
+            {servicio.descripcion && <p className="mt-0.5 text-xs text-text-dim">{servicio.descripcion}</p>}
+          </div>
+          <Badge tone="neutral" className="shrink-0">
+            {SERVICIO_CATEGORIA_LABELS[servicio.categoria as keyof typeof SERVICIO_CATEGORIA_LABELS]}
+          </Badge>
+        </div>
+
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
+          <dt className="text-text-dim">Puesto</dt>
+          <dd className="text-right text-text-muted">
+            {nombrePuestoEfectivo(servicio)}
+            <span className="block text-xs text-text-dim">{servicio.personalPorUnidad} persona(s)/unidad</span>
+          </dd>
+          <dt className="text-text-dim">Modalidades</dt>
+          <dd className="text-right text-text-muted">{modalidades.map((m) => MODALIDAD_LABELS[m]).join(", ")}</dd>
+        </dl>
+
+        {(servicio.incluyeUniforme || servicio.incluyeMaterial) && (
+          <p className="text-xs text-text-dim">
+            {servicio.incluyeUniforme && "Incluye uniforme"}
+            {servicio.incluyeUniforme && servicio.incluyeMaterial && " · "}
+            {servicio.incluyeMaterial && "Incluye material"}
+          </p>
+        )}
+
+        <div className="flex items-center justify-between border-t border-border pt-2.5">
+          <div className="flex items-center gap-1.5">
+            {bajoMinimo && <SalarioBajoAviso salarioMinimoMensual={config.salarioMinimoMensual} />}
+            <div>
+              <p className="font-mono text-sm font-semibold tabular-nums text-primary">
+                {formatCurrency(costo.costoRealMensual)}/mes
+              </p>
+              <p className="text-xs text-text-dim">{formatCurrency(costo.costoRealHora)}/hora</p>
+            </div>
+          </div>
+        </div>
+
+        {expandido && <DesgloseCargasPatronales costo={costo} />}
+
+        <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-2.5">
+          <Button size="sm" variant="ghost" onClick={() => setExpandido((v) => !v)}>
+            {expandido ? "Ocultar desglose" : "Ver desglose"}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={onEdit}>
+            Editar
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => toggleServicioActivoAction(servicio.id, !servicio.activo)}>
+            {servicio.activo ? "Desactivar" : "Activar"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

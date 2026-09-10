@@ -18,7 +18,7 @@ function applyTheme(theme: Theme) {
  * data-theme antes del primer paint — aquí solo se sincroniza el estado
  * de React con lo que el DOM ya tiene, para no causar un parpadeo.
  */
-export function ThemeToggle() {
+export function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const [theme, setTheme] = useState<Theme>("dark");
 
   useEffect(() => {
@@ -38,14 +38,33 @@ export function ThemeToggle() {
     localStorage.setItem(STORAGE_KEY, next);
   }
 
+  const label = theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro";
+  const Icon = theme === "dark" ? MoonIcon : SunIcon;
+
+  // Variante compacta — solo ícono, para el header móvil/tablet donde no
+  // hay espacio para la fila completa (ícono + etiqueta) que sí cabe en
+  // la barra lateral de escritorio.
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={toggle}
+        aria-label={label}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
+      >
+        <Icon className="h-5 w-5" />
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
       onClick={toggle}
-      aria-label={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+      aria-label={label}
       className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
     >
-      {theme === "dark" ? <MoonIcon className="h-4 w-4 shrink-0" /> : <SunIcon className="h-4 w-4 shrink-0" />}
+      <Icon className="h-4 w-4 shrink-0" />
       {theme === "dark" ? "Modo oscuro" : "Modo claro"}
     </button>
   );

@@ -30,9 +30,9 @@ export default async function CotizacionDetallePage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-3">
             <h1 className="font-mono text-xl font-semibold text-text">{cotizacion.folio}</h1>
             <Badge tone="neutral">{TIPO_COTIZACION_LABELS[tipo]}</Badge>
             <EstadoSelect
@@ -53,7 +53,7 @@ export default async function CotizacionDetallePage({
             <p className="text-sm text-text-dim">Proyecto: {cotizacion.proyecto}</p>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <AnchorButton href={`/api/cotizaciones/${cotizacion.id}/export?format=docx`} download>
             Exportar Word
           </AnchorButton>
@@ -86,7 +86,7 @@ export default async function CotizacionDetallePage({
           <CardHeader>
             <CardTitle>Servicios cotizados</CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="overflow-x-auto p-0">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-dim">
@@ -118,7 +118,7 @@ export default async function CotizacionDetallePage({
           <CardHeader>
             <CardTitle>Materiales cotizados</CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="overflow-x-auto p-0">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-dim">

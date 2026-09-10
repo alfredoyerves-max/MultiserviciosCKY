@@ -139,3 +139,18 @@ body {
   background: var(--color-primary);
   color: var(--color-on-primary);
 }
+
+/* Red de seguridad responsiva — Safari en iOS hace zoom automático al
+   enfocar cualquier input/select/textarea con font-size < 16px. El
+   componente compartido (components/ui/input.tsx) ya usa text-base en
+   móvil, pero hay campos "a mano" repartidos en varios paneles — esta
+   regla los cubre a todos sin tener que auditar archivo por archivo.
+   !important a propósito: gana sobre cualquier text-sm/text-xs de
+   Tailwind solo por debajo de este ancho. */
+@media (max-width: 639px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

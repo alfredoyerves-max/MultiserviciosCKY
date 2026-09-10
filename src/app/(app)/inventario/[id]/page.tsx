@@ -20,9 +20,9 @@ export default async function ProductoDetallePage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-xl font-semibold text-text">{producto.nombre}</h1>
             <Badge tone="neutral">{unidadLabel}</Badge>
             {!producto.activo && <Badge tone="danger">Inactivo</Badge>}
@@ -31,7 +31,7 @@ export default async function ProductoDetallePage({
             <p className="mt-1 text-sm text-text-muted">{producto.descripcion}</p>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <RegistrarEntradaButton productoId={producto.id} />
           <RegistrarSalidaButton productoId={producto.id} />
           <ButtonLink href="/inventario" variant="secondary" size="sm">
@@ -56,7 +56,7 @@ export default async function ProductoDetallePage({
         <CardHeader>
           <CardTitle>Historial de movimientos</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="overflow-x-auto p-0">
           {producto.movimientos.length === 0 ? (
             <EmptyState title="Sin movimientos todavía." />
           ) : (

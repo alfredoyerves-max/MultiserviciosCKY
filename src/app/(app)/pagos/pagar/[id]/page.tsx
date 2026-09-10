@@ -33,9 +33,9 @@ export default async function CuentaPorPagarDetallePage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-xl font-semibold text-text">{cuenta.concepto}</h1>
             <Badge tone={ESTADO_TONE[estado]}>{ESTADO_CUENTA_LABELS_PAGAR[estado]}</Badge>
             {vencida && <Badge tone="danger">Vencida</Badge>}
@@ -69,7 +69,7 @@ export default async function CuentaPorPagarDetallePage({
         <CardHeader>
           <CardTitle>Historial de abonos</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="overflow-x-auto p-0">
           {cuenta.abonos.length === 0 ? (
             <EmptyState title="Sin abonos todavía." />
           ) : (

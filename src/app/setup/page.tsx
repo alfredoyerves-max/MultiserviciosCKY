@@ -8,7 +8,7 @@ export default async function SetupPage() {
   if (existentes > 0) redirect("/login");
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
+    <div className="flex min-h-dvh items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
           <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-white p-1.5 shadow-sm">

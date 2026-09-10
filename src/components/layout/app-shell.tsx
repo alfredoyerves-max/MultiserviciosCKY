@@ -4,6 +4,7 @@ import { cn } from "@/lib/cn";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { logoutAction } from "@/lib/auth/actions";
 import { ThemeToggle } from "./theme-toggle";
 import type { ReactNode } from "react";
@@ -24,21 +25,57 @@ const NAV_ITEM_ACTIVE_STYLES: Record<string, string> = {
   pagos: "bg-module-pagos/15 text-module-pagos",
 };
 
+// Misma lista para la barra lateral de escritorio y la barra inferior de
+// móvil/tablet — Configuración no entra en la barra inferior (no caben 6
+// íconos cómodamente) y vive en el menú del header compacto en su lugar.
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: DashboardIcon, moduleColor: "neutral" },
   { href: "/cotizaciones", label: "Cotizaciones", icon: QuoteIcon, moduleColor: "primary" },
   { href: "/servicios", label: "Servicios", icon: ServiceIcon, moduleColor: "servicios" },
   { href: "/inventario", label: "Inventario y Activos", icon: InventarioIcon, moduleColor: "inventario" },
   { href: "/pagos", label: "Pagos y Cobros", icon: PagosIcon, moduleColor: "pagos" },
-  { href: "/configuracion", label: "Configuración", icon: SettingsIcon, moduleColor: "neutral" },
 ];
+
+const CONFIGURACION_ITEM = { href: "/configuracion", label: "Configuración", icon: SettingsIcon, moduleColor: "neutral" };
+
+function isActive(pathname: string, href: string) {
+  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+}
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col overflow-y-auto border-r border-border bg-surface px-4 py-5">
+    <div className="flex min-h-dvh flex-col lg:flex-row">
+      {/* Header compacto — solo móvil/tablet (<lg). Logo/nombre siempre
+          visible + toggle de tema + menú con Configuración/Cerrar sesión,
+          que no caben en la barra inferior de 5 íconos. */}
+      <header
+        className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b border-border bg-surface px-3 py-2 lg:hidden"
+        style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.5rem)" }}
+      >
+        <Link href="/" className="flex min-w-0 items-center gap-2">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm">
+            <Image
+              src="/branding/logo-icon.png"
+              alt="Carlos Yerves Multiservicios"
+              width={32}
+              height={32}
+              className="h-full w-full object-contain"
+              priority
+            />
+          </div>
+          <p className="truncate text-sm font-semibold text-text">Carlos Yerves Multiservicios</p>
+        </Link>
+
+        <div className="flex shrink-0 items-center gap-1">
+          <ThemeToggle compact />
+          <MobileMenu />
+        </div>
+      </header>
+
+      {/* Barra lateral — solo escritorio (≥lg). */}
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col overflow-y-auto border-r border-border bg-surface px-4 py-5 lg:flex">
         <div className="mb-6 flex items-center gap-2.5 px-2">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm">
             <Image
@@ -54,9 +91,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex flex-col gap-1">
-          {NAV_ITEMS.map((item) => {
-            const active =
-              item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+          {[...NAV_ITEMS, CONFIGURACION_ITEM].map((item) => {
+            const active = isActive(pathname, item.href);
             const Icon = item.icon;
             return (
               <Link
@@ -91,9 +127,98 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-x-hidden">
-        <div className="mx-auto max-w-6xl px-8 py-8">{children}</div>
+      <main className="flex-1 overflow-x-hidden pb-20 lg:pb-0">
+        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</div>
       </main>
+
+      {/* Barra inferior — solo móvil/tablet (<lg), patrón tipo app
+          (Instagram/WhatsApp). Fija, con scroll interno propio si algún
+          día se agrega un ícono más — hoy los 5 caben sin problema incluso
+          en 390px. safe-area-inset-bottom para el home indicator de iOS. */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border bg-surface lg:hidden"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        {NAV_ITEMS.map((item) => {
+          const active = isActive(pathname, item.href);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium leading-tight transition-colors",
+                active ? "text-primary" : "text-text-dim hover:text-text-muted"
+              )}
+            >
+              <Icon className="h-5 w-5 shrink-0" />
+              <span className="line-clamp-1 max-w-[4.2rem] text-center">{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}
+
+/**
+ * Menú del header compacto — agrupa Configuración y Cerrar sesión, los
+ * dos accesos de la barra lateral que no caben en la barra inferior.
+ * Se cierra solo (click afuera / Escape / navegar).
+ */
+function MobileMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(e: PointerEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Más opciones"
+        aria-expanded={open}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
+      >
+        <SettingsIcon className="h-5 w-5" />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-11 z-50 w-48 rounded-lg border border-border bg-surface-1 py-1 shadow-xl">
+          <Link
+            href="/configuracion"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
+          >
+            <SettingsIcon className="h-4 w-4 shrink-0" />
+            Configuración
+          </Link>
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm font-medium text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
+            >
+              <LogoutIcon className="h-4 w-4 shrink-0" />
+              Cerrar sesión
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

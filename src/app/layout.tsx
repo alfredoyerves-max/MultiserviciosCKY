@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import "./globals.css";
@@ -16,6 +16,38 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Carlos Yerves Multiservicios",
   description: "Cotizador de servicios de Carlos Yerves Multiservicios",
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/favicon-16.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  appleWebApp: {
+    // Añadir a pantalla de inicio en iOS → modo standalone (sin barra de
+    // Safari), con el logo como ícono (apple-touch-icon de arriba) y el
+    // nombre corto de la app debajo del ícono.
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "CKY Multiservicios",
+  },
+  other: {
+    // Next.js ya emite el moderno "mobile-web-app-capable" a partir de
+    // appleWebApp.capable — este es el nombre legado que versiones de iOS
+    // anteriores todavía requieren para el modo standalone real.
+    "apple-mobile-web-app-capable": "yes",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Sin maximumScale: no quitamos el pinch-zoom (accesibilidad) — el
+  // zoom automático de iOS al enfocar un input se evita con font-size
+  // >= 16px en los campos (ver globals.css), no deshabilitando el zoom.
+  viewportFit: "cover",
+  themeColor: "#0c0e12",
 };
 
 // Se ejecuta de forma bloqueante antes del primer paint — fija

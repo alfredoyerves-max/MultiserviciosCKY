@@ -26,6 +26,18 @@ function toPctDisplay(fraction: number) {
   return String(Math.round(fraction * 10000) / 100);
 }
 
+/** Igual que toPctDisplay pero a 4 decimales — la tabla CEAV usa tasas
+ *  con hasta 3 decimales significativos (ej. 3.676%), y su input ya tiene
+ *  step="0.001". Con solo 2 decimales de precisión en el valor por
+ *  defecto, guardar la configuración por CUALQUIER otro campo fiscal
+ *  (todas las secciones fiscales comparten un solo candado, así que
+ *  desbloquear una las desbloquea todas) reenvía este valor redondeado
+ *  como si fuera intencional y degrada silenciosamente la tasa guardada
+ *  — este helper evita esa pérdida de precisión. */
+function toPctDisplayPrecise(fraction: number) {
+  return String(Math.round(fraction * 1000000) / 10000);
+}
+
 export function ConfigForm({
   config,
   bandasCeav,
@@ -324,43 +336,45 @@ function FiscalSection({
 
 function CeavBandasTable({ bandas, locked }: { bandas: CeavBandaInput[]; locked: boolean }) {
   return (
-    <table className="w-full text-sm">
-      <thead>
-        <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-dim">
-          <th className="py-2 pr-3 font-medium">Banda</th>
-          <th className="py-2 pr-3 font-medium">Referencia</th>
-          <th className="py-2 text-right font-medium">Cuota patronal</th>
-        </tr>
-      </thead>
-      <tbody>
-        {bandas.map((banda) => {
-          const name = `ceavPct_${banda.orden}`;
-          const defaultValue = toPctDisplay(banda.porcentajePatronal);
-          return (
-            <tr key={banda.orden} className="border-b border-border last:border-0">
-              <td className="py-2 pr-3 text-text">{banda.etiqueta}</td>
-              <td className="py-2 pr-3 text-text-dim">
-                {banda.unidadLimite === "SALARIO_MINIMO" ? "Salario mínimo" : "UMA"}
-              </td>
-              <td className="py-2 text-right">
-                {locked ? (
-                  <span className="font-mono tabular-nums text-text-muted">{defaultValue}%</span>
-                ) : (
-                  <Input
-                    name={name}
-                    type="number"
-                    step="0.001"
-                    defaultValue={defaultValue}
-                    className="ml-auto h-9 w-28 text-right"
-                    required
-                  />
-                )}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-dim">
+            <th className="py-2 pr-3 font-medium">Banda</th>
+            <th className="py-2 pr-3 font-medium">Referencia</th>
+            <th className="py-2 text-right font-medium">Cuota patronal</th>
+          </tr>
+        </thead>
+        <tbody>
+          {bandas.map((banda) => {
+            const name = `ceavPct_${banda.orden}`;
+            const defaultValue = toPctDisplayPrecise(banda.porcentajePatronal);
+            return (
+              <tr key={banda.orden} className="border-b border-border last:border-0">
+                <td className="py-2 pr-3 text-text">{banda.etiqueta}</td>
+                <td className="py-2 pr-3 text-text-dim">
+                  {banda.unidadLimite === "SALARIO_MINIMO" ? "Salario mínimo" : "UMA"}
+                </td>
+                <td className="py-2 text-right">
+                  {locked ? (
+                    <span className="font-mono tabular-nums text-text-muted">{defaultValue}%</span>
+                  ) : (
+                    <Input
+                      name={name}
+                      type="number"
+                      step="0.001"
+                      defaultValue={defaultValue}
+                      className="ml-auto h-9 w-28 text-right"
+                      required
+                    />
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

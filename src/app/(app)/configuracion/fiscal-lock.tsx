@@ -28,7 +28,7 @@ export function FiscalSectionHeader({
   return (
     <>
       <CardHeader className="flex-col items-start gap-1">
-        <div className="flex w-full items-center justify-between gap-3">
+        <div className="flex w-full flex-wrap items-center justify-between gap-3">
           <CardTitle>{title}</CardTitle>
           {unlocked ? (
             <span className="text-xs font-medium text-success-soft">Desbloqueado</span>

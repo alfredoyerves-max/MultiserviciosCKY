@@ -16,7 +16,7 @@ export function PuestosPanel({ puestos }: { puestos: Puesto[] }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-text-muted">
           Puestos y su sueldo mensual base — se reutilizan entre servicios.
         </p>
@@ -35,7 +35,7 @@ export function PuestosPanel({ puestos }: { puestos: Puesto[] }) {
       )}
 
       <Card>
-        <CardContent className="p-0">
+        <CardContent className="overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-dim">
