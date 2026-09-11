@@ -558,3 +558,16 @@ model Session {
   expiresAt DateTime
   createdAt DateTime @default(now())
 }
+
+/// Protección contra fuerza bruta en /login — una fila por correo
+/// intentado (exista o no como Usuario real, para no delatar por
+/// temporización/enumeración cuáles correos sí existen). Vive en BD, no en
+/// memoria: Vercel corre cada request en una función serverless distinta,
+/// así que un contador en memoria del proceso no sobreviviría entre
+/// intentos. Ver lib/auth/loginRateLimit.ts.
+model LoginAttempt {
+  email          String    @id
+  intentos       Int       @default(0)
+  bloqueadoHasta DateTime?
+  updatedAt      DateTime  @updatedAt
+}
