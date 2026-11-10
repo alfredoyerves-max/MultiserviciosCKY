@@ -17,6 +17,7 @@ interface LineaState {
   key: string;
   /** Atajo opcional al catálogo; "" = captura libre. */
   productoId: string;
+  claveSat: string;
   descripcion: string;
   unidadMedida: UnidadMedida;
   cantidad: number;
@@ -29,6 +30,7 @@ function lineaVacia(): LineaState {
   return {
     key: crypto.randomUUID(),
     productoId: "",
+    claveSat: "",
     descripcion: "",
     unidadMedida: "PIEZA",
     cantidad: 1,
@@ -115,7 +117,7 @@ export function Wizard({
       <input
         type="hidden"
         name="lineasMaterialJson"
-        value={JSON.stringify(lineas.map(({ productoId, descripcion, unidadMedida, cantidad, precioUnitario }) => ({ productoId, descripcion, unidadMedida, cantidad, precioUnitario })))}
+        value={JSON.stringify(lineas.map(({ productoId, claveSat, descripcion, unidadMedida, cantidad, precioUnitario }) => ({ productoId, claveSat, descripcion, unidadMedida, cantidad, precioUnitario })))}
       />
       <input
         type="hidden"
@@ -169,7 +171,15 @@ export function Wizard({
                   </Select>
                 </Field>
               )}
-              <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[3fr_1fr_1fr_1fr_1fr_auto]">
+              <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[1.2fr_3fr_1fr_1fr_1fr_1fr_auto]">
+                <Field>
+                  <FieldLabel>Clave SAT</FieldLabel>
+                  <Input
+                    value={l.claveSat}
+                    maxLength={20}
+                    onChange={(e) => updateLinea(l.key, { claveSat: e.target.value })}
+                  />
+                </Field>
                 <Field>
                   <FieldLabel>Descripción</FieldLabel>
                   <Input

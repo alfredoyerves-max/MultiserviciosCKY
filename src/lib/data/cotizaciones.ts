@@ -148,6 +148,7 @@ export async function createCotizacionMaterial(input: CotizacionMaterialInput) {
   const lineasCalculadas = input.lineasMaterial.map((linea) => {
     return {
       productoId: linea.productoId && productoIdsValidos.has(linea.productoId) ? linea.productoId : null,
+      claveSat: linea.claveSat,
       descripcion: linea.descripcion,
       unidadMedida: linea.unidadMedida,
       cantidad: linea.cantidad,

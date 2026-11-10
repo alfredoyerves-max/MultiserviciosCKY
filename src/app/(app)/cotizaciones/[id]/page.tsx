@@ -122,6 +122,7 @@ export default async function CotizacionDetallePage({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-dim">
+                  <th className="px-5 py-3 font-medium">Clave SAT</th>
                   <th className="px-5 py-3 font-medium">Descripción</th>
                   <th className="px-5 py-3 font-medium">Cantidad</th>
                   <th className="px-5 py-3 text-right font-medium">Precio unitario</th>
@@ -131,6 +132,7 @@ export default async function CotizacionDetallePage({
               <tbody>
                 {cotizacion.lineasMaterial.map((l) => (
                   <tr key={l.id} className="border-b border-border last:border-0">
+                    <td className="px-5 py-3 font-mono text-text-muted">{l.claveSat || "—"}</td>
                     <td className="px-5 py-3 text-text">{l.descripcion}</td>
                     <td className="px-5 py-3 text-text-muted">
                       {l.cantidad} {UNIDAD_MEDIDA_LABELS[l.unidadMedida as UnidadMedida]}

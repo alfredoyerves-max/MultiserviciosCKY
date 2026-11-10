@@ -37,6 +37,7 @@ export interface CotizacionExportData {
   }[];
 
   lineasMaterial: {
+    claveSat: string;
     descripcion: string;
     cantidad: number;
     unidadLabel: string;
@@ -125,6 +126,7 @@ export function buildCotizacionExportData(
     })),
 
     lineasMaterial: cotizacion.lineasMaterial.map((l) => ({
+      claveSat: l.claveSat,
       descripcion: l.descripcion,
       cantidad: l.cantidad,
       unidadLabel: UNIDAD_MEDIDA_LABELS[l.unidadMedida as UnidadMedida],

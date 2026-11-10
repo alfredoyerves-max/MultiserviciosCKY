@@ -273,26 +273,28 @@ function lineasServicioTable(data: CotizacionExportData): Table {
 }
 
 function lineasMaterialTable(data: CotizacionExportData): Table {
-  const cols = [40, 15, 20, 25];
+  const cols = [15, 33, 12, 18, 22];
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
       new TableRow({
         children: [
-          headerCell("PRODUCTO", cols[0]),
-          headerCell("CANTIDAD", cols[1]),
-          headerCell("PRECIO UNITARIO", cols[2]),
-          headerCell("IMPORTE", cols[3]),
+          headerCell("CLAVE SAT", cols[0]),
+          headerCell("DESCRIPCIÓN", cols[1]),
+          headerCell("CANTIDAD", cols[2]),
+          headerCell("PRECIO UNITARIO", cols[3]),
+          headerCell("IMPORTE", cols[4]),
         ],
       }),
       ...data.lineasMaterial.map(
         (l, i) =>
           new TableRow({
             children: [
-              dataCell(l.descripcion, cols[0], false, i % 2 === 1),
-              dataCell(`${l.cantidad} ${l.unidadLabel}`, cols[1], false, i % 2 === 1),
-              dataCell(formatCurrency(l.precioUnitario), cols[2], true, i % 2 === 1),
-              dataCell(formatCurrency(l.importe), cols[3], true, i % 2 === 1),
+              dataCell(l.claveSat || "—", cols[0], false, i % 2 === 1),
+              dataCell(l.descripcion, cols[1], false, i % 2 === 1),
+              dataCell(`${l.cantidad} ${l.unidadLabel}`, cols[2], false, i % 2 === 1),
+              dataCell(formatCurrency(l.precioUnitario), cols[3], true, i % 2 === 1),
+              dataCell(formatCurrency(l.importe), cols[4], true, i % 2 === 1),
             ],
           })
       ),

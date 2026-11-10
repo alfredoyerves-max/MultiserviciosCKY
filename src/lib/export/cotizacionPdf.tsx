@@ -188,19 +188,21 @@ function LineasMaterialTable({ data }: { data: CotizacionExportData }) {
   return (
     <View style={styles.table}>
       <View style={styles.tableHeaderRow}>
-        <Text style={[styles.th, { width: "40%" }]}>Producto</Text>
-        <Text style={[styles.th, { width: "15%" }]}>Cantidad</Text>
-        <Text style={[styles.th, styles.right, { width: "20%" }]}>Precio unitario</Text>
-        <Text style={[styles.th, styles.right, { width: "25%" }]}>Importe</Text>
+        <Text style={[styles.th, { width: "15%" }]}>Clave SAT</Text>
+        <Text style={[styles.th, { width: "33%" }]}>Descripción</Text>
+        <Text style={[styles.th, { width: "12%" }]}>Cantidad</Text>
+        <Text style={[styles.th, styles.right, { width: "18%" }]}>Precio unitario</Text>
+        <Text style={[styles.th, styles.right, { width: "22%" }]}>Importe</Text>
       </View>
       {data.lineasMaterial.map((l, i) => (
         <View style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : undefined]} key={i}>
-          <Text style={[styles.td, { width: "40%" }]}>{l.descripcion}</Text>
-          <Text style={[styles.td, { width: "15%" }]}>
+          <Text style={[styles.td, { width: "15%" }]}>{l.claveSat || "—"}</Text>
+          <Text style={[styles.td, { width: "33%" }]}>{l.descripcion}</Text>
+          <Text style={[styles.td, { width: "12%" }]}>
             {l.cantidad} {l.unidadLabel}
           </Text>
-          <Text style={[styles.td, styles.right, { width: "20%" }]}>{formatCurrency(l.precioUnitario)}</Text>
-          <Text style={[styles.td, styles.right, { width: "25%" }]}>{formatCurrency(l.importe)}</Text>
+          <Text style={[styles.td, styles.right, { width: "18%" }]}>{formatCurrency(l.precioUnitario)}</Text>
+          <Text style={[styles.td, styles.right, { width: "22%" }]}>{formatCurrency(l.importe)}</Text>
         </View>
       ))}
     </View>

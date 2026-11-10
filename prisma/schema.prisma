@@ -341,6 +341,10 @@ model LineaCotizacionMaterial {
   productoId String?
   producto   Producto? @relation(fields: [productoId], references: [id], onDelete: SetNull)
 
+  /// Clave de producto/servicio SAT, texto libre capturado por el usuario
+  /// (vacío = sin clave). Se muestra junto a la descripción en pantalla y
+  /// en el documento exportado.
+  claveSat     String @default("")
   descripcion  String @default("")
   unidadMedida String @default("PIEZA") // mismo catálogo que Producto.unidadMedida (zod)
 

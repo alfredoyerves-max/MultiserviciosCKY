@@ -15,6 +15,7 @@ export const lineaMaterialInputSchema = z.object({
     .string()
     .optional()
     .transform((v) => (v ? v : undefined)),
+  claveSat: z.string().trim().max(20, "Máximo 20 caracteres").optional().default(""),
   descripcion: z.string().trim().min(1, "Describe el material"),
   unidadMedida: unidadMedidaSchema,
   cantidad: z.coerce.number().positive("Debe ser mayor a 0"),
