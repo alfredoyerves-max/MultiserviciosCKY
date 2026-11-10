@@ -3,17 +3,13 @@
 import {
   createCotizacion,
   createCotizacionMaterial,
-  updateEstadoCotizacion,
-  asegurarCambioEstadoPermitido,
+  cambiarEstadoCotizacion,
+  aceptarCotizacionServicio,
   confirmarAceptacionMaterial,
   getCotizacionTipo,
   deleteCotizacion,
 } from "@/lib/data/cotizaciones";
-import {
-  generarCuentaPorCobrar,
-  existeCuentaPorCobrar,
-  eliminarCuentaPorCobrarPorCotizacion,
-} from "@/lib/data/cuentasPorCobrar";
+import { existeCuentaPorCobrar } from "@/lib/data/cuentasPorCobrar";
 import { cotizacionInputSchema, cotizacionMaterialInputSchema } from "@/lib/schemas/cotizacion";
 import { generarCuentaPorCobrarSchema } from "@/lib/schemas/cuentas";
 import { estadoCotizacionSchema } from "@/lib/enums";
@@ -139,12 +135,10 @@ export async function createCotizacionMaterialAction(
   redirect(`/cotizaciones/${cotizacion.id}`);
 }
 
-// Solo para transiciones Borrador <-> Enviada, que no disparan nada
-// financiero. Aceptada/Rechazada pasan por confirmarAceptacionAction /
-// confirmarRechazoAction (modal de confirmación obligatorio). En ambos
-// casos se revisa asegurarCambioEstadoPermitido: si la cotización está
-// ACEPTADA y su cuenta por cobrar ya tiene abonos, no se puede mover a
-// ningún otro estado (ver lib/data/cotizaciones.ts).
+// Solo para transiciones Borrador <-> Enviada. Aceptada/Rechazada pasan por
+// confirmarAceptacionAction / confirmarRechazoAction (modal obligatorio).
+// Toda salida de ACEPTADA va por cambiarEstadoCotizacion: elimina la cuenta
+// por cobrar en la misma transacción, o bloquea si ya tiene abonos.
 export async function updateEstadoAction(id: string, estado: string) {
   await requireSession();
   const parsed = estadoCotizacionSchema.safeParse(estado);
@@ -152,8 +146,7 @@ export async function updateEstadoAction(id: string, estado: string) {
   if (parsed.data === "ACEPTADA" || parsed.data === "RECHAZADA") {
     throw new Error("Este cambio de estado requiere confirmación — usa el modal correspondiente.");
   }
-  await asegurarCambioEstadoPermitido(id, parsed.data);
-  await updateEstadoCotizacion(id, parsed.data);
+  await cambiarEstadoCotizacion(id, parsed.data);
   revalidatePath(`/cotizaciones/${id}`);
   revalidatePath("/cotizaciones");
 }
@@ -161,16 +154,11 @@ export async function updateEstadoAction(id: string, estado: string) {
 /**
  * Confirma la aceptación de una cotización: cambia el estado a ACEPTADA y
  * genera su cuenta por cobrar (netoARecibir + la fecha de vencimiento
- * capturada en el modal) — pero SOLO si esta cotización todavía no tiene
- * una. Si ya existe (ej. se movió a Borrador sin abonos y se vuelve a
- * aceptar), se reutiliza tal cual: no se pide fecha de vencimiento nueva
- * ni se crea un segundo registro, solo se actualiza el estado.
+ * capturada en el modal), todo en una sola transacción.
  *
  * Si la cotización es de tipo MATERIAL (Fase 9), además descuenta el stock
  * automáticamente (una salida por línea, motivo "Venta a cliente",
- * referencia = folio) en la misma transacción que genera la cuenta por
- * cobrar — ver confirmarAceptacionMaterial. Si el stock ya no alcanza, la
- * operación completa se revierte y el error identifica el producto.
+ * referencia = folio) en la misma transacción — ver confirmarAceptacionMaterial.
  */
 export async function confirmarAceptacionAction(
   _prev: CotizacionActionState,
@@ -199,11 +187,8 @@ export async function confirmarAceptacionAction(
 
     if (tipo === "MATERIAL") {
       await confirmarAceptacionMaterial(cotizacionId, fechaVencimiento);
-    } else if (!yaExiste) {
-      await updateEstadoCotizacion(cotizacionId, "ACEPTADA");
-      await generarCuentaPorCobrar({ cotizacionId, fechaVencimiento: fechaVencimiento! });
     } else {
-      await updateEstadoCotizacion(cotizacionId, "ACEPTADA");
+      await aceptarCotizacionServicio(cotizacionId, fechaVencimiento);
     }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Error al confirmar la aceptación." };
@@ -219,11 +204,8 @@ export async function confirmarAceptacionAction(
 
 /**
  * Confirma el rechazo de una cotización. Si tenía una cuenta por cobrar
- * asociada (ej. se aceptó antes y ahora se rechaza), se elimina como
- * parte de la misma acción para no dejarla huérfana — seguro porque
- * asegurarCambioEstadoPermitido ya garantizó que, de existir, no tiene
- * abonos (si los tuviera, el cambio de estado quedaría bloqueado y nunca
- * llegaríamos aquí).
+ * (se aceptó antes), cambiarEstadoCotizacion la elimina en la misma
+ * transacción, o bloquea el cambio si ya tiene abonos.
  */
 export async function confirmarRechazoAction(
   _prev: CotizacionActionState,
@@ -235,9 +217,7 @@ export async function confirmarRechazoAction(
   if (!cotizacionId) return { ok: false, error: "Falta la cotización." };
 
   try {
-    await asegurarCambioEstadoPermitido(cotizacionId, "RECHAZADA");
-    await eliminarCuentaPorCobrarPorCotizacion(cotizacionId);
-    await updateEstadoCotizacion(cotizacionId, "RECHAZADA");
+    await cambiarEstadoCotizacion(cotizacionId, "RECHAZADA");
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "No se pudo confirmar el rechazo." };
   }

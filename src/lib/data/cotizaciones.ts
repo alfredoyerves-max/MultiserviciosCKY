@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { advisoryLock, prisma } from "@/lib/prisma";
 import { getSystemConfigConCeav } from "./config";
 import { calcularCostoReal, costoRealPorModalidad } from "@/lib/costEngine";
 import { calcularTotalesFiscales } from "@/lib/fiscalEngine";
@@ -253,32 +253,62 @@ export async function deleteCotizacion(id: string) {
   await prisma.cotizacion.delete({ where: { id } });
 }
 
-export function updateEstadoCotizacion(id: string, estado: string) {
-  return prisma.cotizacion.update({ where: { id }, data: { estado } });
+/**
+ * Invariante del sistema: una CuentaPorCobrar solo existe mientras su
+ * cotización está ACEPTADA (también impuesto en la BD por los triggers de
+ * la migración 20261110120000). Por eso cualquier salida de ACEPTADA —a
+ * Borrador, Enviada o Rechazada— elimina la cuenta en la MISMA transacción
+ * que cambia el estado; y si la cuenta ya tiene abonos, el cambio se
+ * bloquea por completo (nunca se pierde historial de cobros).
+ */
+export async function cambiarEstadoCotizacion(
+  cotizacionId: string,
+  nuevoEstado: "BORRADOR" | "ENVIADA" | "RECHAZADA"
+) {
+  return prisma.$transaction(async (tx) => {
+    await advisoryLock(tx, "cotizacion", cotizacionId);
+
+    const cotizacion = await tx.cotizacion.findUniqueOrThrow({
+      where: { id: cotizacionId },
+      select: { cuentaPorCobrar: { select: { id: true, abonos: { select: { id: true }, take: 1 } } } },
+    });
+
+    const cuenta = cotizacion.cuentaPorCobrar;
+    if (cuenta && cuenta.abonos.length > 0) {
+      throw new Error(
+        "No se puede cambiar el estado: esta cotización ya tiene pagos registrados en su cuenta por cobrar."
+      );
+    }
+    if (cuenta) await tx.cuentaPorCobrar.delete({ where: { id: cuenta.id } });
+
+    await tx.cotizacion.update({ where: { id: cotizacionId }, data: { estado: nuevoEstado } });
+  });
 }
 
 /**
- * Hueco de seguridad cerrado: si la cotización está ACEPTADA y su cuenta
- * por cobrar ya tiene abonos registrados, no se permite moverla a ningún
- * otro estado — evita duplicar la cuenta por cobrar (o perder la relación
- * con abonos ya cobrados) si se manda a Borrador/Enviada/Rechazada y se
- * vuelve a aceptar.
+ * Acepta una cotización de SERVICIO: estado ACEPTADA + cuenta por cobrar
+ * (netoARecibir, con la fecha de vencimiento capturada en el modal) en una
+ * sola transacción — si algo falla no queda "Aceptada" sin cuenta. Si la
+ * cuenta ya existe (dato histórico), se reutiliza sin duplicar.
  */
-export async function asegurarCambioEstadoPermitido(cotizacionId: string, nuevoEstado: string) {
-  const cotizacion = await prisma.cotizacion.findUniqueOrThrow({
-    where: { id: cotizacionId },
-    select: {
-      estado: true,
-      cuentaPorCobrar: { select: { abonos: { select: { id: true }, take: 1 } } },
-    },
-  });
+export async function aceptarCotizacionServicio(cotizacionId: string, fechaVencimiento?: Date) {
+  return prisma.$transaction(async (tx) => {
+    await advisoryLock(tx, "cotizacion", cotizacionId);
 
-  const tieneAbonos = (cotizacion.cuentaPorCobrar?.abonos.length ?? 0) > 0;
-  if (cotizacion.estado === "ACEPTADA" && nuevoEstado !== "ACEPTADA" && tieneAbonos) {
-    throw new Error(
-      "No se puede cambiar el estado: esta cotización ya tiene pagos registrados en su cuenta por cobrar."
-    );
-  }
+    const cotizacion = await tx.cotizacion.findUniqueOrThrow({
+      where: { id: cotizacionId },
+      select: { netoARecibir: true, cuentaPorCobrar: { select: { id: true } } },
+    });
+
+    await tx.cotizacion.update({ where: { id: cotizacionId }, data: { estado: "ACEPTADA" } });
+
+    if (!cotizacion.cuentaPorCobrar) {
+      if (!fechaVencimiento) throw new Error("Falta la fecha de vencimiento.");
+      await tx.cuentaPorCobrar.create({
+        data: { cotizacionId, montoTotal: cotizacion.netoARecibir, fechaVencimiento },
+      });
+    }
+  });
 }
 
 /**

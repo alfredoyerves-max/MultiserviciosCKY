@@ -40,6 +40,8 @@ export const PROTECTED_FISCAL_FIELDS = [
   "salarioMinimoMensual",
   "isnPct",
   "impuestoAdicionalPct",
+  "ivaPct",
+  "retencionIsrPct",
 
   // Identidad del prestador, cuentas bancarias y métodos de pago — Fase
   // 12. Extienden el mismo candado: no son tasas normativas, pero son

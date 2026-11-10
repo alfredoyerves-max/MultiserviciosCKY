@@ -118,10 +118,15 @@ export function ConfigForm({
         <NumField name="primaVacacionalPct" label="Prima vacacional (%)" defaultValue={toPctDisplay(config.primaVacacionalPct)} error={state.fieldErrors?.primaVacacionalPct} />
       </Section>
 
-      <Section title="Fiscal (cotización)">
-        <NumField name="ivaPct" label="IVA (%)" defaultValue={toPctDisplay(config.ivaPct)} error={state.fieldErrors?.ivaPct} />
-        <NumField name="retencionIsrPct" label="Retención ISR RESICO Art. 113-J (%, solo Persona Moral)" defaultValue={toPctDisplay(config.retencionIsrPct)} error={state.fieldErrors?.retencionIsrPct} />
-      </Section>
+      <FiscalSection
+        title="Fiscal (cotización)"
+        hint="IVA y retención ISR de las cotizaciones — protegidos por contraseña."
+        unlocked={fiscalUnlocked}
+        onUnlock={handleUnlock}
+      >
+        <NumField locked={!fiscalUnlocked} name="ivaPct" label="IVA (%)" defaultValue={toPctDisplay(config.ivaPct)} error={state.fieldErrors?.ivaPct} />
+        <NumField locked={!fiscalUnlocked} name="retencionIsrPct" label="Retención ISR RESICO Art. 113-J (%, solo Persona Moral)" defaultValue={toPctDisplay(config.retencionIsrPct)} error={state.fieldErrors?.retencionIsrPct} />
+      </FiscalSection>
 
       <Section title="Jornada laboral">
         <NumField name="horasPorDia" label="Horas por día laboral" defaultValue={config.horasPorDia} error={state.fieldErrors?.horasPorDia} step="1" />

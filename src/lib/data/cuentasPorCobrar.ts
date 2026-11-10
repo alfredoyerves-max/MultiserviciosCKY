@@ -1,33 +1,8 @@
 import { advisoryLock, prisma } from "@/lib/prisma";
 import { calcularSaldo } from "@/lib/cuentas";
-import type { GenerarCuentaPorCobrarInput, AbonoInput } from "@/lib/schemas/cuentas";
+import type { AbonoInput } from "@/lib/schemas/cuentas";
 
 const TOLERANCIA_SALDO = 0.01; // centavos, por acumulación de floats
-
-export async function generarCuentaPorCobrar(input: GenerarCuentaPorCobrarInput) {
-  const cotizacion = await prisma.cotizacion.findUniqueOrThrow({
-    where: { id: input.cotizacionId },
-  });
-
-  if (cotizacion.estado !== "ACEPTADA") {
-    throw new Error("Solo se puede generar una cuenta por cobrar de una cotización Aceptada.");
-  }
-
-  const existente = await prisma.cuentaPorCobrar.findUnique({
-    where: { cotizacionId: input.cotizacionId },
-  });
-  if (existente) {
-    throw new Error("Esta cotización ya tiene una cuenta por cobrar generada.");
-  }
-
-  return prisma.cuentaPorCobrar.create({
-    data: {
-      cotizacionId: input.cotizacionId,
-      montoTotal: cotizacion.netoARecibir,
-      fechaVencimiento: input.fechaVencimiento,
-    },
-  });
-}
 
 export async function existeCuentaPorCobrar(cotizacionId: string): Promise<boolean> {
   const existente = await prisma.cuentaPorCobrar.findUnique({
@@ -62,23 +37,6 @@ export async function eliminarCuentaPorCobrar(id: string) {
  */
 export async function cancelarCuentaPorCobrar(id: string) {
   return prisma.cuentaPorCobrar.update({ where: { id }, data: { cancelada: true } });
-}
-
-/**
- * Borra la cuenta por cobrar ligada a una cotización, si existe — usado
- * cuando una cotización Aceptada se mueve a Rechazada (para no dejarla
- * huérfana). Quien llama ya debe haber confirmado que no tiene abonos
- * (asegurarCambioEstadoPermitido en lib/data/cotizaciones.ts); no-op si
- * la cotización nunca tuvo una cuenta por cobrar.
- */
-export async function eliminarCuentaPorCobrarPorCotizacion(cotizacionId: string) {
-  const cuenta = await prisma.cuentaPorCobrar.findUnique({
-    where: { cotizacionId },
-    select: { id: true },
-  });
-  if (cuenta) {
-    await prisma.cuentaPorCobrar.delete({ where: { id: cuenta.id } });
-  }
 }
 
 export function listCuentasPorCobrar() {
