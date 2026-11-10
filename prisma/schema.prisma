@@ -246,8 +246,8 @@ model Cliente {
 /// Cotización (Fases 4-7, tipo agregado en Fase 9). estado: BORRADOR |
 /// ENVIADA | ACEPTADA | RECHAZADA (validado en zod) — son también las 4
 /// columnas del kanban de seguimiento (Fase 6). Cuando estado pasa a
-/// ACEPTADA, desde su detalle se puede generar una CuentaPorCobrar
-/// (Fase 7) — relación 1:1 opcional.
+/// ACEPTADA se genera su CuentaPorCobrar (relación 1:1 opcional; solo
+/// existe mientras la cotización está ACEPTADA — impuesto por triggers).
 ///
 /// tipo: SERVICIO | MATERIAL (Fase 9, validado en zod) — decide cuál de
 /// las dos relaciones de líneas aplica. Nunca se mezclan en un mismo
@@ -257,8 +257,7 @@ model Cliente {
 /// garantiza en la capa de datos (createCotizacion/createCotizacionMaterial
 /// nunca llenan la relación del otro tipo). Ambos tipos comparten el mismo
 /// pipeline de estados, kanban, modal de confirmación y generación de
-/// cuenta por cobrar — por eso viven en el mismo modelo en vez de uno
-/// paralelo completo.
+/// cuenta por cobrar (aceptarCotizacion) — ninguno toca Inventario.
 model Cotizacion {
   id     String @id @default(cuid())
   folio  String @unique
@@ -325,21 +324,25 @@ model LineaCotizacion {
   createdAt DateTime @default(now())
 }
 
-/// Línea de material dentro de una cotización tipo MATERIAL (Fase 9).
-/// `precioUnitario` se precarga desde Producto.precioVentaSugerido pero es
-/// editable en la cotización; `importe` (cantidad × precioUnitario) se
-/// guarda como snapshot, igual que precioVenta en LineaCotizacion — no se
-/// recalcula si el precio sugerido del producto cambia después. Al aceptar
-/// la cotización (confirmarAceptacionMaterial), cada línea genera una
-/// salida de MovimientoInventario por "Venta a cliente".
+/// Línea de material dentro de una cotización tipo MATERIAL. Se captura
+/// directo (descripción, unidad, cantidad, precio) — una cotización es un
+/// documento comercial independiente y NUNCA depende de que exista stock.
+/// `productoId` es solo un atajo opcional para precargar descripción/unidad/
+/// precio desde el catálogo de Inventario; no valida nada. `descripcion` y
+/// `unidadMedida` son snapshot de la línea (no cambian si el producto se
+/// renombra), igual que `importe` (cantidad × precioUnitario). Aceptar la
+/// cotización NO toca Inventario: el surtido se registra a mano allá.
 model LineaCotizacionMaterial {
   id String @id @default(cuid())
 
   cotizacionId String
   cotizacion   Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
 
-  productoId String
-  producto   Producto @relation(fields: [productoId], references: [id])
+  productoId String?
+  producto   Producto? @relation(fields: [productoId], references: [id], onDelete: SetNull)
+
+  descripcion  String @default("")
+  unidadMedida String @default("PIEZA") // mismo catálogo que Producto.unidadMedida (zod)
 
   cantidad       Float
   precioUnitario Float
@@ -349,7 +352,7 @@ model LineaCotizacionMaterial {
 }
 
 /// Cuenta por cobrar (Fase 7) — se genera automáticamente al confirmar la
-/// aceptación de una Cotización (ver confirmarAceptacionAction), pidiendo
+/// aceptación de una Cotización, de cualquier tipo (ver confirmarAceptacionAction), pidiendo
 /// la fecha de vencimiento en ese momento (no se puede derivar de la
 /// cotización). `montoTotal` es un snapshot de `cotizacion.netoARecibir`
 /// — lo que realmente se cobra en efectivo, no `totalAPagar` (la
@@ -437,8 +440,8 @@ model Usuario {
 /// personal (ej. insumos de limpieza) comparten el mismo almacén — no hay
 /// separación en el modelo. `costoCompraReciente` NUNCA se edita
 /// directamente: se actualiza solo al registrar una entrada (ver
-/// lib/data/movimientosInventario.ts). `precioVentaSugerido` es para
-/// cuando se cotice a un cliente (Fase 9, todavía no conectado).
+/// lib/data/movimientosInventario.ts). `precioVentaSugerido` es solo un
+/// atajo para precargar el precio al cotizar material (no obliga a nada).
 model Producto {
   id           String  @id @default(cuid())
   nombre       String
@@ -464,8 +467,8 @@ model Producto {
 /// tipo: ENTRADA | SALIDA. En una ENTRADA se captura proveedor (texto
 /// libre, sin catálogo propio todavía) y costoUnitario. En una SALIDA se
 /// captura motivoSalida (VENTA_CLIENTE | USO_INTERNO) y opcionalmente una
-/// referencia en texto libre (a qué cliente/servicio corresponde — la
-/// Fase 9 de cotización de materiales lo conectará formalmente).
+/// referencia en texto libre (a qué cliente/folio corresponde). El módulo es
+/// 100% manual: ninguna cotización genera movimientos automáticamente.
 model MovimientoInventario {
   id         String   @id @default(cuid())
   productoId String

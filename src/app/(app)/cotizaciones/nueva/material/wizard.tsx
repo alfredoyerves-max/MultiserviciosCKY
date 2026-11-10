@@ -5,36 +5,35 @@ import { createCotizacionMaterialAction, type CotizacionActionState } from "../.
 import { ClienteStep, type ClienteNuevoState } from "../cliente-step";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Field, FieldLabel, Input, Select } from "@/components/ui/input";
 import { formatCurrency, formatPercent } from "@/lib/format";
-import { UNIDAD_MEDIDA_LABELS, type TipoCliente, type UnidadMedida } from "@/lib/enums";
-import { calcularStock } from "@/lib/inventario";
+import { UNIDADES_MEDIDA, UNIDAD_MEDIDA_LABELS, type TipoCliente, type UnidadMedida } from "@/lib/enums";
 import type { Cliente, Producto } from "@/generated/prisma/client";
 
-export interface ProductoOption extends Producto {
-  movimientos: { tipo: string; cantidad: number }[];
-}
+/** Valor del selector de atajo cuando la línea se captura libre. */
+const SIN_PRODUCTO = "_none_";
 
 interface LineaState {
   key: string;
+  /** Atajo opcional al catálogo; "" = captura libre. */
   productoId: string;
+  descripcion: string;
+  unidadMedida: UnidadMedida;
   cantidad: number;
   precioUnitario: number;
 }
 
 const initialState: CotizacionActionState = { ok: false };
 
-function lineaInicial(productos: ProductoOption[]): LineaState[] {
-  if (productos.length === 0) return [];
-  return [
-    {
-      key: crypto.randomUUID(),
-      productoId: productos[0].id,
-      cantidad: 1,
-      precioUnitario: productos[0].precioVentaSugerido ?? 0,
-    },
-  ];
+function lineaVacia(): LineaState {
+  return {
+    key: crypto.randomUUID(),
+    productoId: "",
+    descripcion: "",
+    unidadMedida: "PIEZA",
+    cantidad: 1,
+    precioUnitario: 0,
+  };
 }
 
 export function Wizard({
@@ -43,7 +42,7 @@ export function Wizard({
   ivaPct,
   retencionIsrPct,
 }: {
-  productos: ProductoOption[];
+  productos: Producto[];
   clientes: Cliente[];
   ivaPct: number;
   retencionIsrPct: number;
@@ -61,25 +60,9 @@ export function Wizard({
   const [proyecto, setProyecto] = useState("");
   const [diasVigencia, setDiasVigencia] = useState(15);
   const [esSoporte, setEsSoporte] = useState(false);
-  const [lineas, setLineas] = useState<LineaState[]>(() => lineaInicial(productos));
+  const [lineas, setLineas] = useState<LineaState[]>(() => [lineaVacia()]);
 
   const productoById = useMemo(() => new Map(productos.map((p) => [p.id, p])), [productos]);
-
-  const stockPorProducto = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const p of productos) m.set(p.id, calcularStock(p.movimientos));
-    return m;
-  }, [productos]);
-
-  // Cantidad total solicitada por producto a través de todas las líneas —
-  // así la advertencia es correcta aunque el mismo producto aparezca en
-  // más de una línea (mismo criterio que la validación del servidor al
-  // aceptar, ver confirmarAceptacionMaterial).
-  const cantidadSolicitadaPorProducto = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const l of lineas) m.set(l.productoId, (m.get(l.productoId) ?? 0) + (l.cantidad || 0));
-    return m;
-  }, [lineas]);
 
   const tipoClienteActivo: TipoCliente | null =
     modoCliente === "existente"
@@ -87,9 +70,8 @@ export function Wizard({
       : clienteNuevo.tipoCliente;
 
   const lineasCalculadas = lineas.map((l) => {
-    const producto = productoById.get(l.productoId);
     const importe = l.cantidad * l.precioUnitario;
-    return { ...l, producto, importe };
+    return { ...l, importe };
   });
 
   const subtotal = lineasCalculadas.reduce((sum, l) => sum + l.importe, 0);
@@ -101,16 +83,23 @@ export function Wizard({
   const [state, formAction, pending] = useActionState(createCotizacionMaterialAction, initialState);
 
   function addLinea() {
-    if (productos.length === 0) return;
-    setLineas((prev) => [
-      ...prev,
-      {
-        key: crypto.randomUUID(),
-        productoId: productos[0].id,
-        cantidad: 1,
-        precioUnitario: productos[0].precioVentaSugerido ?? 0,
-      },
-    ]);
+    setLineas((prev) => [...prev, lineaVacia()]);
+  }
+
+  // Atajo: precarga descripción/unidad/precio desde el producto elegido.
+  // Todo sigue siendo editable y nada se valida contra el inventario.
+  function elegirProducto(key: string, productoId: string) {
+    const producto = productoById.get(productoId);
+    if (!producto) {
+      updateLinea(key, { productoId: "" });
+      return;
+    }
+    updateLinea(key, {
+      productoId,
+      descripcion: producto.nombre,
+      unidadMedida: producto.unidadMedida as UnidadMedida,
+      precioUnitario: producto.precioVentaSugerido ?? 0,
+    });
   }
 
   function updateLinea(key: string, patch: Partial<LineaState>) {
@@ -121,22 +110,12 @@ export function Wizard({
     setLineas((prev) => prev.filter((l) => l.key !== key));
   }
 
-  if (productos.length === 0) {
-    return (
-      <p className="rounded-lg border border-border bg-surface-2 px-4 py-3 text-sm text-text-muted">
-        No hay productos activos en el catálogo. Da de alta al menos uno en{" "}
-        <span className="text-primary">Inventario y Activos</span> antes de crear una cotización
-        de material.
-      </p>
-    );
-  }
-
   return (
     <form action={formAction} className="flex flex-col gap-6">
       <input
         type="hidden"
         name="lineasMaterialJson"
-        value={JSON.stringify(lineas.map(({ productoId, cantidad, precioUnitario }) => ({ productoId, cantidad, precioUnitario })))}
+        value={JSON.stringify(lineas.map(({ productoId, descripcion, unidadMedida, cantidad, precioUnitario }) => ({ productoId, descripcion, unidadMedida, cantidad, precioUnitario })))}
       />
       <input
         type="hidden"
@@ -162,85 +141,94 @@ export function Wizard({
 
       <Card>
         <CardHeader className="items-start justify-between">
-          <CardTitle>2. Productos</CardTitle>
+          <CardTitle>2. Materiales</CardTitle>
           <Button type="button" size="sm" onClick={addLinea}>
             + Agregar línea
           </Button>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          {lineasCalculadas.map((l) => {
-            const producto = l.producto;
-            const unidadLabel = producto ? UNIDAD_MEDIDA_LABELS[producto.unidadMedida as UnidadMedida] : "";
-            const stock = producto ? (stockPorProducto.get(producto.id) ?? 0) : 0;
-            const solicitado = producto ? (cantidadSolicitadaPorProducto.get(producto.id) ?? 0) : 0;
-            const excedeStock = solicitado > stock;
-            return (
-              <div key={l.key} className="flex flex-col gap-2 rounded-lg border border-border-strong bg-surface-2 p-3">
-                <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[2fr_1fr_1fr_1fr_auto]">
-                  <Field>
-                    <FieldLabel>Producto</FieldLabel>
-                    <Select
-                      value={l.productoId}
-                      onChange={(e) => {
-                        const nuevo = productoById.get(e.target.value);
-                        updateLinea(l.key, {
-                          productoId: e.target.value,
-                          precioUnitario: nuevo?.precioVentaSugerido ?? 0,
-                        });
-                      }}
-                    >
-                      {productos.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.nombre} ({UNIDAD_MEDIDA_LABELS[p.unidadMedida as UnidadMedida]})
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                  <Field>
-                    <FieldLabel>Cantidad</FieldLabel>
-                    <Input
-                      type="number"
-                      min={0.01}
-                      step="0.01"
-                      value={l.cantidad}
-                      onChange={(e) => updateLinea(l.key, { cantidad: Number(e.target.value) || 0 })}
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel>Precio unitario</FieldLabel>
-                    <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={l.precioUnitario}
-                      onChange={(e) => updateLinea(l.key, { precioUnitario: Number(e.target.value) || 0 })}
-                    />
-                  </Field>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-text-dim">Importe</p>
-                    <p className="font-mono text-sm font-semibold tabular-nums text-primary">
-                      {formatCurrency(l.importe)}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => removeLinea(l.key)}
-                    disabled={lineas.length === 1}
+          {lineasCalculadas.map((l) => (
+            <div key={l.key} className="flex flex-col gap-3 rounded-lg border border-border-strong bg-surface-2 p-3">
+              {productos.length > 0 && (
+                <Field>
+                  <FieldLabel>Precargar desde producto guardado (opcional)</FieldLabel>
+                  <Select
+                    value={l.productoId || SIN_PRODUCTO}
+                    onChange={(e) =>
+                      e.target.value === SIN_PRODUCTO
+                        ? updateLinea(l.key, { productoId: "" })
+                        : elegirProducto(l.key, e.target.value)
+                    }
                   >
-                    Quitar
-                  </Button>
+                    <option value={SIN_PRODUCTO}>— Captura libre —</option>
+                    {productos.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nombre} ({UNIDAD_MEDIDA_LABELS[p.unidadMedida as UnidadMedida]})
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              )}
+              <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[3fr_1fr_1fr_1fr_1fr_auto]">
+                <Field>
+                  <FieldLabel>Descripción</FieldLabel>
+                  <Input
+                    value={l.descripcion}
+                    onChange={(e) => updateLinea(l.key, { descripcion: e.target.value })}
+                    placeholder="Ej. Papel higiénico jumbo"
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel>Unidad</FieldLabel>
+                  <Select
+                    value={l.unidadMedida}
+                    onChange={(e) => updateLinea(l.key, { unidadMedida: e.target.value as UnidadMedida })}
+                  >
+                    {UNIDADES_MEDIDA.map((u) => (
+                      <option key={u} value={u}>
+                        {UNIDAD_MEDIDA_LABELS[u]}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field>
+                  <FieldLabel>Cantidad</FieldLabel>
+                  <Input
+                    type="number"
+                    min={0.01}
+                    step="0.01"
+                    value={l.cantidad}
+                    onChange={(e) => updateLinea(l.key, { cantidad: Number(e.target.value) || 0 })}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel>Precio unitario</FieldLabel>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={l.precioUnitario}
+                    onChange={(e) => updateLinea(l.key, { precioUnitario: Number(e.target.value) || 0 })}
+                  />
+                </Field>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-text-dim">Importe</p>
+                  <p className="font-mono text-sm font-semibold tabular-nums text-primary">
+                    {formatCurrency(l.importe)}
+                  </p>
                 </div>
-                <p className="flex items-center gap-2 text-xs text-text-dim">
-                  Stock actual: {stock} {unidadLabel}
-                  {excedeStock && (
-                    <Badge tone="warning">Cantidad solicitada excede el stock disponible</Badge>
-                  )}
-                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => removeLinea(l.key)}
+                  disabled={lineas.length === 1}
+                >
+                  Quitar
+                </Button>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </CardContent>
       </Card>
 

@@ -3,8 +3,6 @@ import { getSystemConfigConCeav } from "./config";
 import { calcularCostoReal, costoRealPorModalidad } from "@/lib/costEngine";
 import { calcularTotalesFiscales } from "@/lib/fiscalEngine";
 import { sueldoMensualEfectivo } from "@/lib/servicioCosto";
-import { calcularStock } from "@/lib/inventario";
-import { lockProducto } from "@/lib/data/locks";
 import { puedeEliminarseCotizacion } from "@/lib/cotizacionRules";
 import { createCliente } from "./clientes";
 import type { CotizacionInput, CotizacionMaterialInput } from "@/lib/schemas/cotizacion";
@@ -125,9 +123,13 @@ export async function createCotizacion(input: CotizacionInput) {
 export async function createCotizacionMaterial(input: CotizacionMaterialInput) {
   const config = await getSystemConfigConCeav();
 
-  const productoIds = [...new Set(input.lineasMaterial.map((l) => l.productoId))];
-  const productos = await prisma.producto.findMany({ where: { id: { in: productoIds } } });
-  const productoById = new Map(productos.map((p) => [p.id, p]));
+  // El producto es un atajo opcional: solo se conserva el vínculo si el id
+  // aún existe; nunca se valida stock ni se exige que haya productos.
+  const productoIds = [...new Set(input.lineasMaterial.flatMap((l) => (l.productoId ? [l.productoId] : [])))];
+  const productosExistentes = productoIds.length
+    ? await prisma.producto.findMany({ where: { id: { in: productoIds } }, select: { id: true } })
+    : [];
+  const productoIdsValidos = new Set(productosExistentes.map((p) => p.id));
 
   let clienteId = input.clienteId;
   let tipoCliente: TipoCliente;
@@ -144,10 +146,10 @@ export async function createCotizacionMaterial(input: CotizacionMaterialInput) {
   }
 
   const lineasCalculadas = input.lineasMaterial.map((linea) => {
-    const producto = productoById.get(linea.productoId);
-    if (!producto) throw new Error(`Producto ${linea.productoId} no encontrado.`);
     return {
-      productoId: linea.productoId,
+      productoId: linea.productoId && productoIdsValidos.has(linea.productoId) ? linea.productoId : null,
+      descripcion: linea.descripcion,
+      unidadMedida: linea.unidadMedida,
       cantidad: linea.cantidad,
       precioUnitario: linea.precioUnitario,
       importe: linea.cantidad * linea.precioUnitario,
@@ -178,7 +180,7 @@ export async function createCotizacionMaterial(input: CotizacionMaterialInput) {
       esSoporte: input.esSoporte ?? false,
       lineasMaterial: { create: lineasCalculadas },
     },
-    include: { cliente: true, lineasMaterial: { include: { producto: true } } },
+    include: { cliente: true, lineasMaterial: true },
   });
 }
 
@@ -227,14 +229,10 @@ export function getCotizacion(id: string) {
     include: {
       cliente: true,
       lineas: { include: { servicio: true } },
-      lineasMaterial: { include: { producto: true } },
+      lineasMaterial: true,
       cuentaPorCobrar: { include: { abonos: { select: { id: true } } } },
     },
   });
-}
-
-export function getCotizacionTipo(id: string) {
-  return prisma.cotizacion.findUniqueOrThrow({ where: { id }, select: { tipo: true, folio: true } });
 }
 
 export { puedeEliminarseCotizacion };
@@ -286,12 +284,14 @@ export async function cambiarEstadoCotizacion(
 }
 
 /**
- * Acepta una cotización de SERVICIO: estado ACEPTADA + cuenta por cobrar
- * (netoARecibir, con la fecha de vencimiento capturada en el modal) en una
- * sola transacción — si algo falla no queda "Aceptada" sin cuenta. Si la
- * cuenta ya existe (dato histórico), se reutiliza sin duplicar.
+ * Acepta una cotización (SERVICIO o MATERIAL): estado ACEPTADA + cuenta por
+ * cobrar (netoARecibir, con la fecha de vencimiento capturada en el modal) en
+ * una sola transacción — si algo falla no queda "Aceptada" sin cuenta. NO
+ * toca Inventario: una cotización es un documento comercial; el surtido se
+ * registra a mano en el módulo de Inventario. Si la cuenta ya existe (dato
+ * histórico), se reutiliza sin duplicar.
  */
-export async function aceptarCotizacionServicio(cotizacionId: string, fechaVencimiento?: Date) {
+export async function aceptarCotizacion(cotizacionId: string, fechaVencimiento?: Date) {
   return prisma.$transaction(async (tx) => {
     await advisoryLock(tx, "cotizacion", cotizacionId);
 
@@ -303,96 +303,6 @@ export async function aceptarCotizacionServicio(cotizacionId: string, fechaVenci
     await tx.cotizacion.update({ where: { id: cotizacionId }, data: { estado: "ACEPTADA" } });
 
     if (!cotizacion.cuentaPorCobrar) {
-      if (!fechaVencimiento) throw new Error("Falta la fecha de vencimiento.");
-      await tx.cuentaPorCobrar.create({
-        data: { cotizacionId, montoTotal: cotizacion.netoARecibir, fechaVencimiento },
-      });
-    }
-  });
-}
-
-/**
- * Confirma la aceptación de una cotización de MATERIAL (Fase 9): en una
- * sola transacción, valida que el stock real alcance para cada producto
- * (agregando la cantidad si el mismo producto aparece en más de una
- * línea — el stock es del producto, no de la línea), registra una salida
- * de inventario por "Venta a cliente" por cada línea (referencia = folio),
- * cambia el estado a ACEPTADA y genera la cuenta por cobrar si todavía no
- * existe. Si el stock ya no alcanza, la transacción se revierte por
- * completo y no queda ningún cambio a medias — el mensaje identifica el
- * producto exacto que falló.
- */
-export async function confirmarAceptacionMaterial(cotizacionId: string, fechaVencimiento?: Date) {
-  return prisma.$transaction(async (tx) => {
-    const cotizacionPrevia = await tx.cotizacion.findUniqueOrThrow({
-      where: { id: cotizacionId },
-      include: { lineasMaterial: { select: { productoId: true } }, cuentaPorCobrar: true },
-    });
-
-    // Bloquea TODOS los productos involucrados, en orden determinístico
-    // (evita deadlocks contra otra transacción que bloquee los mismos
-    // productos en orden distinto), ANTES de leer su stock — así ninguna
-    // otra salida/aceptación concurrente del mismo producto puede leerlo
-    // "antes" de que esta transacción escriba (ver lib/inventario.ts).
-    const productoIdsOrdenados = [...new Set(cotizacionPrevia.lineasMaterial.map((l) => l.productoId))].sort();
-    for (const productoId of productoIdsOrdenados) {
-      await lockProducto(tx, productoId);
-    }
-
-    // Con los locks ya tomados, se vuelve a leer la cotización completa —
-    // el stock de la primera lectura (antes del lock) no es confiable.
-    const cotizacion = await tx.cotizacion.findUniqueOrThrow({
-      where: { id: cotizacionId },
-      include: {
-        lineasMaterial: {
-          include: { producto: { include: { movimientos: { select: { tipo: true, cantidad: true } } } } },
-        },
-        cuentaPorCobrar: true,
-      },
-    });
-
-    // Las salidas de inventario y la cuenta por cobrar SOLO se generan la
-    // primera vez que esta cotización se acepta de verdad. Si ya existe
-    // una cuenta (re-aceptar idempotente tras pasar por Borrador sin
-    // abonos, o una segunda petición concurrente que quedó detrás del
-    // lock y llegó después de que la primera ya terminó), esta corrida es
-    // un no-op — nunca se vuelve a descontar stock ni a duplicar nada.
-    const esPrimeraAceptacion = !cotizacion.cuentaPorCobrar;
-
-    if (esPrimeraAceptacion) {
-      const cantidadPorProducto = new Map<string, number>();
-      const productoPorId = new Map(cotizacion.lineasMaterial.map((l) => [l.productoId, l.producto]));
-      for (const linea of cotizacion.lineasMaterial) {
-        cantidadPorProducto.set(linea.productoId, (cantidadPorProducto.get(linea.productoId) ?? 0) + linea.cantidad);
-      }
-
-      for (const [productoId, cantidadTotal] of cantidadPorProducto) {
-        const producto = productoPorId.get(productoId)!;
-        const stock = calcularStock(producto.movimientos);
-        if (cantidadTotal > stock) {
-          throw new Error(
-            `Stock insuficiente de "${producto.nombre}": disponible ${stock}, se requieren ${cantidadTotal}.`
-          );
-        }
-      }
-    }
-
-    await tx.cotizacion.update({ where: { id: cotizacionId }, data: { estado: "ACEPTADA" } });
-
-    if (esPrimeraAceptacion) {
-      for (const linea of cotizacion.lineasMaterial) {
-        await tx.movimientoInventario.create({
-          data: {
-            productoId: linea.productoId,
-            tipo: "SALIDA",
-            fecha: new Date(),
-            cantidad: linea.cantidad,
-            motivoSalida: "VENTA_CLIENTE",
-            referencia: cotizacion.folio,
-          },
-        });
-      }
-
       if (!fechaVencimiento) throw new Error("Falta la fecha de vencimiento.");
       await tx.cuentaPorCobrar.create({
         data: { cotizacionId, montoTotal: cotizacion.netoARecibir, fechaVencimiento },

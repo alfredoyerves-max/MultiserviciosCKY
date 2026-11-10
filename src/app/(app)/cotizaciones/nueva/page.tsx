@@ -32,8 +32,8 @@ export default function NuevaCotizacionPage() {
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <p className="text-sm text-text-muted">
-              Venta de productos del catálogo de Inventario. Al aceptarse, descuenta el stock
-              automáticamente.
+              Venta de materiales o productos. Se cotiza primero; el surtido se registra
+              aparte en Inventario.
             </p>
             <ButtonLink href="/cotizaciones/nueva/material">Continuar</ButtonLink>
           </CardContent>

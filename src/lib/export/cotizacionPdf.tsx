@@ -195,7 +195,7 @@ function LineasMaterialTable({ data }: { data: CotizacionExportData }) {
       </View>
       {data.lineasMaterial.map((l, i) => (
         <View style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : undefined]} key={i}>
-          <Text style={[styles.td, { width: "40%" }]}>{l.productoNombre}</Text>
+          <Text style={[styles.td, { width: "40%" }]}>{l.descripcion}</Text>
           <Text style={[styles.td, { width: "15%" }]}>
             {l.cantidad} {l.unidadLabel}
           </Text>

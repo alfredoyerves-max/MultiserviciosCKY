@@ -1,11 +1,11 @@
-import { listProductosActivosConMovimientos } from "@/lib/data/productos";
+import { listProductosActivos } from "@/lib/data/productos";
 import { listClientes } from "@/lib/data/clientes";
 import { getSystemConfigConCeav } from "@/lib/data/config";
 import { Wizard } from "./wizard";
 
 export default async function NuevaCotizacionMaterialPage() {
   const [productos, clientes, config] = await Promise.all([
-    listProductosActivosConMovimientos(),
+    listProductosActivos(),
     listClientes(),
     getSystemConfigConCeav(),
   ]);
@@ -15,8 +15,8 @@ export default async function NuevaCotizacionMaterialPage() {
       <div>
         <h1 className="text-xl font-semibold text-text">Nueva cotización de material</h1>
         <p className="text-sm text-text-muted">
-          Venta de productos del catálogo de Inventario. Al aceptarse, el stock se descuenta
-          automáticamente.
+          Captura cada línea directo (descripción, unidad, cantidad, precio). Puedes
+          precargarla desde un producto guardado, pero no es obligatorio.
         </p>
       </div>
 

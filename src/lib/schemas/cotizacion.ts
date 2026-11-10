@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { modalidadSchema } from "@/lib/enums";
+import { modalidadSchema, unidadMedidaSchema } from "@/lib/enums";
 import { clienteSchema } from "./cliente";
 
 export const lineaInputSchema = z.object({
@@ -10,7 +10,13 @@ export const lineaInputSchema = z.object({
 });
 
 export const lineaMaterialInputSchema = z.object({
-  productoId: z.string().min(1),
+  // Atajo opcional al catálogo de Inventario; "" (captura libre) = sin producto.
+  productoId: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v : undefined)),
+  descripcion: z.string().trim().min(1, "Describe el material"),
+  unidadMedida: unidadMedidaSchema,
   cantidad: z.coerce.number().positive("Debe ser mayor a 0"),
   precioUnitario: z.coerce.number().min(0),
 });
@@ -31,7 +37,7 @@ export const cotizacionInputSchema = cotizacionBaseSchema.extend({
 });
 
 export const cotizacionMaterialInputSchema = cotizacionBaseSchema.extend({
-  lineasMaterial: z.array(lineaMaterialInputSchema).min(1, "Agrega al menos un producto"),
+  lineasMaterial: z.array(lineaMaterialInputSchema).min(1, "Agrega al menos una línea"),
 });
 
 export type CotizacionInput = z.infer<typeof cotizacionInputSchema>;

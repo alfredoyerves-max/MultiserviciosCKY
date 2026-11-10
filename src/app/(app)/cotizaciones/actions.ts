@@ -4,9 +4,7 @@ import {
   createCotizacion,
   createCotizacionMaterial,
   cambiarEstadoCotizacion,
-  aceptarCotizacionServicio,
-  confirmarAceptacionMaterial,
-  getCotizacionTipo,
+  aceptarCotizacion,
   deleteCotizacion,
 } from "@/lib/data/cotizaciones";
 import { existeCuentaPorCobrar } from "@/lib/data/cuentasPorCobrar";
@@ -155,10 +153,7 @@ export async function updateEstadoAction(id: string, estado: string) {
  * Confirma la aceptación de una cotización: cambia el estado a ACEPTADA y
  * genera su cuenta por cobrar (netoARecibir + la fecha de vencimiento
  * capturada en el modal), todo en una sola transacción.
- *
- * Si la cotización es de tipo MATERIAL (Fase 9), además descuenta el stock
- * automáticamente (una salida por línea, motivo "Venta a cliente",
- * referencia = folio) en la misma transacción — ver confirmarAceptacionMaterial.
+ * Igual para Servicio y Material; no toca Inventario.
  */
 export async function confirmarAceptacionAction(
   _prev: CotizacionActionState,
@@ -170,7 +165,6 @@ export async function confirmarAceptacionAction(
   if (!cotizacionId) return { ok: false, error: "Falta la cotización." };
 
   try {
-    const { tipo } = await getCotizacionTipo(cotizacionId);
     const yaExiste = await existeCuentaPorCobrar(cotizacionId);
 
     let fechaVencimiento: Date | undefined;
@@ -185,11 +179,7 @@ export async function confirmarAceptacionAction(
       fechaVencimiento = parsedFecha.data.fechaVencimiento;
     }
 
-    if (tipo === "MATERIAL") {
-      await confirmarAceptacionMaterial(cotizacionId, fechaVencimiento);
-    } else {
-      await aceptarCotizacionServicio(cotizacionId, fechaVencimiento);
-    }
+    await aceptarCotizacion(cotizacionId, fechaVencimiento);
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Error al confirmar la aceptación." };
   }
@@ -197,7 +187,6 @@ export async function confirmarAceptacionAction(
   revalidatePath("/cotizaciones");
   revalidatePath(`/cotizaciones/${cotizacionId}`);
   revalidatePath("/pagos");
-  revalidatePath("/inventario");
   revalidatePath("/");
   return { ok: true };
 }

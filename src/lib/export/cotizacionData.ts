@@ -37,7 +37,7 @@ export interface CotizacionExportData {
   }[];
 
   lineasMaterial: {
-    productoNombre: string;
+    descripcion: string;
     cantidad: number;
     unidadLabel: string;
     precioUnitario: number;
@@ -125,9 +125,9 @@ export function buildCotizacionExportData(
     })),
 
     lineasMaterial: cotizacion.lineasMaterial.map((l) => ({
-      productoNombre: l.producto.nombre,
+      descripcion: l.descripcion,
       cantidad: l.cantidad,
-      unidadLabel: UNIDAD_MEDIDA_LABELS[l.producto.unidadMedida as UnidadMedida],
+      unidadLabel: UNIDAD_MEDIDA_LABELS[l.unidadMedida as UnidadMedida],
       precioUnitario: l.precioUnitario,
       importe: l.importe,
     })),

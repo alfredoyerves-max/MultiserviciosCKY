@@ -289,7 +289,7 @@ function lineasMaterialTable(data: CotizacionExportData): Table {
         (l, i) =>
           new TableRow({
             children: [
-              dataCell(l.productoNombre, cols[0], false, i % 2 === 1),
+              dataCell(l.descripcion, cols[0], false, i % 2 === 1),
               dataCell(`${l.cantidad} ${l.unidadLabel}`, cols[1], false, i % 2 === 1),
               dataCell(formatCurrency(l.precioUnitario), cols[2], true, i % 2 === 1),
               dataCell(formatCurrency(l.importe), cols[3], true, i % 2 === 1),
