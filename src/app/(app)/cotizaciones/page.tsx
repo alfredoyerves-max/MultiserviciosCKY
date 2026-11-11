@@ -1,6 +1,6 @@
 import { listCotizacionesKanban } from "@/lib/data/cotizaciones";
-import { ButtonLink } from "@/components/ui/button";
 import { KanbanBoard } from "./kanban-board";
+import { PageHeader } from "@/components/ui/page-header";
 import { TIPOS_COTIZACION, type TipoCotizacion } from "@/lib/enums";
 import { requireSession } from "@/lib/auth/session";
 
@@ -25,19 +25,14 @@ export default async function CotizacionesPage({
 
   const cotizaciones = await listCotizacionesKanban({ anio, mes, incluirSoporte, tipo });
 
+  // El botón primario de esta pantalla es el "+ Nueva cotización" global del
+  // menú superior; no se repite aquí.
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-primary">Cotizaciones</h1>
-          <p className="text-sm text-text-muted">
-            Seguimiento del pipeline por estado. Usa el mes y el filtro de soporte para
-            explorar el historial.
-          </p>
-        </div>
-        <ButtonLink href="/cotizaciones/nueva">+ Nueva cotización</ButtonLink>
-      </div>
-
+      <PageHeader
+        title="Cotizaciones"
+        description="Lo abierto (Borrador y Enviada) se ve siempre; el mes filtra solo el histórico."
+      />
       <KanbanBoard
         cotizaciones={cotizaciones}
         anio={anio}

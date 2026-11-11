@@ -206,9 +206,10 @@ export interface KanbanFiltros {
   tipo?: TipoCotizacion;
 }
 
-/** Cotizaciones creadas en un mes calendario dado, para el kanban de
- *  seguimiento (Fase 6). Incluye abonos de la cuenta por cobrar (solo su
- *  id) para que el kanban sepa si el cambio de estado debe bloquearse. */
+/** Tablero de seguimiento: Borrador y Enviada (lo abierto) se devuelven SIEMPRE,
+ *  sin importar el mes; el mes calendario solo filtra el histórico (Aceptada y
+ *  Rechazada, por fecha de creación). Incluye abonos de la cuenta por cobrar
+ *  (solo su id) para que el tablero sepa si el cambio de estado debe bloquearse. */
 export async function listCotizacionesKanban(filtros: KanbanFiltros) {
   await requireSession();
   const inicio = new Date(filtros.anio, filtros.mes - 1, 1);
@@ -216,7 +217,10 @@ export async function listCotizacionesKanban(filtros: KanbanFiltros) {
 
   return prisma.cotizacion.findMany({
     where: {
-      createdAt: { gte: inicio, lt: finExclusivo },
+      OR: [
+        { estado: { in: ["BORRADOR", "ENVIADA"] } },
+        { estado: { in: ["ACEPTADA", "RECHAZADA"] }, createdAt: { gte: inicio, lt: finExclusivo } },
+      ],
       ...(filtros.incluirSoporte ? {} : { esSoporte: false }),
       ...(filtros.tipo ? { tipo: filtros.tipo } : {}),
     },

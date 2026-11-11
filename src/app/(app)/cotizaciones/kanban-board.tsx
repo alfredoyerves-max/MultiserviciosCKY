@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { EstadoSelect } from "./estado-select";
-import { EliminarCotizacionButton } from "./eliminar-cotizacion-button";
-import { puedeEliminarseCotizacion } from "@/lib/cotizacionRules";
+import Link from "next/link";
+import { AccionesCotizacion } from "./acciones-cotizacion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { MonthPicker } from "@/components/ui/month-picker";
+import { Select, Input } from "@/components/ui/input";
 import { formatCurrency, formatDate } from "@/lib/format";
 import {
   ESTADO_COTIZACION_LABELS,
@@ -18,11 +19,9 @@ import {
   type TipoCliente,
   type TipoCotizacion,
 } from "@/lib/enums";
-import { Select, Input } from "@/components/ui/input";
 import type { AbonoPorCobrar, Cliente, Cotizacion, CuentaPorCobrar } from "@/generated/prisma/client";
-import Link from "next/link";
 
-const ESTADOS_ACTIVOS: EstadoCotizacion[] = ["BORRADOR", "ENVIADA"];
+const ESTADOS_ABIERTOS: EstadoCotizacion[] = ["BORRADOR", "ENVIADA"];
 const ESTADOS_HISTORICOS: EstadoCotizacion[] = ["ACEPTADA", "RECHAZADA"];
 
 type CotizacionConCliente = Cotizacion & {
@@ -32,23 +31,23 @@ type CotizacionConCliente = Cotizacion & {
 
 const DIAS_ALERTA_VIGENCIA = 3;
 
-function vigenciaInfo(
-  estado: string,
-  fechaVigencia: Date
-): { label: string; tone: "danger" | "warning" } | null {
-  if (estado !== "ENVIADA") return null;
-
+/** Insignia de vigencia de una cotización abierta (Borrador o Enviada):
+ *  rojo = vencida, ámbar = vence hoy o en ≤3 días, neutro = con margen. */
+function vigenciaInfo(fechaVigencia: Date): { label: string; tone: "danger" | "warning" | "neutral" } {
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
   const venc = new Date(fechaVigencia);
   venc.setHours(0, 0, 0, 0);
-  const diasRestantes = Math.round((venc.getTime() - hoy.getTime()) / 86400000);
+  const dias = Math.round((venc.getTime() - hoy.getTime()) / 86400000);
 
-  if (diasRestantes < 0) return { label: "Vencida", tone: "danger" };
-  if (diasRestantes === 0) return { label: "Vence hoy", tone: "warning" };
-  if (diasRestantes <= DIAS_ALERTA_VIGENCIA) return { label: `Vence en ${diasRestantes} día(s)`, tone: "warning" };
-  return null;
+  if (dias < 0) return { label: "Vencida", tone: "danger" };
+  if (dias === 0) return { label: "Vence hoy", tone: "warning" };
+  const label = `Vence en ${dias} ${dias === 1 ? "día" : "días"}`;
+  return { label, tone: dias <= DIAS_ALERTA_VIGENCIA ? "warning" : "neutral" };
 }
+
+const TOOLTIP_SOLO_TRAMITE =
+  "Cotización generada solo como trámite interno del cliente (papeleo de compras), sin intención real de compra: no es una venta. Se ocultan por defecto.";
 
 export function KanbanBoard({
   cotizaciones,
@@ -80,12 +79,9 @@ export function KanbanBoard({
 
   const [busqueda, setBusqueda] = useState("");
 
-  // El kanban activo (Fase 6) solo muestra el flujo vivo de negociación —
-  // Borrador y Enviada. Aceptada/Rechazada ya no están en negociación, así
-  // que viven en la tabla histórica debajo, con su propio buscador —
-  // ambas vistas comparten los mismos filtros de mes/tipo/soporte (ya
-  // aplicados server-side en listCotizacionesKanban).
-  const columnas = ESTADOS_ACTIVOS.map((estado) => ({
+  // Borrador y Enviada: todo lo abierto, sin importar el mes (el servidor ya lo
+  // devuelve así). El mes solo recorta el histórico (Aceptadas y Rechazadas).
+  const columnas = ESTADOS_ABIERTOS.map((estado) => ({
     estado,
     cotizaciones: cotizaciones.filter((c) => c.estado === estado),
   }));
@@ -103,60 +99,45 @@ export function KanbanBoard({
   }, [cotizaciones, busqueda]);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+    <div className="flex flex-col gap-6">
+      {/* Filtros — una sola fila; aplican a todo el tablero. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <Select
+          className="h-9 w-auto"
+          value={tipo ?? "TODOS"}
+          aria-label="Tipo de cotización"
+          onChange={(e) => setParam("tipo", e.target.value === "TODOS" ? null : e.target.value)}
+        >
+          <option value="TODOS">Todos los tipos</option>
+          {TIPOS_COTIZACION.map((t) => (
+            <option key={t} value={t}>
+              {TIPO_COTIZACION_LABELS[t]}
+            </option>
+          ))}
+        </Select>
+
+        <label
+          className="flex cursor-pointer items-center gap-2 whitespace-nowrap text-sm text-text-muted"
+          title={TOOLTIP_SOLO_TRAMITE}
+        >
           <input
-            type="month"
-            value={mesValue}
-            onChange={(e) => setParam("mes", e.target.value)}
-            className="h-9 rounded-lg border border-border-strong bg-surface-2 px-3 text-sm text-text outline-none focus:border-primary"
+            type="checkbox"
+            checked={incluirSoporte}
+            onChange={(e) => setParam("soporte", e.target.checked ? "1" : null)}
+            className="h-4 w-4 rounded border-border-strong bg-surface-2 accent-[var(--color-primary)]"
           />
-          {mesValue !== mesActualValue && (
-            <button
-              type="button"
-              onClick={() => setParam("mes", null)}
-              className="text-xs text-primary hover:underline"
-            >
-              Volver a este mes
-            </button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Select
-            className="h-9 w-auto"
-            value={tipo ?? "TODOS"}
-            onChange={(e) => setParam("tipo", e.target.value === "TODOS" ? null : e.target.value)}
-          >
-            <option value="TODOS">Todos los tipos</option>
-            {TIPOS_COTIZACION.map((t) => (
-              <option key={t} value={t}>
-                {TIPO_COTIZACION_LABELS[t]}
-              </option>
-            ))}
-          </Select>
-
-          <label className="flex items-center gap-2 text-sm text-text-muted">
-            <input
-              type="checkbox"
-              checked={incluirSoporte}
-              onChange={(e) => setParam("soporte", e.target.checked ? "1" : null)}
-              className="h-4 w-4 rounded border-border-strong bg-surface-2 accent-[var(--color-primary)]"
-            />
-            Mostrar cotizaciones de soporte
-          </label>
-        </div>
+          Incluir «Solo trámite (no es venta)»
+        </label>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {columnas.map((col) => (
-          <div key={col.estado} className="flex flex-col gap-3">
+          <section key={col.estado} className="flex flex-col gap-3">
             <div className="flex items-center justify-between px-1">
-              <h3 className="text-sm font-semibold text-text">{ESTADO_COTIZACION_LABELS[col.estado]}</h3>
+              <h2 className="text-sm font-semibold text-text">{ESTADO_COTIZACION_LABELS[col.estado]}</h2>
               <span className="text-xs text-text-dim">{col.cotizaciones.length}</span>
             </div>
-            <div className="flex max-h-[65vh] flex-col gap-3 overflow-y-auto pr-1">
+            <div className="flex flex-col gap-3">
               {col.cotizaciones.length === 0 && (
                 <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs text-text-dim">
                   Sin cotizaciones
@@ -166,80 +147,149 @@ export function KanbanBoard({
                 <KanbanCard key={c.id} cotizacion={c} />
               ))}
             </div>
-          </div>
+          </section>
         ))}
       </div>
 
-      <div className="mt-2 flex flex-col gap-3 border-t border-border pt-6">
+      <section className="flex flex-col gap-3 border-t border-border pt-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-text">
             Histórico — Aceptadas y Rechazadas
             <span className="ml-2 text-xs font-normal text-text-dim">{historicas.length}</span>
           </h2>
-          <Input
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por folio o cliente…"
-            className="h-9 w-64"
-          />
+          <div className="flex flex-wrap items-center gap-3">
+            <MonthPicker value={mesValue} onChange={(v) => setParam("mes", v)} label="Mes del histórico" />
+            {mesValue !== mesActualValue && (
+              <button
+                type="button"
+                onClick={() => setParam("mes", null)}
+                className="text-xs text-primary hover:underline"
+              >
+                Volver a este mes
+              </button>
+            )}
+            <Input
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar por folio o cliente…"
+              aria-label="Buscar en el histórico"
+              className="h-9 w-full sm:w-64"
+            />
+          </div>
         </div>
 
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-dim">
-                <th className="px-4 py-3 font-medium">Folio</th>
-                <th className="px-4 py-3 font-medium">Cliente</th>
-                <th className="px-4 py-3 font-medium">Tipo</th>
-                <th className="px-4 py-3 text-right font-medium">Total</th>
-                <th className="px-4 py-3 font-medium">Estado</th>
-                <th className="px-4 py-3 font-medium">Fecha</th>
-                <th className="px-4 py-3 text-right font-medium">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {historicas.length === 0 && (
-                <tr>
-                  <td colSpan={7}>
-                    <EmptyState title="Sin cotizaciones históricas para este filtro." />
-                  </td>
-                </tr>
-              )}
-              {historicas.map((c) => (
-                <HistoricoRow key={c.id} cotizacion={c} />
-              ))}
-            </tbody>
-          </table>
+        {historicas.length === 0 && <EmptyState title="Sin cotizaciones históricas para este filtro." />}
+
+        {/* Tarjetas en móvil. */}
+        <div className="flex flex-col gap-3 sm:hidden">
+          {historicas.map((c) => (
+            <Card key={c.id}>
+              <CardContent className="flex flex-col gap-1.5 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <Link href={`/cotizaciones/${c.id}`} className="font-mono text-sm text-primary hover:underline">
+                    {c.folio}
+                  </Link>
+                  <EstadoBadge estado={c.estado} />
+                </div>
+                <p className="text-sm text-text">{c.cliente.nombreRazonSocial}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="font-mono text-base font-semibold tabular-nums text-text">
+                      {formatCurrency(c.netoARecibir)}
+                    </p>
+                    <p className="text-xs text-text-dim">
+                      {TIPO_COTIZACION_LABELS[c.tipo as TipoCotizacion]} · {formatDate(c.createdAt)}
+                    </p>
+                  </div>
+                  <AccionesCotizacion cotizacion={c} />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      </div>
+
+        {/* Tabla desde sm. */}
+        {historicas.length > 0 && (
+          <div className="hidden overflow-x-auto rounded-lg border border-border sm:block">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-dim">
+                  <th className="px-4 py-3 font-medium">Folio</th>
+                  <th className="px-4 py-3 font-medium">Cliente</th>
+                  <th className="px-4 py-3 font-medium">Tipo</th>
+                  <th className="px-4 py-3 text-right font-medium">Total</th>
+                  <th className="px-4 py-3 font-medium">Estado</th>
+                  <th className="px-4 py-3 font-medium">Fecha</th>
+                  <th className="w-14 px-4 py-3" aria-label="Acciones" />
+                </tr>
+              </thead>
+              <tbody>
+                {historicas.map((c) => (
+                  <tr key={c.id} className="border-b border-border last:border-0">
+                    <td className="px-4 py-3">
+                      <Link href={`/cotizaciones/${c.id}`} className="font-mono text-sm text-primary hover:underline">
+                        {c.folio}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-text">{c.cliente.nombreRazonSocial}</td>
+                    <td className="px-4 py-3">
+                      <Badge tone="neutral">{TIPO_COTIZACION_LABELS[c.tipo as TipoCotizacion]}</Badge>
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums text-text">
+                      {formatCurrency(c.netoARecibir)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <EstadoBadge estado={c.estado} />
+                    </td>
+                    <td className="px-4 py-3 text-text-muted">{formatDate(c.createdAt)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <AccionesCotizacion cotizacion={c} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
 
+/** Aceptada = verde (pagado/ok); Rechazada = neutro. El color queda para estados. */
+function EstadoBadge({ estado }: { estado: string }) {
+  return (
+    <Badge tone={estado === "ACEPTADA" ? "success" : "neutral"}>
+      {ESTADO_COTIZACION_LABELS[estado as EstadoCotizacion]}
+    </Badge>
+  );
+}
+
 function KanbanCard({ cotizacion }: { cotizacion: CotizacionConCliente }) {
-  const vigencia = vigenciaInfo(cotizacion.estado, cotizacion.fechaVigencia);
+  const vigencia = vigenciaInfo(cotizacion.fechaVigencia);
 
   return (
     <Card
       className={
-        vigencia?.tone === "danger"
+        vigencia.tone === "danger"
           ? "border-danger-strong/50"
-          : vigencia?.tone === "warning"
+          : vigencia.tone === "warning"
             ? "border-warning/40"
             : undefined
       }
     >
       <CardContent className="flex flex-col gap-2 p-4">
         <div className="flex items-start justify-between gap-2">
-          <Link
-            href={`/cotizaciones/${cotizacion.id}`}
-            className="font-mono text-sm text-primary hover:underline"
-          >
+          <Link href={`/cotizaciones/${cotizacion.id}`} className="font-mono text-sm text-primary hover:underline">
             {cotizacion.folio}
           </Link>
-          <div className="flex flex-wrap items-center gap-1">
+          <div className="flex flex-wrap items-center justify-end gap-1">
             <Badge tone="neutral">{TIPO_COTIZACION_LABELS[cotizacion.tipo as TipoCotizacion]}</Badge>
-            {cotizacion.esSoporte && <Badge tone="neutral">Soporte</Badge>}
+            {cotizacion.esSoporte && (
+              <Badge tone="neutral" title={TOOLTIP_SOLO_TRAMITE}>
+                Solo trámite
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -248,86 +298,19 @@ function KanbanCard({ cotizacion }: { cotizacion: CotizacionConCliente }) {
           {TIPO_CLIENTE_LABELS[cotizacion.cliente.tipoCliente as TipoCliente]}
         </p>
 
-        <p className="font-mono text-base font-semibold tabular-nums text-text">
-          {formatCurrency(cotizacion.netoARecibir)}
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="font-mono text-base font-semibold tabular-nums text-text">
+            {formatCurrency(cotizacion.netoARecibir)}
+          </p>
+          <Badge tone={vigencia.tone}>{vigencia.label}</Badge>
+        </div>
 
         <p className="text-xs text-text-dim">Vigente hasta {formatDate(cotizacion.fechaVigencia)}</p>
 
-        {vigencia && (
-          <Badge tone={vigencia.tone} className="w-fit">
-            {vigencia.label}
-          </Badge>
-        )}
-
-        <div className="mt-1 flex items-center gap-2">
-          <EstadoSelect
-            cotizacion={{
-              ...cotizacion,
-              tieneCuentaPorCobrar: cotizacion.cuentaPorCobrar !== null,
-              tieneAbonos: (cotizacion.cuentaPorCobrar?.abonos.length ?? 0) > 0,
-            }}
-            className="h-8 flex-1 text-xs"
-          />
-          {puedeEliminarseCotizacion(cotizacion) && (
-            <EliminarCotizacionButton
-              cotizacion={{
-                id: cotizacion.id,
-                folio: cotizacion.folio,
-                tipo: cotizacion.tipo,
-                clienteNombre: cotizacion.cliente.nombreRazonSocial,
-                total: cotizacion.netoARecibir,
-              }}
-              size="sm"
-              className="h-8 shrink-0 px-2 text-xs"
-            />
-          )}
+        <div className="mt-1">
+          <AccionesCotizacion cotizacion={cotizacion} conPrincipal />
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function HistoricoRow({ cotizacion }: { cotizacion: CotizacionConCliente }) {
-  return (
-    <tr className="border-b border-border last:border-0">
-      <td className="px-4 py-3">
-        <Link href={`/cotizaciones/${cotizacion.id}`} className="font-mono text-sm text-primary hover:underline">
-          {cotizacion.folio}
-        </Link>
-      </td>
-      <td className="px-4 py-3 text-text">{cotizacion.cliente.nombreRazonSocial}</td>
-      <td className="px-4 py-3">
-        <Badge tone="neutral">{TIPO_COTIZACION_LABELS[cotizacion.tipo as TipoCotizacion]}</Badge>
-      </td>
-      <td className="px-4 py-3 text-right font-mono tabular-nums text-text">
-        {formatCurrency(cotizacion.netoARecibir)}
-      </td>
-      <td className="px-4 py-3">
-        <EstadoSelect
-          cotizacion={{
-            ...cotizacion,
-            tieneCuentaPorCobrar: cotizacion.cuentaPorCobrar !== null,
-            tieneAbonos: (cotizacion.cuentaPorCobrar?.abonos.length ?? 0) > 0,
-          }}
-          className="h-8 w-auto text-xs"
-        />
-      </td>
-      <td className="px-4 py-3 text-text-muted">{formatDate(cotizacion.createdAt)}</td>
-      <td className="px-4 py-3 text-right">
-        {puedeEliminarseCotizacion(cotizacion) && (
-          <EliminarCotizacionButton
-            cotizacion={{
-              id: cotizacion.id,
-              folio: cotizacion.folio,
-              tipo: cotizacion.tipo,
-              clienteNombre: cotizacion.cliente.nombreRazonSocial,
-              total: cotizacion.netoARecibir,
-            }}
-            size="sm"
-          />
-        )}
-      </td>
-    </tr>
   );
 }
