@@ -65,7 +65,7 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
       className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
     >
       <Icon className="h-4 w-4 shrink-0" />
-      {theme === "dark" ? "Modo oscuro" : "Modo claro"}
+      {theme === "dark" ? "Modo claro" : "Modo oscuro"}
     </button>
   );
 }

@@ -129,6 +129,20 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Los controles nativos (lista desplegable de los <select>, calendarios,
+   barras de scroll) siguen el tema de la app y no el del sistema: sin esto
+   el menú de un select se abre blanco sobre una pantalla oscura. */
+:root {
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+select option {
+  background-color: var(--color-surface-1);
+  color: var(--color-text);
+}
+
 body {
   background: var(--color-bg);
   color: var(--color-text);

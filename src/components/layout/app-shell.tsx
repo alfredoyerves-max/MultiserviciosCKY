@@ -7,36 +7,26 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { logoutAction } from "@/lib/auth/actions";
 import { ThemeToggle } from "./theme-toggle";
+import { NuevaCotizacionMenu } from "./nueva-cotizacion-menu";
 import type { ReactNode } from "react";
 
 /**
- * Acento por módulo (Sección 1B + 4 del documento de diseño) — decora
- * SOLO la barra lateral y los encabezados de página, nunca un badge de
- * estado. Cotizaciones reutiliza el cian de marca (--color-primary) a
- * propósito — es el módulo insignia. Dashboard/Configuración usan un tono
- * neutro corporativo, sin acento de color. Los valores son literales
- * completos (no interpolados) para que Tailwind los detecte al escanear.
+ * Un solo acento (turquesa, --color-primary) para todo el menú: el color queda
+ * reservado a los estados (rojo vencido, ámbar aviso, verde pagado).
  */
-const NAV_ITEM_ACTIVE_STYLES: Record<string, string> = {
-  neutral: "bg-surface-2 text-text",
-  primary: "bg-primary/15 text-primary",
-  servicios: "bg-module-servicios/15 text-module-servicios",
-  inventario: "bg-module-inventario/15 text-module-inventario",
-  pagos: "bg-module-pagos/15 text-module-pagos",
-};
+const NAV_ITEM_ACTIVE = "bg-primary/15 text-primary";
 
-// Misma lista para la barra lateral de escritorio y la barra inferior de
-// móvil/tablet — Configuración no entra en la barra inferior (no caben 6
-// íconos cómodamente) y vive en el menú del header compacto en su lugar.
+// Seis ítems, iguales en la barra lateral y en la barra inferior. "short" es la
+// etiqueta de la barra inferior (390 px). Finanzas agrupa Pagos y Cobros (/pagos);
+// la Fase 8 le suma Gastos y Resultados.
 const NAV_ITEMS = [
-  { href: "/", label: "Dashboard", icon: DashboardIcon, moduleColor: "neutral" },
-  { href: "/cotizaciones", label: "Cotizaciones", icon: QuoteIcon, moduleColor: "primary" },
-  { href: "/servicios", label: "Servicios", icon: ServiceIcon, moduleColor: "servicios" },
-  { href: "/inventario", label: "Inventario y Activos", icon: InventarioIcon, moduleColor: "inventario" },
-  { href: "/pagos", label: "Pagos y Cobros", icon: PagosIcon, moduleColor: "pagos" },
+  { href: "/", label: "Dashboard", short: "Dashboard", icon: DashboardIcon },
+  { href: "/cotizaciones", label: "Cotizaciones", short: "Cotizaciones", icon: QuoteIcon },
+  { href: "/servicios", label: "Servicios", short: "Servicios", icon: ServiceIcon },
+  { href: "/pagos", label: "Finanzas", short: "Finanzas", icon: PagosIcon },
+  { href: "/inventario", label: "Inventario y Activos", short: "Inventario", icon: InventarioIcon },
+  { href: "/configuracion", label: "Configuración", short: "Config.", icon: SettingsIcon },
 ];
-
-const CONFIGURACION_ITEM = { href: "/configuracion", label: "Configuración", icon: SettingsIcon, moduleColor: "neutral" };
 
 function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -69,6 +59,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
 
         <div className="flex shrink-0 items-center gap-1">
+          <NuevaCotizacionMenu />
           <ThemeToggle compact />
           <MobileMenu />
         </div>
@@ -91,7 +82,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex flex-col gap-1">
-          {[...NAV_ITEMS, CONFIGURACION_ITEM].map((item) => {
+          {NAV_ITEMS.map((item) => {
             const active = isActive(pathname, item.href);
             const Icon = item.icon;
             return (
@@ -101,7 +92,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                   active
-                    ? NAV_ITEM_ACTIVE_STYLES[item.moduleColor]
+                    ? NAV_ITEM_ACTIVE
                     : "text-text-muted hover:bg-surface-2 hover:text-text"
                 )}
               >
@@ -128,7 +119,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <main className="flex-1 overflow-x-hidden pb-20 lg:pb-0">
-        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</div>
+        <div className="mx-auto w-full max-w-[1280px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          {/* Botón global — en escritorio vive aquí; en móvil/tablet, en el header. */}
+          <div className="mb-4 hidden justify-end lg:flex">
+            <NuevaCotizacionMenu />
+          </div>
+          {children}
+        </div>
       </main>
 
       {/* Barra inferior — solo móvil/tablet (<lg), patrón tipo app
@@ -136,7 +133,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           día se agrega un ícono más — hoy los 5 caben sin problema incluso
           en 390px. safe-area-inset-bottom para el home indicator de iOS. */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border bg-surface lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-border bg-surface lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         {NAV_ITEMS.map((item) => {
@@ -152,7 +149,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               )}
             >
               <Icon className="h-5 w-5 shrink-0" />
-              <span className="line-clamp-1 max-w-[4.2rem] text-center">{item.label}</span>
+              <span className="max-w-full truncate text-center">{item.short}</span>
             </Link>
           );
         })}
@@ -191,23 +188,15 @@ function MobileMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label="Más opciones"
+        aria-label="Cuenta"
         aria-expanded={open}
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
       >
-        <SettingsIcon className="h-5 w-5" />
+        <LogoutIcon className="h-5 w-5" />
       </button>
 
       {open && (
         <div className="absolute right-0 top-11 z-50 w-48 rounded-lg border border-border bg-surface-1 py-1 shadow-xl">
-          <Link
-            href="/configuracion"
-            onClick={() => setOpen(false)}
-            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
-          >
-            <SettingsIcon className="h-4 w-4 shrink-0" />
-            Configuración
-          </Link>
           <form action={logoutAction}>
             <button
               type="submit"
