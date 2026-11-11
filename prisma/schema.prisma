@@ -236,6 +236,8 @@ model Servicio {
   updatedAt DateTime @updatedAt
 
   lineas LineaCotizacion[]
+
+  @@index([puestoId])
 }
 
 /// Cliente de una cotización (Fase 4). tipoCliente: PERSONA_MORAL |
@@ -308,6 +310,8 @@ model Cotizacion {
   lineas          LineaCotizacion[]
   lineasMaterial  LineaCotizacionMaterial[]
   cuentaPorCobrar CuentaPorCobrar?
+
+  @@index([clienteId])
 }
 
 /// Línea de servicio dentro de una cotización tipo SERVICIO. Guarda un
@@ -332,6 +336,9 @@ model LineaCotizacion {
   precioVenta               Float
 
   createdAt DateTime @default(now())
+
+  @@index([cotizacionId])
+  @@index([servicioId])
 }
 
 /// Línea de material dentro de una cotización tipo MATERIAL. Se captura
@@ -363,6 +370,9 @@ model LineaCotizacionMaterial {
   importe        Float
 
   createdAt DateTime @default(now())
+
+  @@index([cotizacionId])
+  @@index([productoId])
 }
 
 /// Cuenta por cobrar (Fase 7) — se genera automáticamente al confirmar la
@@ -405,6 +415,8 @@ model AbonoPorCobrar {
   nota   String?
 
   createdAt DateTime @default(now())
+
+  @@index([cuentaPorCobrarId])
 }
 
 /// Cuenta por pagar (Fase 7) — registro independiente (proveedor en texto
@@ -434,6 +446,8 @@ model AbonoPorPagar {
   nota  String?
 
   createdAt DateTime @default(now())
+
+  @@index([cuentaPorPagarId])
 }
 
 /// Cuenta de usuario. Por ahora solo existe el bootstrap del primer usuario
@@ -501,6 +515,8 @@ model MovimientoInventario {
   referencia   String?
 
   createdAt DateTime @default(now())
+
+  @@index([productoId])
 }
 
 /// Registro de control de Activos de la empresa (Fase 10, campos de
@@ -560,6 +576,8 @@ model EventoActivo {
   estadoNuevo    String?
 
   createdAt DateTime @default(now())
+
+  @@index([activoId])
 }
 
 /// Sesión activa. `usuarioId` es único a propósito: una sola fila por
