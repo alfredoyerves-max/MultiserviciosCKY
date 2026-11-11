@@ -1,4 +1,5 @@
 import { MODALIDAD_LABELS, TIPO_CLIENTE_LABELS, UNIDAD_MEDIDA_LABELS, type Modalidad, type TipoCliente, type UnidadMedida } from "@/lib/enums";
+import { tasasMostradas } from "@/lib/tasasCotizacion";
 import type { getCotizacion } from "@/lib/data/cotizaciones";
 import type { CuentaBancaria, SystemConfig } from "@/generated/prisma/client";
 
@@ -48,6 +49,9 @@ export interface CotizacionExportData {
   subtotal: number;
   iva: number;
   retencionIsr: number;
+  /** Tasas para los rótulos (deducidas de los montos; null = sin porcentaje). */
+  tasaIva: number | null;
+  tasaRetencionIsr: number | null;
   /** NUNCA se muestra — se conserva solo como referencia interna (el
    *  monto bruto antes de descontar la retención). El documento y toda
    *  la UI de la app muestran un solo "Total": `netoARecibir`, igual que
@@ -135,6 +139,8 @@ export function buildCotizacionExportData(
     subtotal: cotizacion.subtotal,
     iva: cotizacion.iva,
     retencionIsr: cotizacion.retencionIsr,
+    tasaIva: tasasMostradas(cotizacion, config).iva,
+    tasaRetencionIsr: tasasMostradas(cotizacion, config).retencionIsr,
     totalAPagar: cotizacion.totalAPagar,
     netoARecibir: cotizacion.netoARecibir,
 
@@ -157,4 +163,12 @@ export function buildCotizacionExportData(
       cheque: config.aceptaCheque,
     },
   };
+}
+
+/** Leyenda del Art. 113-J: una sola redacción para Word y PDF. Solo se muestra
+ *  cuando la cotización tiene retención; la tasa sale de los montos (sin
+ *  porcentaje si no se puede afirmar). */
+export function leyendaRetencion(tasaRetencionIsr: number | null): string {
+  const tasa = tasaRetencionIsr === null ? "de ISR" : `del ${tasaRetencionIsr}% de ISR`;
+  return `De conformidad con el Artículo 113-J de la Ley del ISR, al ser usted Persona Moral, se aplicará la retención obligatoria ${tasa} sobre el subtotal de esta operación. Dicho monto se reflejará descontado en el total neto de su factura para que proceda con su entero directo al SAT.`;
 }

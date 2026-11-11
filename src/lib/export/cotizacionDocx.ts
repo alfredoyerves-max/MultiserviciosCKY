@@ -17,7 +17,8 @@ import {
   WidthType,
 } from "docx";
 import { formatCurrency, formatDate } from "@/lib/format";
-import type { CotizacionExportData } from "./cotizacionData";
+import { leyendaRetencion, type CotizacionExportData } from "./cotizacionData";
+import { rotuloConTasa } from "@/lib/tasasCotizacion";
 
 const ACCENT = "00b8c9"; // versión ligeramente más saturada del cyan de marca (#00dbe9), para que texto/bordes tengan suficiente contraste sobre blanco
 const ACCENT_SOFT = "e5fafc";
@@ -327,9 +328,9 @@ function fiscalLineRow(label: string, value: string): TableRow {
  *  — es el único total que se muestra (subtotal + iva − retención), igual
  *  que el campo "Total" de un CFDI real con retención ya viene neto. */
 function fiscalBlock(data: CotizacionExportData): Table {
-  const rows = [fiscalLineRow("Subtotal", formatCurrency(data.subtotal)), fiscalLineRow("IVA trasladado (16%)", formatCurrency(data.iva))];
+  const rows = [fiscalLineRow("Subtotal", formatCurrency(data.subtotal)), fiscalLineRow(rotuloConTasa("IVA trasladado", data.tasaIva), formatCurrency(data.iva))];
   if (data.retencionIsr > 0) {
-    rows.push(fiscalLineRow("Retención ISR (1.25%)", `- ${formatCurrency(data.retencionIsr)}`));
+    rows.push(fiscalLineRow(rotuloConTasa("Retención ISR", data.tasaRetencionIsr), `- ${formatCurrency(data.retencionIsr)}`));
   }
 
   const totalRow = new TableRow({
@@ -374,14 +375,11 @@ function fiscalBlock(data: CotizacionExportData): Table {
   });
 }
 
-const LEYENDA_RETENCION =
-  'De conformidad con el Artículo 113-J de la Ley del ISR, al ser usted Persona Moral, se aplicará la retención obligatoria del 1.25% de ISR sobre el subtotal de esta operación. Dicho monto se reflejará descontado en el total neto de su factura para que proceda con su entero directo al SAT.';
-
-function leyendaRetencionBlock(): Paragraph {
+function leyendaRetencionBlock(tasa: number | null): Paragraph {
   return new Paragraph({
     spacing: { before: 200 },
     border: { left: { style: BorderStyle.SINGLE, size: 18, color: ACCENT, space: 8 } },
-    children: [new TextRun({ text: LEYENDA_RETENCION, italics: true, size: 15, color: GRAY })],
+    children: [new TextRun({ text: leyendaRetencion(tasa), italics: true, size: 15, color: GRAY })],
   });
 }
 
@@ -504,7 +502,7 @@ function firmasBlock(data: CotizacionExportData): Table {
 export async function generarCotizacionDocx(data: CotizacionExportData): Promise<Buffer> {
   const lineasTable = data.tipo === "SERVICIO" ? lineasServicioTable(data) : lineasMaterialTable(data);
   const tituloTabla = data.tipo === "SERVICIO" ? "SERVICIOS COTIZADOS" : "MATERIALES COTIZADOS";
-  const esPersonaMoral = data.cliente.tipoCliente === "PERSONA_MORAL";
+  const conRetencion = data.retencionIsr > 0;
 
   const doc = new Document({
     sections: [
@@ -520,7 +518,7 @@ export async function generarCotizacionDocx(data: CotizacionExportData): Promise
           lineasTable,
           new Paragraph({ spacing: { before: 260 }, children: [] }),
           fiscalBlock(data),
-          ...(esPersonaMoral ? [leyendaRetencionBlock()] : []),
+          ...(conRetencion ? [leyendaRetencionBlock(data.tasaRetencionIsr)] : []),
           ...notaBlock("CONDICIONES Y TÉRMINOS", data.condicionesTerminos),
           ...datosBancariosBlock(data),
           firmasBlock(data),

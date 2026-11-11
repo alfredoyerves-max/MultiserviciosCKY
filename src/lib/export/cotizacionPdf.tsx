@@ -2,7 +2,8 @@ import fs from "fs";
 import path from "path";
 import { Document, Page, View, Text, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import { formatCurrency, formatDate } from "@/lib/format";
-import type { CotizacionExportData } from "./cotizacionData";
+import { leyendaRetencion, type CotizacionExportData } from "./cotizacionData";
+import { rotuloConTasa } from "@/lib/tasasCotizacion";
 
 const ACCENT = "#00b8c9"; // versión ligeramente más saturada del cyan de marca (#00dbe9), para que el texto/bordes tengan suficiente contraste sobre blanco
 const ACCENT_SOFT = "#e5fafc";
@@ -209,9 +210,6 @@ function LineasMaterialTable({ data }: { data: CotizacionExportData }) {
   );
 }
 
-const LEYENDA_RETENCION =
-  "De conformidad con el Artículo 113-J de la Ley del ISR, al ser usted Persona Moral, se aplicará la retención obligatoria del 1.25% de ISR sobre el subtotal de esta operación. Dicho monto se reflejará descontado en el total neto de su factura para que proceda con su entero directo al SAT.";
-
 function NoteBlock({ title, text }: { title: string; text: string }) {
   // Texto vacío (leyenda borrada, o su casilla "Incluir en el documento"
   // desmarcada — cotizacionData.ts ya resuelve eso a "") -> el bloque
@@ -276,7 +274,7 @@ function FirmasBlock({ data }: { data: CotizacionExportData }) {
 }
 
 function CotizacionPdfDocument({ data }: { data: CotizacionExportData }) {
-  const esPersonaMoral = data.cliente.tipoCliente === "PERSONA_MORAL";
+  const conRetencion = data.retencionIsr > 0;
 
   return (
     <Document>
@@ -330,12 +328,12 @@ function CotizacionPdfDocument({ data }: { data: CotizacionExportData }) {
                 <Text style={styles.fiscalValue}>{formatCurrency(data.subtotal)}</Text>
               </View>
               <View style={styles.fiscalRow}>
-                <Text style={styles.fiscalLabel}>IVA trasladado (16%)</Text>
+                <Text style={styles.fiscalLabel}>{rotuloConTasa("IVA trasladado", data.tasaIva)}</Text>
                 <Text style={styles.fiscalValue}>{formatCurrency(data.iva)}</Text>
               </View>
               {data.retencionIsr > 0 && (
                 <View style={styles.fiscalRow}>
-                  <Text style={styles.fiscalLabel}>Retención ISR (1.25%)</Text>
+                  <Text style={styles.fiscalLabel}>{rotuloConTasa("Retención ISR", data.tasaRetencionIsr)}</Text>
                   <Text style={styles.fiscalValue}>- {formatCurrency(data.retencionIsr)}</Text>
                 </View>
               )}
@@ -346,9 +344,9 @@ function CotizacionPdfDocument({ data }: { data: CotizacionExportData }) {
             </View>
           </View>
 
-          {esPersonaMoral && (
+          {conRetencion && (
             <View style={styles.legalBox}>
-              <Text style={styles.legalText}>{LEYENDA_RETENCION}</Text>
+              <Text style={styles.legalText}>{leyendaRetencion(data.tasaRetencionIsr)}</Text>
             </View>
           )}
 
