@@ -2,7 +2,7 @@
 // fechas simuladas — ver session.ts, que las aplica.
 
 /** Cierre por inactividad: sin actividad durante este tiempo, la sesión expira. */
-export const INACTIVITY_MS = 30 * 60 * 1000;
+export const INACTIVITY_MS = 15 * 60 * 1000;
 
 /** Mientras la última escritura de expiresAt sea más reciente que esto, no se
  *  vuelve a escribir (evita un UPDATE por cada petición autenticada). El

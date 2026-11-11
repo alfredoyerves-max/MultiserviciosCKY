@@ -43,7 +43,7 @@ export async function createSession(usuarioId: string) {
 
 /**
  * Devuelve el usuario de la sesión activa, o null. UNA sola consulta (sesión
- * + usuario por join). Como efecto lateral, extiende expiresAt a 30 min desde
+ * + usuario por join). Como efecto lateral, extiende expiresAt a 15 min desde
  * ahora (sliding expiration = auto-cierre por inactividad), pero solo si la
  * última escritura tiene más de RENEW_AFTER_MS (2 min): cualquier request
  * autenticado cuenta como actividad sin escribir en la BD en cada uno. Ver
