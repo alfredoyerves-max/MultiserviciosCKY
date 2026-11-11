@@ -2,12 +2,13 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { createCotizacionAction, type CotizacionActionState } from "../../actions";
-import { ClienteStep, type ClienteNuevoState } from "../cliente-step";
+import { ClienteStep, ClienteHiddenFields, useClienteCotizacion } from "../cliente-step";
+import { ResumenCotizacionCard } from "../resumen-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel, Input, Select } from "@/components/ui/input";
-import { formatCurrency, formatPercent } from "@/lib/format";
-import { MODALIDAD_LABELS, type Modalidad, type TipoCliente } from "@/lib/enums";
+import { formatCurrency } from "@/lib/format";
+import { MODALIDAD_LABELS, type Modalidad } from "@/lib/enums";
 import type { Cliente } from "@/generated/prisma/client";
 
 export interface ServicioOption {
@@ -58,17 +59,7 @@ export function Wizard({
   ivaPct: number;
   retencionIsrPct: number;
 }) {
-  const [modoCliente, setModoCliente] = useState<"existente" | "nuevo">(
-    clientes.length > 0 ? "existente" : "nuevo"
-  );
-  const [clienteId, setClienteId] = useState(clientes[0]?.id ?? "");
-  const [clienteNuevo, setClienteNuevo] = useState<ClienteNuevoState>({
-    nombreRazonSocial: "",
-    rfc: "",
-    contacto: "",
-    tipoCliente: "PERSONA_MORAL",
-  });
-  const [proyecto, setProyecto] = useState("");
+  const { estado: cliente, tipoClienteActivo } = useClienteCotizacion(clientes);
   const [margenUtilidadPct, setMargenUtilidadPct] = useState(margenDefaultPct);
   const [diasVigencia, setDiasVigencia] = useState(15);
   const [esSoporte, setEsSoporte] = useState(false);
@@ -88,11 +79,6 @@ export function Wizard({
 
   const servicioById = useMemo(() => new Map(servicios.map((s) => [s.id, s])), [servicios]);
 
-  const tipoClienteActivo: TipoCliente | null =
-    modoCliente === "existente"
-      ? ((clientes.find((c) => c.id === clienteId)?.tipoCliente as TipoCliente) ?? null)
-      : clienteNuevo.tipoCliente;
-
   const lineasCalculadas = lineas.map((l) => {
     const servicio = servicioById.get(l.servicioId);
     const costoUnitario = servicio?.costoPorModalidad[l.modalidad] ?? 0;
@@ -102,10 +88,6 @@ export function Wizard({
   });
 
   const subtotal = lineasCalculadas.reduce((sum, l) => sum + l.precioVenta, 0);
-  const iva = subtotal * ivaPct;
-  const totalAPagar = subtotal + iva;
-  const retencionIsr = tipoClienteActivo === "PERSONA_MORAL" ? subtotal * retencionIsrPct : 0;
-  const netoARecibir = totalAPagar - retencionIsr;
 
   const [state, formAction, pending] = useActionState(createCotizacionAction, initialState);
 
@@ -143,28 +125,10 @@ export function Wizard({
   return (
     <form action={formAction} className="flex flex-col gap-6">
       <input type="hidden" name="lineasJson" value={JSON.stringify(lineas)} />
-      <input
-        type="hidden"
-        name="clienteNuevoJson"
-        value={modoCliente === "nuevo" ? JSON.stringify(clienteNuevo) : ""}
-      />
-      {modoCliente === "existente" && <input type="hidden" name="clienteId" value={clienteId} />}
-      <input type="hidden" name="proyecto" value={proyecto} />
       <input type="hidden" name="margenUtilidadPct" value={margenUtilidadPct} />
-      <input type="hidden" name="diasVigencia" value={diasVigencia} />
-      <input type="hidden" name="esSoporte" value={esSoporte ? "on" : ""} />
+      <ClienteHiddenFields estado={cliente} />
 
-      <ClienteStep
-        clientes={clientes}
-        modoCliente={modoCliente}
-        setModoCliente={setModoCliente}
-        clienteId={clienteId}
-        setClienteId={setClienteId}
-        clienteNuevo={clienteNuevo}
-        setClienteNuevo={setClienteNuevo}
-        proyecto={proyecto}
-        setProyecto={setProyecto}
-      />
+      <ClienteStep clientes={clientes} {...cliente} />
 
       <Card>
         <CardHeader className="items-start justify-between">
@@ -255,76 +219,30 @@ export function Wizard({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>3. Margen y resumen</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field>
-              <FieldLabel>Margen de utilidad de esta cotización (%)</FieldLabel>
-              <Input
-                type="number"
-                step="0.01"
-                value={margenUtilidadPct}
-                onChange={(e) => setMargenUtilidadPct(Number(e.target.value) || 0)}
-              />
-            </Field>
-            <Field>
-              <FieldLabel>Vigencia (días)</FieldLabel>
-              <Input
-                type="number"
-                step="1"
-                min={1}
-                value={diasVigencia}
-                onChange={(e) => setDiasVigencia(Number(e.target.value) || 1)}
-              />
-            </Field>
-          </div>
-
-          <label className="flex items-center gap-2 text-sm text-text-muted">
-            <input
-              type="checkbox"
-              checked={esSoporte}
-              onChange={(e) => setEsSoporte(e.target.checked)}
-              className="h-4 w-4 rounded border-border-strong bg-surface-2 accent-[var(--color-primary)]"
-            />
-            Es cotización de soporte (trámite interno del cliente, sin intención real de compra
-            — no aparece en el pipeline del kanban por defecto)
-          </label>
-
-          <div className="grid grid-cols-2 gap-4 border-t border-border pt-4 sm:grid-cols-3">
-            <Resumen label="Subtotal" value={formatCurrency(subtotal)} />
-            <Resumen label={`IVA trasladado (${formatPercent(ivaPct)})`} value={formatCurrency(iva)} />
-            {tipoClienteActivo === "PERSONA_MORAL" && (
-              <Resumen
-                label={`Retención ISR (${formatPercent(retencionIsrPct)})`}
-                value={`- ${formatCurrency(retencionIsr)}`}
-              />
-            )}
-            <Resumen label="Total" value={formatCurrency(netoARecibir)} accent />
-          </div>
-
-          {state.error && <p className="text-sm text-danger">{state.error}</p>}
-
-          <div className="flex justify-end">
-            <Button type="submit" size="lg" disabled={pending || lineas.length === 0}>
-              {pending ? "Creando…" : "Crear cotización"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <ResumenCotizacionCard
+        titulo="3. Margen y resumen"
+        diasVigencia={diasVigencia}
+        setDiasVigencia={setDiasVigencia}
+        esSoporte={esSoporte}
+        setEsSoporte={setEsSoporte}
+        subtotal={subtotal}
+        tipoClienteActivo={tipoClienteActivo}
+        ivaPct={ivaPct}
+        retencionIsrPct={retencionIsrPct}
+        error={state.error}
+        pending={pending}
+        sinLineas={lineas.length === 0}
+      >
+        <Field>
+          <FieldLabel>Margen de utilidad de esta cotización (%)</FieldLabel>
+          <Input
+            type="number"
+            step="0.01"
+            value={margenUtilidadPct}
+            onChange={(e) => setMargenUtilidadPct(Number(e.target.value) || 0)}
+          />
+        </Field>
+      </ResumenCotizacionCard>
     </form>
-  );
-}
-
-function Resumen({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div>
-      <p className="text-xs uppercase tracking-wide text-text-dim">{label}</p>
-      <p className={`font-mono text-lg font-semibold tabular-nums ${accent ? "text-primary" : "text-text"}`}>
-        {value}
-      </p>
-    </div>
   );
 }

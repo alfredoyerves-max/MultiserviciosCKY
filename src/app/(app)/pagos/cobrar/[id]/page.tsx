@@ -1,3 +1,4 @@
+import { ResumenItem } from "@/components/ui/resumen-item";
 import { getCuentaPorCobrar } from "@/lib/data/cuentasPorCobrar";
 import { calcularSaldo, calcularEstadoCuenta, estaVencida, ESTADO_CUENTA_LABELS_COBRAR } from "@/lib/cuentas";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,9 +64,9 @@ export default async function CuentaPorCobrarDetallePage({
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <Resumen label="Monto total" value={formatCurrency(cuenta.montoTotal)} />
-        <Resumen label="Abonado" value={formatCurrency(cuenta.montoTotal - saldo)} />
-        <Resumen label="Saldo pendiente" value={formatCurrency(saldo)} accent />
+        <ResumenItem label="Monto total" value={formatCurrency(cuenta.montoTotal)} />
+        <ResumenItem label="Abonado" value={formatCurrency(cuenta.montoTotal - saldo)} />
+        <ResumenItem label="Saldo pendiente" value={formatCurrency(saldo)} accent />
       </div>
       <ProgressBar pct={cuenta.montoTotal > 0 ? ((cuenta.montoTotal - saldo) / cuenta.montoTotal) * 100 : 0} />
 
@@ -118,17 +119,6 @@ export default async function CuentaPorCobrarDetallePage({
           )}
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-function Resumen({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div>
-      <p className="text-xs uppercase tracking-wide text-text-dim">{label}</p>
-      <p className={`font-mono text-lg font-semibold tabular-nums ${accent ? "text-primary" : "text-text"}`}>
-        {value}
-      </p>
     </div>
   );
 }

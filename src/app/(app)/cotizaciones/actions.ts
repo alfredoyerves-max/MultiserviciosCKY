@@ -20,22 +20,11 @@ export interface CotizacionActionState {
   error?: string;
 }
 
-export async function createCotizacionAction(
-  _prev: CotizacionActionState,
+/** Lo que ambos wizards mandan del paso "1. Cliente" (ver ClienteHiddenFields). */
+function leerClienteDeFormData(
   formData: FormData
-): Promise<CotizacionActionState> {
-  await requireSession();
-
-  const lineasJson = formData.get("lineasJson");
+): { ok: true; clienteId?: string; clienteNuevo?: unknown } | { ok: false; error: string } {
   const clienteNuevoJson = formData.get("clienteNuevoJson");
-
-  let lineas: unknown = [];
-  try {
-    lineas = lineasJson ? JSON.parse(String(lineasJson)) : [];
-  } catch {
-    return { ok: false, error: "Las líneas de servicio no son válidas." };
-  }
-
   let clienteNuevo: unknown = undefined;
   if (clienteNuevoJson && String(clienteNuevoJson) !== "") {
     try {
@@ -44,30 +33,22 @@ export async function createCotizacionAction(
       return { ok: false, error: "Los datos del cliente nuevo no son válidos." };
     }
   }
-
   const clienteId = formData.get("clienteId");
+  return { ok: true, clienteId: clienteId ? String(clienteId) : undefined, clienteNuevo };
+}
 
-  const parsed = cotizacionInputSchema.safeParse({
-    clienteId: clienteId ? String(clienteId) : undefined,
-    clienteNuevo,
-    proyecto: formData.get("proyecto") ?? undefined,
-    margenUtilidadPct: formData.get("margenUtilidadPct"),
-    diasVigencia: formData.get("diasVigencia"),
-    esSoporte: formData.get("esSoporte") === "on",
-    lineas,
-  });
-
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
-  }
-
-  if (!parsed.data.clienteId && !parsed.data.clienteNuevo) {
+/** Cierre común de la creación: ejecuta, revalida y redirige al detalle. */
+async function finalizarCreacion(
+  datos: { clienteId?: string; clienteNuevo?: unknown },
+  crear: () => Promise<{ id: string }>
+): Promise<CotizacionActionState> {
+  if (!datos.clienteId && !datos.clienteNuevo) {
     return { ok: false, error: "Selecciona un cliente existente o captura uno nuevo." };
   }
 
   let cotizacion;
   try {
-    cotizacion = await createCotizacion(parsed.data);
+    cotizacion = await crear();
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Error al crear la cotización." };
   }
@@ -77,60 +58,69 @@ export async function createCotizacionAction(
   redirect(`/cotizaciones/${cotizacion.id}`);
 }
 
+export async function createCotizacionAction(
+  _prev: CotizacionActionState,
+  formData: FormData
+): Promise<CotizacionActionState> {
+  await requireSession();
+
+  let lineas: unknown = [];
+  try {
+    const lineasJson = formData.get("lineasJson");
+    lineas = lineasJson ? JSON.parse(String(lineasJson)) : [];
+  } catch {
+    return { ok: false, error: "Las líneas de servicio no son válidas." };
+  }
+
+  const cliente = leerClienteDeFormData(formData);
+  if (!cliente.ok) return cliente;
+
+  const parsed = cotizacionInputSchema.safeParse({
+    clienteId: cliente.clienteId,
+    clienteNuevo: cliente.clienteNuevo,
+    proyecto: formData.get("proyecto") ?? undefined,
+    margenUtilidadPct: formData.get("margenUtilidadPct"),
+    diasVigencia: formData.get("diasVigencia"),
+    esSoporte: formData.get("esSoporte") === "on",
+    lineas,
+  });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
+  }
+
+  return finalizarCreacion(parsed.data, () => createCotizacion(parsed.data));
+}
+
 export async function createCotizacionMaterialAction(
   _prev: CotizacionActionState,
   formData: FormData
 ): Promise<CotizacionActionState> {
   await requireSession();
 
-  const lineasJson = formData.get("lineasMaterialJson");
-  const clienteNuevoJson = formData.get("clienteNuevoJson");
-
   let lineasMaterial: unknown = [];
   try {
+    const lineasJson = formData.get("lineasMaterialJson");
     lineasMaterial = lineasJson ? JSON.parse(String(lineasJson)) : [];
   } catch {
     return { ok: false, error: "Las líneas de material no son válidas." };
   }
 
-  let clienteNuevo: unknown = undefined;
-  if (clienteNuevoJson && String(clienteNuevoJson) !== "") {
-    try {
-      clienteNuevo = JSON.parse(String(clienteNuevoJson));
-    } catch {
-      return { ok: false, error: "Los datos del cliente nuevo no son válidos." };
-    }
-  }
-
-  const clienteId = formData.get("clienteId");
+  const cliente = leerClienteDeFormData(formData);
+  if (!cliente.ok) return cliente;
 
   const parsed = cotizacionMaterialInputSchema.safeParse({
-    clienteId: clienteId ? String(clienteId) : undefined,
-    clienteNuevo,
+    clienteId: cliente.clienteId,
+    clienteNuevo: cliente.clienteNuevo,
     proyecto: formData.get("proyecto") ?? undefined,
     diasVigencia: formData.get("diasVigencia"),
     esSoporte: formData.get("esSoporte") === "on",
     lineasMaterial,
   });
-
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
   }
 
-  if (!parsed.data.clienteId && !parsed.data.clienteNuevo) {
-    return { ok: false, error: "Selecciona un cliente existente o captura uno nuevo." };
-  }
-
-  let cotizacion;
-  try {
-    cotizacion = await createCotizacionMaterial(parsed.data);
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Error al crear la cotización." };
-  }
-
-  revalidatePath("/cotizaciones");
-  revalidatePath("/");
-  redirect(`/cotizaciones/${cotizacion.id}`);
+  return finalizarCreacion(parsed.data, () => createCotizacionMaterial(parsed.data));
 }
 
 // Solo para transiciones Borrador <-> Enviada. Aceptada/Rechazada pasan por

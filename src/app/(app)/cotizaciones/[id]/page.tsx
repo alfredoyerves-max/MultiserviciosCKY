@@ -1,3 +1,4 @@
+import { ResumenItem } from "@/components/ui/resumen-item";
 import { getCotizacion, puedeEliminarseCotizacion } from "@/lib/data/cotizaciones";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AnchorButton, ButtonLink } from "@/components/ui/button";
@@ -157,14 +158,14 @@ export default async function CotizacionDetallePage({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-            <Resumen label="Subtotal" value={formatCurrency(cotizacion.subtotal)} />
-            <Resumen label="IVA trasladado (16%)" value={formatCurrency(cotizacion.iva)} />
+            <ResumenItem label="Subtotal" value={formatCurrency(cotizacion.subtotal)} />
+            <ResumenItem label="IVA trasladado (16%)" value={formatCurrency(cotizacion.iva)} />
             {cotizacion.retencionIsr > 0 && (
-              <Resumen label="Retención ISR (1.25%)" value={`- ${formatCurrency(cotizacion.retencionIsr)}`} />
+              <ResumenItem label="Retención ISR (1.25%)" value={`- ${formatCurrency(cotizacion.retencionIsr)}`} />
             )}
-            <Resumen label="Total" value={formatCurrency(cotizacion.netoARecibir)} accent />
+            <ResumenItem label="Total" value={formatCurrency(cotizacion.netoARecibir)} accent />
             {cotizacion.margenUtilidadPct != null && (
-              <Resumen label="Margen aplicado" value={formatPercent(cotizacion.margenUtilidadPct)} />
+              <ResumenItem label="Margen aplicado" value={formatPercent(cotizacion.margenUtilidadPct)} />
             )}
           </div>
 
@@ -196,17 +197,6 @@ export default async function CotizacionDetallePage({
           </CardContent>
         </Card>
       )}
-    </div>
-  );
-}
-
-function Resumen({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div>
-      <p className="text-xs uppercase tracking-wide text-text-dim">{label}</p>
-      <p className={`font-mono text-lg font-semibold tabular-nums ${accent ? "text-primary" : "text-text"}`}>
-        {value}
-      </p>
     </div>
   );
 }

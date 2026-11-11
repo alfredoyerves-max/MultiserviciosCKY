@@ -6,6 +6,7 @@ import { sueldoMensualEfectivo } from "@/lib/servicioCosto";
 import { puedeEliminarseCotizacion } from "@/lib/cotizacionRules";
 import { createCliente } from "./clientes";
 import type { CotizacionInput, CotizacionMaterialInput } from "@/lib/schemas/cotizacion";
+import type { ClienteInput } from "@/lib/schemas/cliente";
 import type { TipoCliente, TipoCotizacion } from "@/lib/enums";
 
 /**
@@ -29,6 +30,30 @@ async function generarFolio(): Promise<string> {
   return `COT-${year}-${String(numero).padStart(4, "0")}`;
 }
 
+/** Cliente de una cotización (compartido por Servicio y Material): existente
+ *  (su tipoCliente se toma de BD, nunca del cliente HTTP) o nuevo, creado
+ *  con los datos capturados en el wizard. */
+async function resolverCliente(input: {
+  clienteId?: string;
+  clienteNuevo?: ClienteInput;
+}): Promise<{ clienteId: string; tipoCliente: TipoCliente }> {
+  if (input.clienteId) {
+    const cliente = await prisma.cliente.findUniqueOrThrow({ where: { id: input.clienteId } });
+    return { clienteId: cliente.id, tipoCliente: cliente.tipoCliente as TipoCliente };
+  }
+  if (input.clienteNuevo) {
+    const cliente = await createCliente(input.clienteNuevo);
+    return { clienteId: cliente.id, tipoCliente: cliente.tipoCliente as TipoCliente };
+  }
+  throw new Error("Falta el cliente de la cotización.");
+}
+
+function fechaVigenciaEn(dias: number): Date {
+  const fecha = new Date();
+  fecha.setDate(fecha.getDate() + dias);
+  return fecha;
+}
+
 export async function createCotizacion(input: CotizacionInput) {
   const config = await getSystemConfigConCeav();
 
@@ -41,19 +66,7 @@ export async function createCotizacion(input: CotizacionInput) {
 
   // Resolver cliente: existente (tomar su tipoCliente de BD, nunca del
   // cliente HTTP) o crear uno nuevo con los datos capturados en el wizard.
-  let clienteId = input.clienteId;
-  let tipoCliente: TipoCliente;
-
-  if (clienteId) {
-    const cliente = await prisma.cliente.findUniqueOrThrow({ where: { id: clienteId } });
-    tipoCliente = cliente.tipoCliente as TipoCliente;
-  } else if (input.clienteNuevo) {
-    const cliente = await createCliente(input.clienteNuevo);
-    clienteId = cliente.id;
-    tipoCliente = cliente.tipoCliente as TipoCliente;
-  } else {
-    throw new Error("Falta el cliente de la cotización.");
-  }
+  const { clienteId, tipoCliente } = await resolverCliente(input);
 
   const margenFraccion = input.margenUtilidadPct / 100;
 
@@ -90,8 +103,7 @@ export async function createCotizacion(input: CotizacionInput) {
 
   const folio = await generarFolio();
 
-  const fechaVigencia = new Date();
-  fechaVigencia.setDate(fechaVigencia.getDate() + input.diasVigencia);
+  const fechaVigencia = fechaVigenciaEn(input.diasVigencia);
 
   return prisma.cotizacion.create({
     data: {
@@ -131,19 +143,7 @@ export async function createCotizacionMaterial(input: CotizacionMaterialInput) {
     : [];
   const productoIdsValidos = new Set(productosExistentes.map((p) => p.id));
 
-  let clienteId = input.clienteId;
-  let tipoCliente: TipoCliente;
-
-  if (clienteId) {
-    const cliente = await prisma.cliente.findUniqueOrThrow({ where: { id: clienteId } });
-    tipoCliente = cliente.tipoCliente as TipoCliente;
-  } else if (input.clienteNuevo) {
-    const cliente = await createCliente(input.clienteNuevo);
-    clienteId = cliente.id;
-    tipoCliente = cliente.tipoCliente as TipoCliente;
-  } else {
-    throw new Error("Falta el cliente de la cotización.");
-  }
+  const { clienteId, tipoCliente } = await resolverCliente(input);
 
   const lineasCalculadas = input.lineasMaterial.map((linea) => {
     return {
@@ -162,8 +162,7 @@ export async function createCotizacionMaterial(input: CotizacionMaterialInput) {
 
   const folio = await generarFolio();
 
-  const fechaVigencia = new Date();
-  fechaVigencia.setDate(fechaVigencia.getDate() + input.diasVigencia);
+  const fechaVigencia = fechaVigenciaEn(input.diasVigencia);
 
   return prisma.cotizacion.create({
     data: {

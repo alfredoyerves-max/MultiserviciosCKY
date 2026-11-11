@@ -1,3 +1,4 @@
+import { ResumenItem } from "@/components/ui/resumen-item";
 import { getProducto } from "@/lib/data/productos";
 import { calcularStock } from "@/lib/inventario";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +25,6 @@ export default async function ProductoDetallePage({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-xl font-semibold text-text">{producto.nombre}</h1>
-            <Badge tone="neutral">{unidadLabel}</Badge>
             {!producto.activo && <Badge tone="danger">Inactivo</Badge>}
           </div>
           {producto.descripcion && (
@@ -41,12 +41,12 @@ export default async function ProductoDetallePage({
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <Resumen label="Stock actual" value={`${stock} ${unidadLabel}`} accent />
-        <Resumen
+        <ResumenItem label="Stock actual" value={`${stock} ${unidadLabel}`} accent />
+        <ResumenItem
           label="Último costo de compra"
           value={producto.costoCompraReciente != null ? formatCurrency(producto.costoCompraReciente) : "—"}
         />
-        <Resumen
+        <ResumenItem
           label="Precio de venta sugerido"
           value={producto.precioVentaSugerido != null ? formatCurrency(producto.precioVentaSugerido) : "—"}
         />
@@ -102,17 +102,6 @@ export default async function ProductoDetallePage({
           )}
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-function Resumen({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div>
-      <p className="text-xs uppercase tracking-wide text-text-dim">{label}</p>
-      <p className={`font-mono text-lg font-semibold tabular-nums ${accent ? "text-primary" : "text-text"}`}>
-        {value}
-      </p>
     </div>
   );
 }

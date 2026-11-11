@@ -1,3 +1,4 @@
+import { ResumenItem } from "@/components/ui/resumen-item";
 import { getActivo } from "@/lib/data/activos";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -61,10 +62,10 @@ export default async function ActivoDetallePage({
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Resumen label="Valor de adquisición" value={formatCurrency(activo.valorAdquisicion)} accent />
-        <Resumen label="Fecha de adquisición" value={formatDate(activo.fechaAdquisicion)} />
-        <Resumen label="Proveedor" value={activo.proveedor || "—"} />
-        <Resumen label="Número de factura" value={activo.numeroFactura || "—"} />
+        <ResumenItem label="Valor de adquisición" value={formatCurrency(activo.valorAdquisicion)} accent />
+        <ResumenItem label="Fecha de adquisición" value={formatDate(activo.fechaAdquisicion)} />
+        <ResumenItem label="Proveedor" value={activo.proveedor || "—"} />
+        <ResumenItem label="Número de factura" value={activo.numeroFactura || "—"} />
       </div>
 
       {estado === "DADO_DE_BAJA" && activo.fechaBaja && (
@@ -113,17 +114,6 @@ export default async function ActivoDetallePage({
           )}
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-function Resumen({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div>
-      <p className="text-xs uppercase tracking-wide text-text-dim">{label}</p>
-      <p className={`font-mono text-lg font-semibold tabular-nums ${accent ? "text-primary" : "text-text"}`}>
-        {value}
-      </p>
     </div>
   );
 }

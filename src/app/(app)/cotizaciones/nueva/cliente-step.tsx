@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel, Input, Select } from "@/components/ui/input";
@@ -11,6 +12,63 @@ export interface ClienteNuevoState {
   rfc: string;
   contacto: string;
   tipoCliente: TipoCliente;
+}
+
+/** Estado del paso "1. Cliente" — idéntico en los wizards de Servicio y
+ *  Material, por eso vive aquí una sola vez. */
+export interface ClienteEstado {
+  modoCliente: "existente" | "nuevo";
+  setModoCliente: (m: "existente" | "nuevo") => void;
+  clienteId: string;
+  setClienteId: (id: string) => void;
+  clienteNuevo: ClienteNuevoState;
+  setClienteNuevo: (updater: (c: ClienteNuevoState) => ClienteNuevoState) => void;
+  proyecto: string;
+  setProyecto: (p: string) => void;
+}
+
+export function useClienteCotizacion(clientes: Cliente[]): {
+  estado: ClienteEstado;
+  /** Tipo del cliente elegido o capturado; null si aún no hay uno. */
+  tipoClienteActivo: TipoCliente | null;
+} {
+  const [modoCliente, setModoCliente] = useState<"existente" | "nuevo">(
+    clientes.length > 0 ? "existente" : "nuevo"
+  );
+  const [clienteId, setClienteId] = useState(clientes[0]?.id ?? "");
+  const [clienteNuevo, setClienteNuevo] = useState<ClienteNuevoState>({
+    nombreRazonSocial: "",
+    rfc: "",
+    contacto: "",
+    tipoCliente: "PERSONA_MORAL",
+  });
+  const [proyecto, setProyecto] = useState("");
+
+  const tipoClienteActivo: TipoCliente | null =
+    modoCliente === "existente"
+      ? ((clientes.find((c) => c.id === clienteId)?.tipoCliente as TipoCliente) ?? null)
+      : clienteNuevo.tipoCliente;
+
+  return {
+    estado: { modoCliente, setModoCliente, clienteId, setClienteId, clienteNuevo, setClienteNuevo, proyecto, setProyecto },
+    tipoClienteActivo,
+  };
+}
+
+/** Campos ocultos del form con lo que el servidor necesita del paso Cliente
+ *  (ver leerClienteDeFormData en cotizaciones/actions.ts). */
+export function ClienteHiddenFields({ estado }: { estado: ClienteEstado }) {
+  return (
+    <>
+      <input
+        type="hidden"
+        name="clienteNuevoJson"
+        value={estado.modoCliente === "nuevo" ? JSON.stringify(estado.clienteNuevo) : ""}
+      />
+      {estado.modoCliente === "existente" && <input type="hidden" name="clienteId" value={estado.clienteId} />}
+      <input type="hidden" name="proyecto" value={estado.proyecto} />
+    </>
+  );
 }
 
 /** Paso "1. Cliente", compartido entre el wizard de Servicio y el de
