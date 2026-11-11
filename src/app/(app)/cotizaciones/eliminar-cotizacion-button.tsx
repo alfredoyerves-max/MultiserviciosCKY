@@ -45,7 +45,10 @@ export function EliminarCotizacionButton({
           onClose={() => setOpen(false)}
           onDeleted={() => {
             onDeleted?.();
+            // La acción ya respondió (el modal se cerró); la pantalla se
+            // actualiza en segundo plano, sin esperar una revalidación.
             if (redirectTo) router.push(redirectTo);
+            else router.refresh();
           }}
         />
       )}

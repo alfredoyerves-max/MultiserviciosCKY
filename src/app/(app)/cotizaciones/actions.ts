@@ -212,8 +212,10 @@ export async function confirmarRechazoAction(
  * no es ACEPTADA (ver puedeEliminarseCotizacion en lib/data/cotizaciones).
  * El folio nunca se reutiliza (generarFolio usa un contador atómico, no
  * cuenta de registros), así que eliminar es seguro para la numeración.
- * No redirige — el llamador (detalle, kanban o tabla histórica) decide
- * qué hacer al terminar (ver ConfirmarEliminacionModal).
+ * No redirige ni revalida: responde en cuanto se borra, y el llamador
+ * (detalle, kanban o tabla histórica) navega o hace router.refresh() sin
+ * bloquear al usuario (ver EliminarCotizacionButton). Las páginas son
+ * dinámicas, así que no hay caché de datos que invalidar.
  */
 export async function deleteCotizacionAction(
   _prev: CotizacionActionState,
@@ -230,7 +232,5 @@ export async function deleteCotizacionAction(
     return { ok: false, error: err instanceof Error ? err.message : "No se pudo eliminar la cotización." };
   }
 
-  revalidatePath("/cotizaciones");
-  revalidatePath("/");
   return { ok: true };
 }

@@ -245,17 +245,23 @@ export { puedeEliminarseCotizacion };
 
 export async function deleteCotizacion(id: string) {
   await requireSession();
-  const cotizacion = await prisma.cotizacion.findUniqueOrThrow({
-    where: { id },
-    select: { estado: true, cuentaPorCobrar: { select: { id: true } } },
+  // UNA sola sentencia (antes: 2 lecturas + el borrado). El filtro aplica la
+  // misma regla que puedeEliminarseCotizacion (lib/cotizacionRules.ts) —
+  // estado distinto de ACEPTADA y sin cuenta por cobrar— directamente en la
+  // BD, así que además no hay ventana entre revisar y borrar. Las líneas se
+  // eliminan en cascada (onDelete: Cascade).
+  const { count } = await prisma.cotizacion.deleteMany({
+    where: { id, estado: { not: "ACEPTADA" }, cuentaPorCobrar: { is: null } },
   });
-  if (!puedeEliminarseCotizacion(cotizacion)) {
-    throw new Error(
-      "No se puede eliminar: esta cotización está Aceptada o tiene una cuenta por cobrar asociada."
-    );
-  }
-  // lineas/lineasMaterial se eliminan en cascada (onDelete: Cascade).
-  await prisma.cotizacion.delete({ where: { id } });
+  if (count > 0) return;
+
+  // Nada se borró: solo ahora (camino de falla) se consulta por qué.
+  const existe = await prisma.cotizacion.findUnique({ where: { id }, select: { id: true } });
+  throw new Error(
+    existe
+      ? "No se puede eliminar: esta cotización está Aceptada o tiene una cuenta por cobrar asociada."
+      : "Esta cotización ya no existe."
+  );
 }
 
 /**
