@@ -181,9 +181,21 @@ Las dos CxC inconsistentes de COT-2026-0002 y COT-2026-0003 (datos de prueba) se
 | RSC (`RSC: 1` + `Next-Router-State-Tree`) | `200` con datos de negocio en 9 de 14 páginas |
 | Normal | `307 → /login`, pero con los datos de negocio dentro del cuerpo de la respuesta, en las mismas 9 páginas |
 
-En las otras 5 páginas la prueba no encontró datos con los marcadores usados (tablero del mes vacío, formulario sin datos de negocio, id inexistente, activo sin marcador, dashboard); no se descarta que expusieran datos no cubiertos por esos marcadores. Las 28 Server Actions y las 5 rutas `api/*/export` siempre estuvieron protegidas (verificado).
+Las 28 Server Actions y las 5 rutas `api/*/export` siempre estuvieron protegidas (verificado: 28/28 acciones y 5/5 rutas llaman `requireSession()`).
 
-**Desde cuándo.** El diseño existe desde el commit inicial (`528a73d`, 2026-08-25, primer deploy de producción registrado). Ninguna página llamó `requireSession()` hasta la corrección. No se revisaron los logs de Vercel para saber si alguien lo explotó; la lectura requería conocer las URLs (los detalles además un id).
+**Las 5 páginas que no mostraron datos en la prueba local — qué se comprobó y cómo.** Que no devolvieran datos con mis marcadores no prueba que no filtraran. Se revisó el código de cada una en la versión vulnerable (`dd10a3c`, con `git show`) y se buscó `requireSession` en `src/lib/data` de esa versión (`git grep`: **0 archivos** la llamaban, y ninguna página). Resultado:
+
+| Página | Datos de negocio que leía (por código) | ¿Pasaba por `requireSession()`? | Conclusión |
+|---|---|---|---|
+| `/` Dashboard | `listCotizaciones()` y `listCuentasPorCobrar()` (todas, con cliente y abonos) y `getSystemConfig()`; muestra solo el mes/año de `?mes=` y `?vista=` | No | **Podía exponer cualquier mes** cambiando el parámetro. La prueba solo cubrió el mes por defecto (noviembre), que está vacío. |
+| `/cotizaciones` | `listCotizacionesKanban({ anio, mes, ... })` (cotizaciones con cliente, cuenta y abonos), filtradas por `?mes=` | No | Igual que el Dashboard: la prueba solo vio el mes por defecto. |
+| `/cotizaciones/nueva` | Ninguno: textos fijos y enlaces; no importa `lib/data` ni Prisma | No aplica | **Sin exposición de datos.** |
+| `/inventario/activos/[id]` | `getActivo(id)`: activo con su historial de eventos | No | Con un id válido exponía el activo. Mis marcadores no incluían datos de activos, así que la prueba no lo detectó. Los ids son `cuid` (no adivinables), lo que reduce el riesgo pero no lo elimina. |
+| `/pagos/pagar/[id]` | `getCuentaPorPagar(id)`: concepto, proveedor, montos y abonos | No | La prueba usó un id inexistente (error de Prisma, sin datos). Con un id válido habría expuesto la cuenta; hoy no existe ninguna cuenta por pagar en la BD. |
+
+Tras la corrección, la primera instrucción de `listCotizaciones`, `listCotizacionesKanban`, `listCuentasPorCobrar`, `getSystemConfig`, `getActivo` y `getCuentaPorPagar` es `await requireSession()`, y las 5 páginas también la llaman (revisado por código); además la prueba sin cookie dio 0 con datos en las 14 páginas.
+
+**Desde cuándo.** El diseño existe desde el commit inicial (`528a73d`, 2026-08-25, primer deploy de producción registrado). Ninguna página llamó `requireSession()` hasta la corrección del 2026-11-11. **La exposición pasada (desde 2026-08-25) no es determinable:** el plan Hobby de Vercel retiene muy pocos logs, así que no hay forma de saber si alguien leyó datos sin sesión. Para leerlo hacía falta conocer las rutas; los detalles, además, un id `cuid`.
 
 **Cómo se corrigió** (commit `75a37d3`, desplegado 2026-11-11):
 - `requireSession()` envuelta en `cache()` de React (una verificación por petición) y con `await cookies()` primero, para que el build nunca prerenderice páginas ni consulte la BD.
