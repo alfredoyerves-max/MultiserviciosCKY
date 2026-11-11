@@ -9,6 +9,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { registrarAbonoPorPagarAction } from "../../actions";
 import { AbonoForm } from "../../abono-form";
+import { requireSession } from "@/lib/auth/session";
 
 // CANCELADA nunca ocurre en Cuentas por Pagar (ese estado es exclusivo de
 // Cuentas por Cobrar), pero el tipo EstadoCuenta es compartido, así que el
@@ -25,6 +26,7 @@ export default async function CuentaPorPagarDetallePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireSession();
   const { id } = await params;
   const cuenta = await getCuentaPorPagar(id);
 

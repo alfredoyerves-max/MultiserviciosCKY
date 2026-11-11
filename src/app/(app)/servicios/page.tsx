@@ -2,8 +2,10 @@ import { listServicios } from "@/lib/data/servicios";
 import { listPuestos } from "@/lib/data/puestos";
 import { getSystemConfigConCeav } from "@/lib/data/config";
 import { ServiciosTabs } from "./servicios-tabs";
+import { requireSession } from "@/lib/auth/session";
 
 export default async function ServiciosPage() {
+  await requireSession();
   const [servicios, puestos, config] = await Promise.all([
     listServicios(),
     listPuestos(),

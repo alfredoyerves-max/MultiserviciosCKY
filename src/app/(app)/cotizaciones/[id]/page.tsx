@@ -18,12 +18,14 @@ import { EstadoSelect } from "../estado-select";
 import { EliminarCotizacionButton } from "../eliminar-cotizacion-button";
 import { CostDetail } from "./cost-detail";
 import Link from "next/link";
+import { requireSession } from "@/lib/auth/session";
 
 export default async function CotizacionDetallePage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireSession();
   const { id } = await params;
   const cotizacion = await getCotizacion(id);
   const tipo = cotizacion.tipo as TipoCotizacion;

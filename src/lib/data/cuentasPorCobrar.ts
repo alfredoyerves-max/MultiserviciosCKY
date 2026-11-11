@@ -1,10 +1,12 @@
 import { advisoryLock, prisma } from "@/lib/prisma";
 import { calcularSaldo } from "@/lib/cuentas";
 import type { AbonoInput } from "@/lib/schemas/cuentas";
+import { requireSession } from "@/lib/auth/session";
 
 const TOLERANCIA_SALDO = 0.01; // centavos, por acumulación de floats
 
 export async function existeCuentaPorCobrar(cotizacionId: string): Promise<boolean> {
+  await requireSession();
   const existente = await prisma.cuentaPorCobrar.findUnique({
     where: { cotizacionId },
     select: { id: true },
@@ -18,6 +20,7 @@ export async function existeCuentaPorCobrar(cotizacionId: string): Promise<boole
  * en su lugar (conserva el historial).
  */
 export async function eliminarCuentaPorCobrar(id: string) {
+  await requireSession();
   const cuenta = await prisma.cuentaPorCobrar.findUniqueOrThrow({
     where: { id },
     select: { abonos: { select: { id: true }, take: 1 } },
@@ -36,17 +39,20 @@ export async function eliminarCuentaPorCobrar(id: string) {
  * "vencido" y ya no admite abonos nuevos — ver registrarAbonoPorCobrar.
  */
 export async function cancelarCuentaPorCobrar(id: string) {
+  await requireSession();
   return prisma.cuentaPorCobrar.update({ where: { id }, data: { cancelada: true } });
 }
 
-export function listCuentasPorCobrar() {
+export async function listCuentasPorCobrar() {
+  await requireSession();
   return prisma.cuentaPorCobrar.findMany({
     include: { cotizacion: { include: { cliente: true } }, abonos: true },
     orderBy: { createdAt: "desc" },
   });
 }
 
-export function getCuentaPorCobrar(id: string) {
+export async function getCuentaPorCobrar(id: string) {
+  await requireSession();
   return prisma.cuentaPorCobrar.findUniqueOrThrow({
     where: { id },
     include: {
@@ -65,6 +71,7 @@ export function getCuentaPorCobrar(id: string) {
  * negocio: no representa ninguna transacción real posible).
  */
 export async function registrarAbonoPorCobrar(cuentaPorCobrarId: string, input: AbonoInput) {
+  await requireSession();
   return prisma.$transaction(async (tx) => {
     await advisoryLock(tx, "cuentaPorCobrar", cuentaPorCobrarId);
 

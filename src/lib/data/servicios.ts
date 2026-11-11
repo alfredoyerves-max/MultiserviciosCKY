@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { ServicioInput } from "@/lib/schemas/servicio";
+import { requireSession } from "@/lib/auth/session";
 
 export { parseModalidades } from "@/lib/modalidades";
 
@@ -42,14 +43,16 @@ function toDb(input: ServicioInput, puestoId: string | null) {
   };
 }
 
-export function listServicios() {
+export async function listServicios() {
+  await requireSession();
   return prisma.servicio.findMany({
     include: { puesto: true },
     orderBy: { nombre: "asc" },
   });
 }
 
-export function listServiciosActivos() {
+export async function listServiciosActivos() {
+  await requireSession();
   return prisma.servicio.findMany({
     where: { activo: true },
     include: { puesto: true },
@@ -57,20 +60,24 @@ export function listServiciosActivos() {
   });
 }
 
-export function getServicio(id: string) {
+export async function getServicio(id: string) {
+  await requireSession();
   return prisma.servicio.findUniqueOrThrow({ where: { id }, include: { puesto: true } });
 }
 
 export async function createServicio(input: ServicioInput) {
+  await requireSession();
   const puestoId = await resolverPuestoId(input);
   return prisma.servicio.create({ data: toDb(input, puestoId) });
 }
 
 export async function updateServicio(id: string, input: ServicioInput) {
+  await requireSession();
   const puestoId = await resolverPuestoId(input);
   return prisma.servicio.update({ where: { id }, data: toDb(input, puestoId) });
 }
 
-export function setServicioActivo(id: string, activo: boolean) {
+export async function setServicioActivo(id: string, activo: boolean) {
+  await requireSession();
   return prisma.servicio.update({ where: { id }, data: { activo } });
 }

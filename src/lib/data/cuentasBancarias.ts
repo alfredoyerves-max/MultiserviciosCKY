@@ -1,23 +1,29 @@
 import { prisma } from "@/lib/prisma";
 import type { CuentaBancariaInput } from "@/lib/schemas/cuentaBancaria";
+import { requireSession } from "@/lib/auth/session";
 
-export function listCuentasBancarias() {
+export async function listCuentasBancarias() {
+  await requireSession();
   return prisma.cuentaBancaria.findMany({ orderBy: { createdAt: "asc" } });
 }
 
 /** Usado por la exportación de cotizaciones — solo las cuentas activas. */
-export function listCuentasBancariasActivas() {
+export async function listCuentasBancariasActivas() {
+  await requireSession();
   return prisma.cuentaBancaria.findMany({ where: { activa: true }, orderBy: { createdAt: "asc" } });
 }
 
-export function createCuentaBancaria(input: CuentaBancariaInput) {
+export async function createCuentaBancaria(input: CuentaBancariaInput) {
+  await requireSession();
   return prisma.cuentaBancaria.create({ data: input });
 }
 
-export function setCuentaBancariaActiva(id: string, activa: boolean) {
+export async function setCuentaBancariaActiva(id: string, activa: boolean) {
+  await requireSession();
   return prisma.cuentaBancaria.update({ where: { id }, data: { activa } });
 }
 
-export function deleteCuentaBancaria(id: string) {
+export async function deleteCuentaBancaria(id: string) {
+  await requireSession();
   return prisma.cuentaBancaria.delete({ where: { id } });
 }

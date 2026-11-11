@@ -2,11 +2,13 @@ import { prisma } from "@/lib/prisma";
 import { calcularStock } from "@/lib/inventario";
 import { lockProducto } from "@/lib/data/locks";
 import type { EntradaInventarioInput, SalidaInventarioInput } from "@/lib/schemas/movimientoInventario";
+import { requireSession } from "@/lib/auth/session";
 
 /** Todos los movimientos de todos los productos, para la exportación a
  *  Excel (Fase 11) — no hay vista de "todos los movimientos" en la app,
  *  solo por producto, así que este listado es exclusivo de esa exportación. */
-export function listMovimientosInventario() {
+export async function listMovimientosInventario() {
+  await requireSession();
   return prisma.movimientoInventario.findMany({
     include: { producto: { select: { nombre: true, unidadMedida: true } } },
     orderBy: { fecha: "desc" },
@@ -19,7 +21,8 @@ export function listMovimientosInventario() {
  * ese campo nunca se edita directamente, solo se deriva de la entrada más
  * reciente.
  */
-export function registrarEntrada(input: EntradaInventarioInput) {
+export async function registrarEntrada(input: EntradaInventarioInput) {
+  await requireSession();
   return prisma.$transaction(async (tx) => {
     const movimiento = await tx.movimientoInventario.create({
       data: {
@@ -49,6 +52,7 @@ export function registrarEntrada(input: EntradaInventarioInput) {
  * de que la otra escriba (ver lib/inventario.ts).
  */
 export async function registrarSalida(input: SalidaInventarioInput) {
+  await requireSession();
   return prisma.$transaction(async (tx) => {
     await lockProducto(tx, input.productoId);
 

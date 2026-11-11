@@ -1,8 +1,10 @@
 import { listProductosConMovimientos } from "@/lib/data/productos";
 import { listActivos } from "@/lib/data/activos";
 import { InventarioTabs } from "./inventario-tabs";
+import { requireSession } from "@/lib/auth/session";
 
 export default async function InventarioPage() {
+  await requireSession();
   const [productos, activos] = await Promise.all([listProductosConMovimientos(), listActivos()]);
 
   return (

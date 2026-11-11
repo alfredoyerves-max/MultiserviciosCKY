@@ -12,6 +12,7 @@ import { registrarAbonoPorCobrarAction } from "../../actions";
 import { AbonoForm } from "../../abono-form";
 import { AccionesCuenta } from "./acciones-cuenta";
 import Link from "next/link";
+import { requireSession } from "@/lib/auth/session";
 
 const ESTADO_TONE = {
   PENDIENTE: "neutral",
@@ -25,6 +26,7 @@ export default async function CuentaPorCobrarDetallePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireSession();
   const { id } = await params;
   const cuenta = await getCuentaPorCobrar(id);
 

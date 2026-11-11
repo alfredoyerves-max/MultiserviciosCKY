@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import type { ClienteInput } from "@/lib/schemas/cliente";
+import { requireSession } from "@/lib/auth/session";
 
-export function listClientes() {
+export async function listClientes() {
+  await requireSession();
   return prisma.cliente.findMany({ orderBy: { nombreRazonSocial: "asc" } });
 }
 
@@ -18,6 +20,7 @@ export function listClientes() {
  * obligarlo a elegir "Cliente existente" a propósito.
  */
 export async function createCliente(input: ClienteInput) {
+  await requireSession();
   const rfc = input.rfc?.trim();
   if (rfc) {
     const existente = await prisma.cliente.findFirst({

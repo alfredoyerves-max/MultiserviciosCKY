@@ -5,8 +5,10 @@ import { calcularCostoReal, costoRealPorModalidad } from "@/lib/costEngine";
 import { sueldoMensualEfectivo, esSueldoBajoMinimo } from "@/lib/servicioCosto";
 import { MODALIDADES } from "@/lib/enums";
 import { Wizard, type ServicioOption } from "./wizard";
+import { requireSession } from "@/lib/auth/session";
 
 export default async function NuevaCotizacionServicioPage() {
+  await requireSession();
   const [servicios, clientes, config] = await Promise.all([
     listServiciosActivos(),
     listClientes(),

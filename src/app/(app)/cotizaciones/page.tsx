@@ -2,12 +2,14 @@ import { listCotizacionesKanban } from "@/lib/data/cotizaciones";
 import { ButtonLink } from "@/components/ui/button";
 import { KanbanBoard } from "./kanban-board";
 import { TIPOS_COTIZACION, type TipoCotizacion } from "@/lib/enums";
+import { requireSession } from "@/lib/auth/session";
 
 export default async function CotizacionesPage({
   searchParams,
 }: {
   searchParams: Promise<{ mes?: string; soporte?: string; tipo?: string }>;
 }) {
+  await requireSession();
   const sp = await searchParams;
 
   const hoy = new Date();

@@ -1,8 +1,10 @@
 import { getSystemConfig, getCeavBandas } from "@/lib/data/config";
 import { listCuentasBancarias } from "@/lib/data/cuentasBancarias";
 import { ConfigForm } from "./config-form";
+import { requireSession } from "@/lib/auth/session";
 
 export default async function ConfiguracionPage() {
+  await requireSession();
   const [config, bandasCeav, cuentasBancarias] = await Promise.all([
     getSystemConfig(),
     getCeavBandas(),

@@ -1,23 +1,28 @@
 import { prisma } from "@/lib/prisma";
 import type { ActivoInput } from "@/lib/schemas/activo";
 import type { EventoActivoManualInput, DarDeBajaActivoInput } from "@/lib/schemas/eventoActivo";
+import { requireSession } from "@/lib/auth/session";
 
-export function listActivos() {
+export async function listActivos() {
+  await requireSession();
   return prisma.activo.findMany({ orderBy: { createdAt: "desc" } });
 }
 
-export function getActivo(id: string) {
+export async function getActivo(id: string) {
+  await requireSession();
   return prisma.activo.findUniqueOrThrow({
     where: { id },
     include: { eventos: { orderBy: { fecha: "desc" } } },
   });
 }
 
-export function createActivo(input: ActivoInput) {
+export async function createActivo(input: ActivoInput) {
+  await requireSession();
   return prisma.activo.create({ data: input });
 }
 
-export function updateActivo(id: string, input: ActivoInput) {
+export async function updateActivo(id: string, input: ActivoInput) {
+  await requireSession();
   return prisma.activo.update({ where: { id }, data: input });
 }
 
@@ -29,6 +34,7 @@ export function updateActivo(id: string, input: ActivoInput) {
  * transacción — ningún cambio de estado queda sin historial.
  */
 export async function updateEstadoActivo(id: string, nuevoEstado: "FUNCIONAL" | "EN_REPARACION") {
+  await requireSession();
   return prisma.$transaction(async (tx) => {
     const activo = await tx.activo.findUniqueOrThrow({ where: { id }, select: { estado: true } });
     if (activo.estado === "DADO_DE_BAJA") {
@@ -56,6 +62,7 @@ export async function updateEstadoActivo(id: string, nuevoEstado: "FUNCIONAL" | 
  * que usa un texto genérico porque ese flujo no pide motivo).
  */
 export async function darDeBajaActivo(id: string, input: DarDeBajaActivoInput) {
+  await requireSession();
   return prisma.$transaction(async (tx) => {
     const activo = await tx.activo.findUniqueOrThrow({ where: { id }, select: { estado: true } });
     if (activo.estado === "DADO_DE_BAJA") {
@@ -81,7 +88,8 @@ export async function darDeBajaActivo(id: string, input: DarDeBajaActivoInput) {
 
 /** "Registrar incidente" — evento manual (Incidente o Nota), nunca cambia
  *  el estado del activo. */
-export function registrarEventoManual(activoId: string, input: EventoActivoManualInput) {
+export async function registrarEventoManual(activoId: string, input: EventoActivoManualInput) {
+  await requireSession();
   return prisma.eventoActivo.create({
     data: {
       activoId,

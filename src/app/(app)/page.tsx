@@ -11,6 +11,7 @@ import { DashboardControls, type VistaDashboard } from "./dashboard-controls";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { ESTADO_COTIZACION_LABELS, type EstadoCotizacion } from "@/lib/enums";
 import Link from "next/link";
+import { requireSession } from "@/lib/auth/session";
 
 const ESTADO_TONE: Record<EstadoCotizacion, "neutral" | "primary" | "success" | "danger"> = {
   BORRADOR: "neutral",
@@ -28,6 +29,7 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ mes?: string; vista?: string }>;
 }) {
+  await requireSession();
   const sp = await searchParams;
   const [cotizaciones, cuentasPorCobrar, config] = await Promise.all([
     listCotizaciones(),

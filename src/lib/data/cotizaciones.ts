@@ -8,6 +8,7 @@ import { createCliente } from "./clientes";
 import type { CotizacionInput, CotizacionMaterialInput } from "@/lib/schemas/cotizacion";
 import type { ClienteInput } from "@/lib/schemas/cliente";
 import type { TipoCliente, TipoCotizacion } from "@/lib/enums";
+import { requireSession } from "@/lib/auth/session";
 
 /**
  * Genera el siguiente folio del año a partir de un contador atómico
@@ -55,6 +56,7 @@ function fechaVigenciaEn(dias: number): Date {
 }
 
 export async function createCotizacion(input: CotizacionInput) {
+  await requireSession();
   const config = await getSystemConfigConCeav();
 
   const servicioIds = [...new Set(input.lineas.map((l) => l.servicioId))];
@@ -133,6 +135,7 @@ export async function createCotizacion(input: CotizacionInput) {
  * `lineasMaterial`.
  */
 export async function createCotizacionMaterial(input: CotizacionMaterialInput) {
+  await requireSession();
   const config = await getSystemConfigConCeav();
 
   // El producto es un atajo opcional: solo se conserva el vínculo si el id
@@ -186,7 +189,8 @@ export async function createCotizacionMaterial(input: CotizacionMaterialInput) {
 
 /** Usado por el Dashboard — excluye cotizaciones de soporte por defecto,
  *  igual que el kanban de seguimiento (Fase 6). */
-export function listCotizaciones(opts: { incluirSoporte?: boolean } = {}) {
+export async function listCotizaciones(opts: { incluirSoporte?: boolean } = {}) {
+  await requireSession();
   return prisma.cotizacion.findMany({
     where: opts.incluirSoporte ? undefined : { esSoporte: false },
     include: { cliente: true },
@@ -205,7 +209,8 @@ export interface KanbanFiltros {
 /** Cotizaciones creadas en un mes calendario dado, para el kanban de
  *  seguimiento (Fase 6). Incluye abonos de la cuenta por cobrar (solo su
  *  id) para que el kanban sepa si el cambio de estado debe bloquearse. */
-export function listCotizacionesKanban(filtros: KanbanFiltros) {
+export async function listCotizacionesKanban(filtros: KanbanFiltros) {
+  await requireSession();
   const inicio = new Date(filtros.anio, filtros.mes - 1, 1);
   const finExclusivo = new Date(filtros.anio, filtros.mes, 1);
 
@@ -223,7 +228,8 @@ export function listCotizacionesKanban(filtros: KanbanFiltros) {
   });
 }
 
-export function getCotizacion(id: string) {
+export async function getCotizacion(id: string) {
+  await requireSession();
   return prisma.cotizacion.findUniqueOrThrow({
     where: { id },
     include: {
@@ -238,6 +244,7 @@ export function getCotizacion(id: string) {
 export { puedeEliminarseCotizacion };
 
 export async function deleteCotizacion(id: string) {
+  await requireSession();
   const cotizacion = await prisma.cotizacion.findUniqueOrThrow({
     where: { id },
     select: { estado: true, cuentaPorCobrar: { select: { id: true } } },
@@ -263,6 +270,7 @@ export async function cambiarEstadoCotizacion(
   cotizacionId: string,
   nuevoEstado: "BORRADOR" | "ENVIADA" | "RECHAZADA"
 ) {
+  await requireSession();
   return prisma.$transaction(async (tx) => {
     await advisoryLock(tx, "cotizacion", cotizacionId);
 
@@ -292,6 +300,7 @@ export async function cambiarEstadoCotizacion(
  * histórico), se reutiliza sin duplicar.
  */
 export async function aceptarCotizacion(cotizacionId: string, fechaVencimiento?: Date) {
+  await requireSession();
   return prisma.$transaction(async (tx) => {
     await advisoryLock(tx, "cotizacion", cotizacionId);
 

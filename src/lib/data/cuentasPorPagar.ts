@@ -1,21 +1,25 @@
 import { advisoryLock, prisma } from "@/lib/prisma";
 import { calcularSaldo } from "@/lib/cuentas";
 import type { CuentaPorPagarInput, AbonoInput } from "@/lib/schemas/cuentas";
+import { requireSession } from "@/lib/auth/session";
 
 const TOLERANCIA_SALDO = 0.01; // centavos, por acumulación de floats
 
-export function createCuentaPorPagar(input: CuentaPorPagarInput) {
+export async function createCuentaPorPagar(input: CuentaPorPagarInput) {
+  await requireSession();
   return prisma.cuentaPorPagar.create({ data: input });
 }
 
-export function listCuentasPorPagar() {
+export async function listCuentasPorPagar() {
+  await requireSession();
   return prisma.cuentaPorPagar.findMany({
     include: { abonos: true },
     orderBy: { createdAt: "desc" },
   });
 }
 
-export function getCuentaPorPagar(id: string) {
+export async function getCuentaPorPagar(id: string) {
+  await requireSession();
   return prisma.cuentaPorPagar.findUniqueOrThrow({
     where: { id },
     include: { abonos: { orderBy: { fecha: "desc" } } },
@@ -26,6 +30,7 @@ export function getCuentaPorPagar(id: string) {
  *  excede el saldo pendiente. Las cuentas por pagar no tienen "cancelada",
  *  así que no hay ese chequeo aquí. */
 export async function registrarAbonoPorPagar(cuentaPorPagarId: string, input: AbonoInput) {
+  await requireSession();
   return prisma.$transaction(async (tx) => {
     await advisoryLock(tx, "cuentaPorPagar", cuentaPorPagarId);
 

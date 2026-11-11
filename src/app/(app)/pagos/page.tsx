@@ -5,8 +5,10 @@ import { StatTile } from "@/components/ui/stat-tile";
 import { AnchorButton } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/format";
 import { PagosTabs } from "./pagos-tabs";
+import { requireSession } from "@/lib/auth/session";
 
 export default async function PagosPage() {
+  await requireSession();
   const [cuentasPorCobrar, cuentasPorPagar] = await Promise.all([
     listCuentasPorCobrar(),
     listCuentasPorPagar(),

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { randomBytes } from "crypto";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -68,11 +69,21 @@ export async function getSession() {
 }
 
 /**
- * Protege una página o server action. Si no hay ninguna cuenta creada
+ * Protege una página, función de datos o server action. Se llama desde el
+ * layout, desde CADA página y desde CADA función de datos: la autenticación
+ * no puede depender solo del layout, que Next no vuelve a renderizar en
+ * navegaciones del cliente y que no detiene el render de la página (ver
+ * "Layouts and auth checks" en la guía de autenticación de Next). Envuelta en
+ * cache() de React para que las llamadas de una misma petición compartan una
+ * sola verificación. Si no hay ninguna cuenta creada
  * todavía, manda a /setup (bootstrap del primer usuario) en vez de a un
  * /login sin salida.
  */
-export async function requireSession() {
+export const requireSession = cache(async () => {
+  // Primero la API dinámica: marca la página como dinámica antes de tocar la
+  // BD, para que el build nunca intente prerenderizarla ni consultar datos.
+  await cookies();
+
   const count = await prisma.usuario.count();
   if (count === 0) redirect("/setup");
 
@@ -80,7 +91,7 @@ export async function requireSession() {
   if (!user) redirect("/login");
 
   return user;
-}
+});
 
 export async function destroySession() {
   const store = await cookies();

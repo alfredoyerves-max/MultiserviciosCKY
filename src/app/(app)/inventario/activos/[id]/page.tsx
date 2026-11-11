@@ -14,6 +14,7 @@ import {
   type TipoEventoActivo,
 } from "@/lib/enums";
 import { EstadoActivoSelect, DarDeBajaButton, RegistrarIncidenteButton } from "../activo-acciones";
+import { requireSession } from "@/lib/auth/session";
 
 const ESTADO_TONE: Record<EstadoActivo, "success" | "warning" | "neutral"> = {
   FUNCIONAL: "success",
@@ -32,6 +33,7 @@ export default async function ActivoDetallePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireSession();
   const { id } = await params;
   const activo = await getActivo(id);
   const estado = activo.estado as EstadoActivo;
