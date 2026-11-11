@@ -39,7 +39,9 @@ export function NuevaCotizacionMenu({ className }: { className?: string }) {
         aria-expanded={open}
         className="inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-primary px-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-strong"
       >
-        + Nueva cotización
+        <span className="sm:hidden" aria-hidden>+ Nueva</span>
+        <span className="hidden sm:inline">+ Nueva cotización</span>
+        <span className="sr-only sm:hidden">Nueva cotización</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} className="h-3.5 w-3.5" aria-hidden>
           <path d="m6 9 6 6 6-6" />
         </svg>

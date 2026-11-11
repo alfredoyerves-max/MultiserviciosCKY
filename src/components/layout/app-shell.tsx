@@ -144,7 +144,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium leading-tight transition-colors",
+                "flex flex-col items-center justify-center gap-0.5 min-w-0 px-0.5 py-2 text-[10px] font-medium leading-tight tracking-tight transition-colors",
                 active ? "text-primary" : "text-text-dim hover:text-text-muted"
               )}
             >

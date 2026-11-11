@@ -216,10 +216,8 @@ export function KanbanBoard({
                 <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-dim">
                   <th className="px-4 py-3 font-medium">Folio</th>
                   <th className="px-4 py-3 font-medium">Cliente</th>
-                  <th className="px-4 py-3 font-medium">Tipo</th>
                   <th className="px-4 py-3 text-right font-medium">Total</th>
                   <th className="px-4 py-3 font-medium">Estado</th>
-                  <th className="px-4 py-3 font-medium">Fecha</th>
                   <th className="w-14 px-4 py-3" aria-label="Acciones" />
                 </tr>
               </thead>
@@ -230,10 +228,11 @@ export function KanbanBoard({
                       <Link href={`/cotizaciones/${c.id}`} className="font-mono text-sm text-primary hover:underline">
                         {c.folio}
                       </Link>
+                      <p className="text-xs text-text-dim">{TIPO_COTIZACION_LABELS[c.tipo as TipoCotizacion]}</p>
                     </td>
-                    <td className="px-4 py-3 text-text">{c.cliente.nombreRazonSocial}</td>
                     <td className="px-4 py-3">
-                      <Badge tone="neutral">{TIPO_COTIZACION_LABELS[c.tipo as TipoCotizacion]}</Badge>
+                      <p className="text-text">{c.cliente.nombreRazonSocial}</p>
+                      <p className="text-xs text-text-dim">{formatDate(c.createdAt)}</p>
                     </td>
                     <td className="px-4 py-3 text-right font-mono tabular-nums text-text">
                       {formatCurrency(c.netoARecibir)}
@@ -241,7 +240,6 @@ export function KanbanBoard({
                     <td className="px-4 py-3">
                       <EstadoBadge estado={c.estado} />
                     </td>
-                    <td className="px-4 py-3 text-text-muted">{formatDate(c.createdAt)}</td>
                     <td className="px-4 py-3 text-right">
                       <AccionesCotizacion cotizacion={c} />
                     </td>

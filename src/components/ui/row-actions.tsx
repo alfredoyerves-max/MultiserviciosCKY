@@ -69,7 +69,7 @@ export function RowActions({ actions, label = "Más acciones" }: { actions: RowA
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-text-muted sm:h-9 sm:w-9 transition-colors hover:bg-surface-2 hover:text-text"
       >
         <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" aria-hidden>
           <circle cx="5" cy="12" r="1.8" />
