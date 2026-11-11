@@ -1,219 +1,164 @@
-# Quotly — Mapeo del sistema (diagnóstico, solo lectura)
+# Quotly — Mapeo del sistema (post-reingeniería)
 
-Fecha: 2026-11-10 · Base: código real en `main` (`f6f9b1a`) + conteos reales contra la BD de producción (Supabase Postgres, solo `SELECT` en transacción de solo lectura). No se modificó código.
+Actualizado: 2026-11-11 · Base: código en `main` (`e36bb15`) + BD de producción (Supabase Postgres) con las 19 migraciones aplicadas. Reemplaza al mapa diagnóstico previo (que describía el acoplamiento Material⇢Inventario, ya eliminado).
 
-Stack: Next.js 16.3.4 (App Router), React 19, Prisma 7 + `@prisma/adapter-pg`, Zod 4, Postgres (Supabase). Auth propia (bcrypt + tabla `Session`). Un solo usuario operativo por sesión.
+Stack: Next.js 16.3.4 (App Router), React 19, Prisma 7 + `@prisma/adapter-pg`, Zod 4, Postgres en **Supabase** (pooler 6543 para la app, conexión directa 5432 para migraciones). Auth propia (bcrypt + tabla `Session`, 1 sesión por usuario, 30 min deslizantes).
 
 ---
 
 ## 1. Módulos y rutas
 
-Navegación en [app-shell.tsx](../src/components/layout/app-shell.tsx). Todo `(app)/*` exige sesión vía `requireSession()` en [layout.tsx](../src/app/(app)/layout.tsx); cada Server Action y cada `api/*/export` la vuelve a exigir.
+Todo `(app)/*` exige sesión (`requireSession()` en el layout; cada Server Action y cada `api/*/export` la vuelve a exigir).
 
 | Módulo | Ruta(s) | Qué hace |
 |---|---|---|
-| Dashboard | `/` | KPIs mensual/anual de cotizaciones y cuentas por cobrar (usa `listCotizaciones`, `listCuentasPorCobrar`, `SystemConfig.createdAt` como límite de navegación). |
-| Cotizaciones | `/cotizaciones` | Kanban Borrador/Enviada + histórico Aceptadas/Rechazadas, filtro mes/tipo/soporte. |
+| Dashboard | `/` | KPIs mensual/anual: cotizado, aceptado, por cobrar; tabla de cotizaciones del periodo (filtrada por mes/año). |
+| Cotizaciones | `/cotizaciones` | Kanban Borrador/Enviada + histórico Aceptadas/Rechazadas; filtro mes/tipo/soporte. |
 | | `/cotizaciones/nueva` | Selector de tipo (Servicio / Material). |
-| | `/cotizaciones/nueva/servicio` | Wizard de cotización de servicio (costo real + margen). |
-| | `/cotizaciones/nueva/material` | Wizard de cotización de material (productos del inventario, precio editable). |
-| | `/cotizaciones/[id]` | Detalle, cambio de estado, desglose de costo, exportar Word/PDF. |
-| Servicios | `/servicios` | Pestañas Servicios y Puestos; catálogo de servicios, puestos reutilizables, desglose del costo real. |
-| Inventario y Activos | `/inventario` | Pestañas Productos y Activos. |
-| | `/inventario/[id]` | Detalle de producto: movimientos, entradas y salidas. |
-| | `/inventario/activos/[id]` | Detalle de activo: estado, baja, historial de eventos. |
-| Pagos y Cobros | `/pagos` | Pestañas Por cobrar / Por pagar con KPIs. |
-| | `/pagos/cobrar/[id]`, `/pagos/pagar/[id]` | Detalle de cuenta, abonos, cancelar/eliminar. |
-| Configuración | `/configuracion` | Parámetros globales, tabla CEAV, datos del prestador, cuentas bancarias, leyendas; secciones bajo candado de contraseña. |
-| Auth | `/login`, `/setup`, `/api/auth/heartbeat` | Login con anti-fuerza-bruta (`LoginAttempt`), alta del primer usuario, renovación de sesión por actividad (30 min). |
-| Exportaciones | `/api/cotizaciones/[id]/export`, `/api/servicios/export`, `/api/inventario/{productos,movimientos}/export`, `/api/pagos/export` | Word/PDF de cotización y Excel de los demás. |
+| | `/cotizaciones/nueva/servicio` | Wizard de servicio (costo real + margen). |
+| | `/cotizaciones/nueva/material` | Wizard de material: líneas de captura libre (clave SAT, descripción, unidad, cantidad, precio); producto guardado = atajo opcional. |
+| | `/cotizaciones/[id]` | Detalle, estado, desglose de costo (solo servicio), exportar Word/PDF. |
+| Servicios | `/servicios` | Pestañas Servicios y Puestos; desglose del costo real. |
+| Inventario y Activos | `/inventario`, `/inventario/[id]`, `/inventario/activos/[id]` | Productos (stock = Σ movimientos), entradas/salidas **manuales**, activos y su historial. **Independiente de Cotizaciones.** |
+| Pagos y Cobros | `/pagos`, `/pagos/cobrar/[id]`, `/pagos/pagar/[id]` | Cuentas por cobrar (nacen al aceptar una cotización) y por pagar (independientes), con abonos. |
+| Configuración | `/configuracion` | Parámetros globales, tabla CEAV, prestador, cuentas bancarias, Condiciones y Términos; secciones bajo candado. |
+| Auth | `/login`, `/setup`, `/api/auth/heartbeat` | Login con anti-fuerza-bruta (`LoginAttempt`), alta del primer usuario, renovación por actividad. |
+| Exportaciones | `/api/cotizaciones/[id]/export`, `/api/servicios/export`, `/api/inventario/{productos,movimientos}/export`, `/api/pagos/export` | Word/PDF de cotización; Excel del resto. |
+
+Seguridad HTTP (en `next.config.ts`, verificado en producción): HSTS, `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`.
 
 ---
 
 ## 2. Modelos de datos ([schema.prisma](../prisma/schema.prisma))
 
-Los "enums" son `String` validados con Zod (no enums de Postgres). El stock **no existe como columna**: se deriva de `MovimientoInventario`.
+"Enums" = `String` validados con Zod. El stock **no** es columna: se deriva de `MovimientoInventario`.
 
 | Tabla | Campos clave | Referencia a |
 |---|---|---|
-| `SystemConfig` (fila única, id=1) | UMA diaria/mensual, `topeSbcUmas`, salario mínimo diario/mensual, `primaRiesgoPct`, `isnPct`, `impuestoAdicionalPct`, aguinaldo/vacaciones/prima vac., `ivaPct`, `retencionIsrPct`, horas/días, `margenUtilidadDefaultPct`, datos del prestador, `acepta{Efectivo,Transferencia,Cheque}`, 6 leyendas + 6 flags `mostrar*`, `createdAt` | — |
-| `CuentaBancaria` | banco, clabe, numeroCuenta, titular, `activa` | — |
-| `FolioSecuencia` | `anio` (PK), `siguiente` | — (contador atómico de folios) |
-| `CeavBanda` | `anio`, `orden` 1–8, `unidadLimite` (SALARIO_MINIMO/UMA), `limiteSuperior`, `porcentajePatronal` | — |
+| `SystemConfig` (fila única) | UMA, salario mínimo, tope SBC, `primaRiesgoPct`, ISN, prestaciones, `ivaPct`, `retencionIsrPct`, margen default, datos del prestador, métodos de pago, **`condicionesTerminosServicio/Material` + `mostrarCondicionesTerminos*`**, `createdAt` | — |
+| `CuentaBancaria` | banco, clabe, titular, `activa` | — |
+| `FolioSecuencia` | `anio` (PK), `siguiente` | — (folios atómicos, nunca se reutilizan) |
+| `CeavBanda` | `anio`, `orden` 1–8, `unidadLimite`, `limiteSuperior`, `porcentajePatronal` | — |
 | `Puesto` | nombre, `sueldoMensual` | ← `Servicio` |
-| `Servicio` | nombre, categoría, `puestoId?`, `sueldoMensualInline?`, `nombrePuestoInline?`, `personalPorUnidad`, `modalidadesJson`, uniforme/material (costo + vida útil), `activo` | → `Puesto` (SetNull); ← `LineaCotizacion` |
-| `Cliente` | nombreRazonSocial, rfc, contacto, `tipoCliente` | ← `Cotizacion` |
-| `Cotizacion` | `folio` (único), `tipo` SERVICIO/MATERIAL, `clienteId`, `margenUtilidadPct?`, subtotal/iva/retencionIsr/totalAPagar/netoARecibir, `estado`, `fechaVigencia`, `esSoporte` | → `Cliente`; ← `LineaCotizacion`, `LineaCotizacionMaterial`, `CuentaPorCobrar` (1:1) |
-| `LineaCotizacion` | `servicioId`, modalidad, personas, duracion, `costoRealUnitarioSnapshot`, `costoRealTotal`, `precioVenta` | → `Cotizacion` (Cascade), `Servicio` |
-| `LineaCotizacionMaterial` | `productoId`, cantidad, `precioUnitario`, `importe` | → `Cotizacion` (Cascade), `Producto` |
+| `Servicio` | nombre, categoría, `puestoId?`, `sueldoMensualInline?`, uniforme/material, `activo` | → `Puesto` (SetNull); ← `LineaCotizacion` |
+| `Cliente` | nombreRazonSocial, rfc, `tipoCliente` | ← `Cotizacion` |
+| `Cotizacion` | `folio`, `tipo` SERVICIO/MATERIAL, `clienteId`, margen?, subtotal/iva/retencionIsr/totalAPagar/netoARecibir, `estado`, `fechaVigencia`, `esSoporte` | → `Cliente`; ← líneas, `CuentaPorCobrar` (1:1) |
+| `LineaCotizacion` | `servicioId`, modalidad, personas, duración, snapshot de costo, `precioVenta` | → `Cotizacion` (Cascade), `Servicio` |
+| `LineaCotizacionMaterial` | **`productoId?`**, **`claveSat`**, **`descripcion`**, **`unidadMedida`**, cantidad, precioUnitario, importe | → `Cotizacion` (Cascade), `Producto` (SetNull, opcional) |
 | `CuentaPorCobrar` | `cotizacionId` (único), `montoTotal` (=`netoARecibir`), `fechaVencimiento`, `cancelada` | → `Cotizacion`; ← `AbonoPorCobrar` |
-| `AbonoPorCobrar` | fecha, monto, nota | → `CuentaPorCobrar` (Cascade) |
-| `CuentaPorPagar` | concepto, proveedor (texto libre), montoTotal, fechaVencimiento | ← `AbonoPorPagar` |
-| `AbonoPorPagar` | fecha, monto, nota | → `CuentaPorPagar` (Cascade) |
-| `Producto` | nombre, `unidadMedida`, `costoCompraReciente`, `precioVentaSugerido`, `activo` | ← `MovimientoInventario`, `LineaCotizacionMaterial` |
-| `MovimientoInventario` | `productoId`, `tipo` ENTRADA/SALIDA, fecha, cantidad, proveedor, costoUnitario, `motivoSalida`, `referencia` (texto libre = folio) | → `Producto` (Cascade) |
-| `Activo` | nombre, categoría, fechaAdquisicion, valorAdquisicion, factura, proveedor, `estado`, `fechaBaja` | ← `EventoActivo` |
-| `EventoActivo` | fecha, tipo, descripción, estadoAnterior/Nuevo | → `Activo` (Cascade) |
-| `Usuario` | email (único), `passwordHash`, nombre | ← `Session` (1:1) |
-| `Session` | `token`, `usuarioId` (único), `expiresAt` | → `Usuario` (Cascade) |
-| `LoginAttempt` | `email` (PK), intentos, `bloqueadoHasta` | — |
+| `AbonoPorCobrar` / `CuentaPorPagar` / `AbonoPorPagar` | abonos con fecha/monto; por pagar con proveedor en texto libre | cuentas ↔ abonos (Cascade) |
+| `Producto` | nombre, `unidadMedida`, `costoCompraReciente`, `precioVentaSugerido`, `activo` | ← `MovimientoInventario`, `LineaCotizacionMaterial` (opcional) |
+| `MovimientoInventario` | `tipo` ENTRADA/SALIDA, cantidad, proveedor/costo o motivo/`referencia` (texto libre) | → `Producto` (Cascade) |
+| `Activo` / `EventoActivo` | control de activos y su historial | evento → activo (Cascade) |
+| `Usuario` / `Session` / `LoginAttempt` | auth | sesión → usuario (Cascade) |
 
-Notas de integridad:
-- `MovimientoInventario.referencia` guarda el folio como **texto**, sin FK a `Cotizacion`. No hay vínculo relacional salida↔cotización.
-- `Producto` ← `LineaCotizacionMaterial` sin `onDelete` (Restrict por defecto); `Producto` no se borra desde la UI, solo se desactiva (`activo`).
-- No hay constraint de BD que impida mezclar `lineas` y `lineasMaterial` en una cotización; se garantiza solo en la capa de datos.
+Columnas **obsoletas sin uso** en `SystemConfig` (Fase 4, se conservan; su borrado es limpieza aparte): `garantiaServicio/Material`, `condicionesComercialesServicio/Material`, `condicionesOperativasServicio/Material` y los 6 `mostrar*` correspondientes.
 
 ---
 
 ## 3. Conexiones reales entre módulos
 
-### 3.1 Qué pasa al pasar una Cotización a "Aceptada"
+### 3.1 Aceptar una cotización (Servicio y Material: un solo camino)
 
-Entrada única: `confirmarAceptacionAction` ([cotizaciones/actions.ts:175](../src/app/(app)/cotizaciones/actions.ts#L175)), disparada por el modal de confirmación (`EstadoSelect` → `ConfirmarAceptacionModal`). `updateEstadoAction` ([actions.ts:148](../src/app/(app)/cotizaciones/actions.ts#L148)) **rechaza** ACEPTADA y RECHAZADA; solo permite Borrador↔Enviada.
+`confirmarAceptacionAction` → `aceptarCotizacion` ([lib/data/cotizaciones.ts](../src/lib/data/cotizaciones.ts), función `aceptarCotizacion`): **una transacción** con lock por cotización que (1) pone `estado = ACEPTADA` y (2) crea la `CuentaPorCobrar` (`netoARecibir`, vencimiento capturado en el modal). Si algo falla no queda nada a medias. **No hay ninguna diferencia entre Servicio y Material y no se toca Inventario.**
 
-| Aspecto | SERVICIO | MATERIAL |
-|---|---|---|
-| Rama en `confirmarAceptacionAction` | `actions.ts:202-207` | `actions.ts:200-201` → `confirmarAceptacionMaterial` |
-| Atomicidad | **No transaccional**: `updateEstadoCotizacion` y luego `generarCuentaPorCobrar` son dos escrituras separadas. Si la 2.ª falla, queda ACEPTADA sin CxC. | **Una sola `$transaction`** ([cotizaciones.ts:295](../src/lib/data/cotizaciones.ts#L295)): estado + salidas + CxC o nada. |
-| Validación de stock | Ninguna | Sí (ver 3.2) |
-| Movimientos de inventario | Ninguno | 1 `SALIDA` por línea, `motivoSalida=VENTA_CLIENTE`, `referencia=folio` |
-| Cuenta por cobrar | Se crea si no existe (`monto = netoARecibir`, fecha de vencimiento del modal) | Igual, dentro de la transacción |
-| Re-aceptación (ya hay CxC) | Solo cambia estado | Solo cambia estado; **no** re-descuenta (`esPrimeraAceptacion = !cuentaPorCobrar`) |
-| Revalidate | `/cotizaciones`, `/cotizaciones/[id]`, `/pagos`, `/inventario`, `/` (iguales para ambos) | |
+### 3.2 Dependencia de Inventario
 
-**Diferencia clave:** el único criterio que dispara el descuento de stock es "¿es la primera aceptación?", medido por la **ausencia de `CuentaPorCobrar`**, no por un registro de movimiento. Esto produce el hueco de reversión descrito en 3.3 y confirmado con datos reales (sección 5).
+Ninguna desde Cotizaciones. Inventario sigue conteniendo su propia lógica (`calcularStock`, `lockProducto`, `registrarSalida`, entradas) y se usa solo desde su módulo y sus exportaciones. `Producto` aparece en cotizaciones únicamente como atajo opcional del wizard de material para precargar descripción, unidad y precio; `LineaCotizacionMaterial.productoId` puede ser `NULL` y nunca se valida contra stock. `MovimientoInventario.referencia` es texto libre que el dueño escribe a mano.
 
-### 3.2 Dependencia de Inventario en la aceptación (archivo/función exacta)
+### 3.3 Qué restringe el cambio de estado
 
-| Responsabilidad | Archivo · función · línea |
+| Regla | Dónde |
 |---|---|
-| Cálculo de stock (Σ ENTRADA − Σ SALIDA) | [lib/inventario.ts:12](../src/lib/inventario.ts#L12) `calcularStock` (pura, importada también por el wizard cliente) |
-| Lock por producto (advisory lock, orden determinístico) | [lib/data/locks.ts:15](../src/lib/data/locks.ts#L15) `lockProducto` → [lib/prisma.ts](../src/lib/prisma.ts) `advisoryLock`; llamado en [cotizaciones.ts:308-310](../src/lib/data/cotizaciones.ts#L308) |
-| **Validación de stock al aceptar** | [cotizaciones.ts:339-347](../src/lib/data/cotizaciones.ts#L339) dentro de `confirmarAceptacionMaterial` (agrega cantidades por producto; error "Stock insuficiente de …") |
-| **Descuento de stock al aceptar** | [cotizaciones.ts:353-363](../src/lib/data/cotizaciones.ts#L353) `tx.movimientoInventario.create` tipo SALIDA |
-| Validación de stock en salida manual (módulo Inventario) | [movimientosInventario.ts](../src/lib/data/movimientosInventario.ts) `registrarSalida` |
-| Advertencia informativa de stock (solo UI, no bloquea) | [nueva/material/wizard.tsx:68-80,174-176,236-238](../src/app/(app)/cotizaciones/nueva/material/wizard.tsx) |
-| Texto de aviso en el modal | [confirm-modals.tsx:66](../src/app/(app)/cotizaciones/confirm-modals.tsx#L66) |
+| Aceptada/Rechazada solo por modal de confirmación | `updateEstadoAction` rechaza esos dos destinos |
+| **Invariante: una CxC existe solo mientras su cotización está ACEPTADA** | `cambiarEstadoCotizacion` (salir de Aceptada elimina la CxC en la misma transacción) **y** triggers de BD (migración `20261110120000`): bloquean crear una CxC sobre una cotización no Aceptada y sacar de Aceptada una cotización con CxC |
+| Si la CxC ya tiene abonos, no se puede salir de Aceptada | `cambiarEstadoCotizacion` + opciones deshabilitadas en `EstadoSelect` |
+| No se elimina una cotización Aceptada ni una con CxC | `puedeEliminarseCotizacion` ([cotizacionRules.ts](../src/lib/cotizacionRules.ts)) |
+| Fecha de vencimiento obligatoria al aceptar | `confirmarAceptacionAction` |
 
-### 3.3 Qué bloquea o restringe el cambio de estado
-
-| Regla | Dónde | Efecto |
-|---|---|---|
-| ACEPTADA/RECHAZADA solo por modal | `updateEstadoAction` [actions.ts:152-154](../src/app/(app)/cotizaciones/actions.ts#L152) | No se puede aceptar/rechazar por el camino rápido. |
-| ACEPTADA con abonos → no puede cambiar a ningún otro estado | `asegurarCambioEstadoPermitido` [cotizaciones.ts:267](../src/lib/data/cotizaciones.ts#L267); llamada en `updateEstadoAction` y `confirmarRechazoAction` | Bloqueo servidor + opciones deshabilitadas en `EstadoSelect` ([estado-select.tsx](../src/app/(app)/cotizaciones/estado-select.tsx), `bloqueadoPorAbonos`). |
-| Rechazar elimina la CxC (si no tiene abonos) | `confirmarRechazoAction` [actions.ts:228](../src/app/(app)/cotizaciones/actions.ts#L228) → `eliminarCuentaPorCobrarPorCotizacion` | Evita CxC huérfana. |
-| Eliminar cotización: no si ACEPTADA ni si tiene CxC | `puedeEliminarseCotizacion` [cotizacionRules.ts:11](../src/lib/cotizacionRules.ts#L11), usada en `deleteCotizacion` y en kanban | — |
-| Stock insuficiente (solo MATERIAL, primera aceptación) | `confirmarAceptacionMaterial` | Aborta la transacción completa. |
-| Fecha de vencimiento obligatoria en primera aceptación | `confirmarAceptacionAction` [actions.ts:188-198](../src/app/(app)/cotizaciones/actions.ts#L188) | — |
-
-**Huecos detectados (no corregidos, fuera de alcance de este diagnóstico):**
-1. **Sin reversión de stock.** Material ACEPTADA → Borrador (sin abonos) o → Rechazada **no** genera entrada compensatoria. Las salidas `VENTA_CLIENTE` quedan. Confirmado en producción: `COT-2026-0003` (MATERIAL) está en BORRADOR, conserva su CxC y sus 3 salidas de inventario.
-2. **Rechazar un Material aceptado borra la CxC pero deja las salidas de inventario.** Al volver a aceptarlo, `esPrimeraAceptacion` es `true` otra vez (ya no hay CxC) y **descuenta el stock una segunda vez**.
-3. **Aceptación de Servicio no es atómica** (ver 3.1).
-4. **Estado Enviada con CxC viva:** `COT-2026-0002` (SERVICIO) está ENVIADA con CxC vigente; es el mismo patrón (volver a Borrador/Enviada no limpia la CxC si no hay abonos).
-5. `createCotizacionMaterial` no valida stock ni que el producto esté `activo` en el servidor; solo el wizard lo advierte.
-
-### 3.4 Servicio → Puesto → motor de costo (IMSS/RCV/INFONAVIT)
+### 3.4 Servicio → Puesto → motor de costo
 
 ```
-Puesto.sueldoMensual ─┐
-                      ├─ sueldoMensualEfectivo(servicio)   [lib/servicioCosto.ts:11]
-Servicio.sueldoMensualInline ┘   (puesto tiene prioridad; si no hay ninguno → 0)
-        │
-        ▼
-calcularCostoReal(config, {sueldoMensualPuesto, uniforme, material})   [lib/costEngine.ts:132]
-   config = getSystemConfigConCeav()  [lib/data/config.ts:43]  → SystemConfig + CeavBanda
-        │  SDI = sueldo diario + aguinaldo + prima vac. (tope = UMA × topeSbcUmas)
-        │  baseCalculoFiscal = max(SBC, salarioMinimoMensual)       (piso Art. 28 LSS)
-        │  IMSS  : primaRiesgo (editable) + 6 ramos con constantes de lib/imssConstants.ts
-        │  RCV   : retiro (constante) + CEAV (banda por buscarBandaCeav, tabla CeavBanda)
-        │  INFONAVIT: constante INFONAVIT_PCT
-        │  + ISN e impuesto adicional (SystemConfig)
-        ▼
-costoRealPorModalidad(HORA|DIA|SEMANA|MES) × personalPorUnidad × personas × duracion
-        ▼  × (1 + margen)  →  LineaCotizacion.precioVenta (+ snapshot del costo)
-        ▼
-calcularTotalesFiscales(subtotal, tipoCliente, ivaPct, retencionIsrPct)  [lib/fiscalEngine.ts]
-        (retención ISR solo si cliente PERSONA_MORAL)
+Puesto.sueldoMensual / Servicio.sueldoMensualInline → sueldoMensualEfectivo()
+ → calcularCostoReal(config, …)   [lib/costEngine.ts]
+     SDI (tope UMA×topeSbcUmas) → base fiscal = max(SBC, salario mínimo)
+     IMSS (prima de riesgo editable + ramos fijos de imssConstants.ts)
+     RCV = retiro + CEAV (banda de CeavBanda)  ·  INFONAVIT  ·  ISN + adicional
+ → × personalPorUnidad × personas × duración × (1 + margen) → LineaCotizacion.precioVenta
+ → calcularTotalesFiscales()   [lib/fiscalEngine.ts]: IVA; retención ISR solo Persona Moral
 ```
+La cotización de Material usa únicamente `calcularTotalesFiscales`. Los wizards de ambos tipos calculan sus totales en pantalla con esa misma función (`ResumenCotizacionCard`).
 
-- Consumidores del motor: `createCotizacion` (guarda snapshot), `/cotizaciones/nueva/servicio/page.tsx`, `servicios-panel.tsx` (UI de desglose), `/api/servicios/export`.
-- Las 7 cuotas IMSS fijas e INFONAVIT son **constantes de código** ([imssConstants.ts](../src/lib/imssConstants.ts)), no editables en BD. Editables: prima de riesgo, UMA, salario mínimo, tope SBC, ISN, impuesto adicional, tabla CEAV, prestaciones.
-- Borrado de `Puesto`: bloqueado si algún `Servicio` lo usa (`deletePuesto`). Cambiar el sueldo de un Puesto afecta cotizaciones **nuevas**; las existentes conservan snapshot (`costoRealUnitarioSnapshot`).
-- La cotización de Material **no usa** este motor: solo `calcularTotalesFiscales` (IVA/retención).
+### 3.5 Candado de contraseña (`PROTECTED_FISCAL_FIELDS`, [schemas/config.ts](../src/lib/schemas/config.ts))
 
-### 3.5 Qué protege el candado de contraseña
+El estado "desbloqueado" es de la UI, pero toda escritura que incluya un campo protegido re-verifica la contraseña en el servidor (`saveSystemConfigAction`).
 
-Mecanismo: `unlockFiscalAction` solo verifica la contraseña del usuario en sesión; el estado "desbloqueado" es React (`fiscalUnlocked` en [config-form.tsx](../src/app/(app)/configuracion/config-form.tsx)). Los campos bloqueados se renderizan **sin `name`**, y `saveSystemConfigAction` ([configuracion/actions.ts:74](../src/app/(app)/configuracion/actions.ts#L74)) re-verifica `fiscalPassword` en el servidor si el `FormData` trae cualquier campo protegido (`seccionFiscalDesbloqueada`). Lista única en `PROTECTED_FISCAL_FIELDS` ([schemas/config.ts:35](../src/lib/schemas/config.ts#L35)).
-
-| Grupo | Campos / tabla protegidos |
+| Grupo | Protegido |
 |---|---|
-| UMA, salario mínimo y tope | `SystemConfig`: `umaDiaria`, `umaMensual`, `topeSbcUmas`, `salarioMinimoDiario`, `salarioMinimoMensual` |
+| UMA / salario mínimo / tope | `umaDiaria`, `umaMensual`, `topeSbcUmas`, `salarioMinimoDiario`, `salarioMinimoMensual` |
 | ISN | `isnPct`, `impuestoAdicionalPct` |
-| Tabla CEAV | `CeavBanda.porcentajePatronal` de las 8 bandas (`ceavPct_1..8`; solo se actualiza ese campo) |
-| Identidad del prestador | `prestadorNombre`, `prestadorRfc`, `prestadorRegimenFiscal`, `prestadorDireccion`, `prestadorTelefono`, `prestadorEmail` |
-| Métodos de pago | `aceptaEfectivo`, `aceptaTransferencia`, `aceptaCheque` |
-| Leyendas (texto) | `garantiaServicio/Material`, `condicionesComercialesServicio/Material`, `condicionesOperativasServicio/Material` |
-| Visibilidad de leyendas | `mostrarGarantiaServicio/Material`, `mostrarCondicionesComercialesServicio/Material`, `mostrarCondicionesOperativasServicio/Material` |
-| Cuentas bancarias (tabla completa) | `CuentaBancaria`: alta (`addCuentaBancariaAction`), borrar (`deleteCuentaBancariaAction`), activar/desactivar (`toggleCuentaBancariaActivaAction`); cada una re-verifica la contraseña en servidor |
+| **IVA y retención** | **`ivaPct`, `retencionIsrPct`** (agregados en la Fase 1) |
+| CEAV | `CeavBanda.porcentajePatronal` (8 bandas, `ceavPct_1..8`) |
+| Prestador | `prestadorNombre/Rfc/RegimenFiscal/Direccion/Telefono/Email` |
+| Métodos de pago | `aceptaEfectivo/Transferencia/Cheque` |
+| **Condiciones y Términos** | `condicionesTerminosServicio/Material`, `mostrarCondicionesTerminosServicio/Material` |
+| Cuentas bancarias | alta / borrar / activar (cada acción re-verifica la contraseña) |
 
-**No protegido (editable sin candado):** `primaRiesgoPct`, `diasAguinaldo`, `diasVacaciones`, `primaVacacionalPct`, **`ivaPct`**, **`retencionIsrPct`**, `horasPorDia`, `diasPorSemana`, `margenUtilidadDefaultPct`. Tampoco están protegidos `Puesto.sueldoMensual`, precios de `Producto`, ni ninguna tabla de Servicios/Inventario/Pagos. (`ivaPct` y `retencionIsrPct` son fiscales y quedaron fuera del candado.)
+Sin candado: `primaRiesgoPct`, aguinaldo, vacaciones, prima vacacional, horas/días laborales, margen por defecto.
 
----
+### 3.6 Documento exportado (Word/PDF)
 
-## 4. Puntos de acoplamiento fuerte: Cotización de Materiales ⇢ Inventario
-
-| # | Acoplamiento | Ubicación | Tipo | Se puede desacoplar con… |
-|---|---|---|---|---|
-| A1 | `LineaCotizacionMaterial.productoId` **FK obligatoria** a `Producto`; `Producto.unidadMedida`, `nombre` se leen vía join para detalle y exportación | [schema.prisma:339-342](../prisma/schema.prisma); [cotizaciones/[id]/page.tsx:134-136](../src/app/(app)/cotizaciones/[id]/page.tsx); [export/cotizacionData.ts:128-130](../src/lib/export/cotizacionData.ts) | Datos, **obligatorio** | Líneas libres (descripción/unidad/precio) con `productoId` opcional. |
-| A2 | `createCotizacionMaterial` exige que el producto exista en BD (`Producto ${id} no encontrado`) | [cotizaciones.ts:146-148](../src/lib/data/cotizaciones.ts#L146) | Datos, obligatorio | Idem A1. |
-| A3 | Wizard de material **no funciona sin productos**: muestra "Da de alta al menos uno en Inventario y Activos" y no permite continuar | [wizard.tsx:124-130](../src/app/(app)/cotizaciones/nueva/material/wizard.tsx#L124) | UI, obligatorio | Permitir líneas libres. |
-| A4 | Carga de productos y movimientos para el wizard | [nueva/material/page.tsx](../src/app/(app)/cotizaciones/nueva/material/page.tsx) → `listProductosActivosConMovimientos` | Datos | — |
-| A5 | **Aceptar exige stock suficiente** y aborta toda la transacción si no alcanza | [cotizaciones.ts:339-347](../src/lib/data/cotizaciones.ts#L339) | **Regla de negocio, bloqueante** | Hacer la validación opcional/solo advertencia o condicionada a que la línea tenga `productoId`. |
-| A6 | **Aceptar escribe `MovimientoInventario` SALIDA** por cada línea, en la misma transacción que estado y CxC | [cotizaciones.ts:353-363](../src/lib/data/cotizaciones.ts#L353) | Escritura cruzada, **bloqueante** | Separar en paso aparte/opcional (o evento posterior). |
-| A7 | Advisory lock por producto dentro de la aceptación | [cotizaciones.ts:308-310](../src/lib/data/cotizaciones.ts#L308), `locks.ts` | Concurrencia | Cae junto con A5/A6. |
-| A8 | Lógica "primera aceptación" atada a ausencia de CxC (une inventario con cobranza) | [cotizaciones.ts:330](../src/lib/data/cotizaciones.ts#L330) | Estado implícito | Marcar el descuento con un registro propio en vez de inferirlo. |
-| A9 | Textos que prometen el acoplamiento | [confirm-modals.tsx:66](../src/app/(app)/cotizaciones/confirm-modals.tsx#L66); [nueva/page.tsx:35](../src/app/(app)/cotizaciones/nueva/page.tsx#L35); [nueva/material/page.tsx:18](../src/app/(app)/cotizaciones/nueva/material/page.tsx#L18) | Display | — |
-| A10 | `precioUnitario` se precarga de `Producto.precioVentaSugerido` (editable; solo conveniencia) | [wizard.tsx:35,111,187](../src/app/(app)/cotizaciones/nueva/material/wizard.tsx) | Conveniencia, **no** obligatorio | — |
-
-Lo que **no** depende de Inventario: totales fiscales, estados, CxC/abonos, kanban, folios y exportación (salvo A1 en el nombre/unidad de cada línea). El módulo de Inventario sí depende de Cotización solo de forma débil (texto `referencia`).
-
-Acoplamiento inverso: `Producto` ← `MovimientoInventario` (Cascade). Borrar un Producto borraría su historial, pero la UI nunca borra productos.
+Líneas de material con columna **Clave SAT** junto a la descripción; un bloque **CONDICIONES Y TÉRMINOS** (texto según el tipo, omitido si su interruptor está apagado o el texto está vacío); datos bancarios; leyenda de retención ISR (solo Persona Moral) y firmas **sin cambios**.
 
 ---
 
-## 5. Datos reales en producción (conteos al 2026-11-10)
+## 4. Acoplamiento Material ⇢ Inventario: estado actual
 
-BD: Supabase Postgres (la misma que usa `.env`). Consulta de solo lectura.
+| Punto (diagnóstico previo) | Estado |
+|---|---|
+| FK obligatoria `productoId` en la línea | **Eliminado**: opcional, `ON DELETE SET NULL` |
+| Wizard inutilizable sin productos | **Eliminado**: captura libre siempre disponible |
+| Validación de stock al aceptar | **Eliminada** |
+| Descuento automático de stock al aceptar | **Eliminado** |
+| Lock por producto dentro de la aceptación | **Eliminado** (solo lo usa `registrarSalida` manual) |
+| "Primera aceptación" inferida de la ausencia de CxC | **Eliminado** |
+| Textos que prometían el descuento | **Eliminados** |
+| `precioVentaSugerido` precarga el precio | Se conserva como atajo opcional, editable |
 
-| Tabla | Registros | Detalle |
+Los bugs "stock sin reversión" y "doble descuento" desaparecieron con el mecanismo que los causaba.
+
+---
+
+## 5. Datos reales en producción (2026-11-11)
+
+| Tabla | Registros |
+|---|---|
+| Cliente | 5 |
+| Cotizacion | 11 (8 servicio: 1 Aceptada, 1 Enviada, 6 Borrador · 3 material, todas Borrador) |
+| LineaCotizacion / LineaCotizacionMaterial | 8 / 8 (las 8 de material con descripción y unidad respaldadas desde su producto; sin clave SAT) |
+| Puesto / Servicio / Producto | 6 / 5 / 3 |
+| MovimientoInventario | 6 (3 entradas y 3 salidas de prueba, anteriores a la reingeniería) |
+| CuentaPorCobrar / AbonoPorCobrar | **1 / 1** (solo COT-2026-0001, Aceptada) |
+| CuentaPorPagar | 0 |
+| Activo / CuentaBancaria / Usuario | 1 / 1 / 2 |
+
+Las dos CxC inconsistentes de COT-2026-0002 y COT-2026-0003 (datos de prueba) se eliminaron con autorización explícita.
+
+---
+
+## 6. Historial de la reingeniería
+
+| Fase | Commit | Migración |
 |---|---|---|
-| Cliente | **5** | 4 Persona Moral, 1 Persona Física; los 5 tienen cotizaciones |
-| Cotizacion | **11** | SERVICIO: 6 Borrador, 1 Enviada, 1 Aceptada · MATERIAL: 3 Borrador, 0 Aceptadas · `esSoporte`: 0 · rango 2026-08-22 → 2026-10-28 |
-| LineaCotizacion / LineaCotizacionMaterial | 8 / 8 | |
-| Puesto | **6** | |
-| Servicio | **5** | 4 activos; 5 ligados a Puesto, 0 con sueldo inline |
-| Producto | **3** | 3 activos (nombres tipo "PRUEBA F9 - …": datos de prueba) |
-| MovimientoInventario | 6 | 3 ENTRADA + 3 SALIDA `VENTA_CLIENTE` (todas ref. `COT-2026-0003`, que está en Borrador) |
-| CuentaPorCobrar / AbonoPorCobrar | **3** / 1 | Montos: 16,329.32 (COT-0001, Aceptada, 1 abono) · 79.67 (COT-0002, Enviada) · 2,036.81 (COT-0003, Material Borrador). Total 18,445.80; 0 canceladas |
-| CuentaPorPagar / AbonoPorPagar | **0** / 0 | Módulo sin uso |
-| Activo / EventoActivo | 1 / 0 | 1 Funcional |
-| CuentaBancaria | 1 | |
-| Usuario / Session | 2 / 2 | |
-| CeavBanda / SystemConfig / FolioSecuencia | 8 / 1 / 1 | |
-| LoginAttempt | 0 | |
+| 1 Integridad | `bd21825` | `20261110120000_cxc_solo_cotizacion_aceptada` (triggers) |
+| 2 Desacople de Inventario | `d656469` | `20261110130000_linea_material_independiente` |
+| 3 Clave SAT | `55f1d9d` | `20261110140000_linea_material_clave_sat` |
+| 4 Condiciones y Términos | `19fd73e` | `20261111120000_condiciones_terminos_unificados` |
+| 5 Duplicación / UI | `e36bb15` | — |
 
-Lectura del uso real:
-- Se cotiza principalmente **Servicio** (8 de 11; es el único tipo que ha llegado a Aceptada con cobro). Material: 3 cotizaciones, ninguna Aceptada hoy; el inventario existente es de prueba.
-- Solo **1 cotización Aceptada** y **1 abono** registrado. Cuentas por pagar: sin uso. Activos: 1 registro.
-- Hay 5 clientes registrados (no 2); el "~2 activos" coincide con que solo COT-0001 llegó a cobro. Ningún folio se repite; el folio más alto es `COT-2026-0025` (hay cotizaciones eliminadas, la secuencia es atómica).
-- Incoherencia de datos a revisar (efecto del hueco 3.3): 2 CxC viven sobre cotizaciones que ya no están Aceptadas (`COT-0002` Enviada, `COT-0003` Borrador) y `COT-0003` conserva sus salidas de inventario.
+## 7. Pendientes detectados (fuera de alcance, sin corregir)
 
----
-
-## 6. Resumen de hallazgos para decidir el desacople
-
-1. El acoplamiento Material⇢Inventario es de **tres capas**: FK obligatoria de la línea (A1–A2), wizard inutilizable sin productos (A3), y la aceptación que valida y escribe inventario en la misma transacción que la CxC (A5–A8).
-2. Servicio **no** toca inventario: desacoplar solo implica tocar la rama MATERIAL de `confirmarAceptacionMaterial`.
-3. Cualquier desacople debe resolver primero la **no-reversión de stock** y el **doble descuento al re-aceptar tras rechazar** (3.3, puntos 1–2), porque hoy el sistema solo se protege por la presencia de la CxC.
-4. El candado cubre la normativa de nómina y la identidad/leyendas del documento, pero **no** `ivaPct` ni `retencionIsrPct`.
+- `/cotizaciones/[id]` muestra rótulos fijos "IVA trasladado (16%)" y "Retención ISR (1.25%)" aunque los montos vienen de lo guardado; si cambia `ivaPct` o `retencionIsrPct`, el rótulo de una cotización vieja sería incorrecto.
+- El Dashboard dice "Visión general de Multiservicios Yerves" en texto fijo, y el membrete de la app usa otra razón comercial.
+- Las 12 columnas obsoletas de `SystemConfig` siguen en la BD.
+- La documentación del repo padre (`e:\CLAUDE CODE\CLAUDE.md`, proyecto FiscalDesk) menciona "Neon Postgres"; no pertenece a este repositorio. `AGENTS.md` y `schema.prisma` de Quotly no mencionan Neon (la BD es Supabase).
