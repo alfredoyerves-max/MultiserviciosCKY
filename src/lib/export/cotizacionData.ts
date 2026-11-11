@@ -57,12 +57,10 @@ export interface CotizacionExportData {
    *  retención. Etiquétalo siempre "Total", nunca "Neto a recibir". */
   netoARecibir: number;
 
-  /** Condiciones comerciales / condiciones operativas / garantía — ya
-   *  seleccionadas según el tipo de cotización (Servicio o Material) al
-   *  construir estos datos, para que el exportador no tenga que decidir. */
-  condicionesComerciales: string;
-  condicionesOperativas: string;
-  garantia: string;
+  /** "Condiciones y Términos" — ya seleccionado según el tipo de cotización
+   *  (Servicio o Material) y con su interruptor aplicado ("" = omitir el
+   *  bloque), para que el exportador no tenga que decidir. */
+  condicionesTerminos: string;
 
   cuentasBancarias: {
     banco: string;
@@ -140,19 +138,12 @@ export function buildCotizacionExportData(
     totalAPagar: cotizacion.totalAPagar,
     netoARecibir: cotizacion.netoARecibir,
 
-    // Cada leyenda tiene su propia casilla "Incluir en el documento"
-    // (Configuración > Leyendas) — si está apagada, se resuelve aquí a ""
-    // para que el exportador (notaBlock/NoteBlock) omita el bloque
-    // completo, igual que si el texto estuviera vacío.
-    condicionesComerciales: esServicio
-      ? (config.mostrarCondicionesComercialesServicio ? config.condicionesComercialesServicio : "")
-      : (config.mostrarCondicionesComercialesMaterial ? config.condicionesComercialesMaterial : ""),
-    condicionesOperativas: esServicio
-      ? (config.mostrarCondicionesOperativasServicio ? config.condicionesOperativasServicio : "")
-      : (config.mostrarCondicionesOperativasMaterial ? config.condicionesOperativasMaterial : ""),
-    garantia: esServicio
-      ? (config.mostrarGarantiaServicio ? config.garantiaServicio : "")
-      : (config.mostrarGarantiaMaterial ? config.garantiaMaterial : ""),
+    // Cada tipo tiene su casilla "Incluir en el documento" (Configuración >
+    // Condiciones y Términos) — si está apagada se resuelve aquí a "" para
+    // que el exportador (notaBlock/NoteBlock) omita el bloque completo.
+    condicionesTerminos: esServicio
+      ? (config.mostrarCondicionesTerminosServicio ? config.condicionesTerminosServicio : "")
+      : (config.mostrarCondicionesTerminosMaterial ? config.condicionesTerminosMaterial : ""),
 
     cuentasBancarias: cuentasBancariasActivas.map((c) => ({
       banco: c.banco,

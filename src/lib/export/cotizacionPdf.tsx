@@ -352,10 +352,8 @@ function CotizacionPdfDocument({ data }: { data: CotizacionExportData }) {
             </View>
           )}
 
-          <NoteBlock title="CONDICIONES COMERCIALES" text={data.condicionesComerciales} />
-          <NoteBlock title="CONDICIONES OPERATIVAS" text={data.condicionesOperativas} />
+          <NoteBlock title="CONDICIONES Y TÉRMINOS" text={data.condicionesTerminos} />
           <DatosBancariosBlock data={data} />
-          <NoteBlock title="GARANTÍA Y CALIDAD" text={data.garantia} />
 
           <FirmasBlock data={data} />
 

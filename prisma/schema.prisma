@@ -80,10 +80,20 @@ model SystemConfig {
   aceptaTransferencia Boolean @default(true)
   aceptaCheque        Boolean @default(false)
 
-  /// Leyendas editables de la cotización exportada — Fase 12. Un par por
-  /// concepto (Servicio / Material), seleccionado automáticamente según
-  /// Cotizacion.tipo al construir el documento (ver
-  /// lib/export/cotizacionData.ts). Protegidas por el mismo candado.
+  /// "Condiciones y Términos" de la cotización exportada — un texto por tipo
+  /// (Servicio / Material), seleccionado según Cotizacion.tipo al construir el
+  /// documento (ver lib/export/cotizacionData.ts). Reemplaza a las 6 leyendas
+  /// anteriores (Fase 4). Protegido por el mismo candado. El interruptor
+  /// `mostrar*` omite el bloque completo del documento sin perder el texto.
+  condicionesTerminosServicio String @default("Precios en moneda nacional (MXN), sujetos a la vigencia de esta cotización. Pago de contado: liquidación contra entrega o al término del periodo acordado. El servicio incluye personal uniformado y monitoreo de calidad en sitio; los insumos y consumibles de limpieza corren por cuenta del cliente, salvo solicitud expresa de suministro independiente. Nuestro compromiso es brindar un servicio profesional y supervisado, ejecutado por personal calificado bajo estrictos estándares de calidad, seguridad y cumplimiento en cada entrega.")
+  condicionesTerminosMaterial String @default("Precios en moneda nacional (MXN), sujetos a la vigencia de esta cotización. Pago 100% anticipado, previo a la preparación del pedido y a su entrega o embarque. Precios exclusivos para la venta y entrega de los materiales o productos solicitados; no incluye aplicación ni servicios operativos. Garantizamos la calidad, las especificaciones técnicas y el óptimo estado de los materiales suministrados, con estricto control en tiempos de entrega.")
+  mostrarCondicionesTerminosServicio Boolean @default(true)
+  mostrarCondicionesTerminosMaterial Boolean @default(true)
+
+  /// OBSOLETAS (Fase 4): las 6 leyendas y 6 interruptores siguientes ya no
+  /// se leen ni se escriben desde la app — quedaron fusionadas en
+  /// `condicionesTerminos*`. Se conservan sin uso (migración aditiva); su
+  /// eliminación sería una limpieza aparte.
   garantiaServicio              String @default("Nuestro compromiso es brindar un servicio profesional y supervisado, ejecutado por personal calificado bajo estrictos estándares de calidad, seguridad y cumplimiento en cada entrega.")
   garantiaMaterial              String @default("Garantizamos la calidad, especificaciones técnicas y óptimo estado de los materiales suministrados, asegurando un estricto control en tiempos de entrega y disponibilidad de inventario.")
   /// "Condiciones Comerciales" (precio/moneda/vigencia/modalidad de pago) —

@@ -388,8 +388,7 @@ function leyendaRetencionBlock(): Paragraph {
 const NOTE_BORDER = { left: { style: BorderStyle.SINGLE, size: 18, color: ACCENT, space: 8 } };
 
 /** Bloque de nota con título en acento seguido del texto en párrafo
- *  normal — usado para condiciones comerciales, condiciones operativas y
- *  garantía/calidad. Mismo borde lateral de acento que la leyenda de
+ *  normal — usado para "Condiciones y Términos". Mismo borde lateral de acento que la leyenda de
  *  retención (leyendaRetencionBlock), aplicado a ambos párrafos para que
  *  la barra de color se lea continua a lo largo de todo el bloque. */
 function notaBlock(titulo: string, texto: string): Paragraph[] {
@@ -522,10 +521,8 @@ export async function generarCotizacionDocx(data: CotizacionExportData): Promise
           new Paragraph({ spacing: { before: 260 }, children: [] }),
           fiscalBlock(data),
           ...(esPersonaMoral ? [leyendaRetencionBlock()] : []),
-          ...notaBlock("CONDICIONES COMERCIALES", data.condicionesComerciales),
-          ...notaBlock("CONDICIONES OPERATIVAS", data.condicionesOperativas),
+          ...notaBlock("CONDICIONES Y TÉRMINOS", data.condicionesTerminos),
           ...datosBancariosBlock(data),
-          ...notaBlock("GARANTÍA Y CALIDAD", data.garantia),
           firmasBlock(data),
           new Paragraph({
             spacing: { before: 400 },

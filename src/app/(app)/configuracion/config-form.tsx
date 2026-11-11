@@ -225,63 +225,27 @@ export function ConfigForm({
       </FiscalSection>
 
       <FiscalSection
-        title="Leyendas de la cotización (por tipo)"
-        hint="Un texto para cotizaciones de Servicio y otro para Material — se elige automáticamente según el tipo. Protegidas por contraseña."
+        title="Condiciones y Términos de la cotización"
+        hint="Un texto para cotizaciones de Servicio y otro para Material — se elige automáticamente según el tipo. Protegidos por contraseña."
         unlocked={fiscalUnlocked}
         onUnlock={handleUnlock}
       >
         <LockedField
           locked={!fiscalUnlocked}
-          name="condicionesComercialesServicio"
-          label="Condiciones comerciales — Servicio"
-          defaultValue={config.condicionesComercialesServicio}
-          mostrarName="mostrarCondicionesComercialesServicio"
-          mostrarDefaultChecked={config.mostrarCondicionesComercialesServicio}
+          name="condicionesTerminosServicio"
+          label="Condiciones y Términos — Servicio"
+          defaultValue={config.condicionesTerminosServicio}
+          mostrarName="mostrarCondicionesTerminosServicio"
+          mostrarDefaultChecked={config.mostrarCondicionesTerminosServicio}
           textarea
         />
         <LockedField
           locked={!fiscalUnlocked}
-          name="condicionesComercialesMaterial"
-          label="Condiciones comerciales — Material"
-          defaultValue={config.condicionesComercialesMaterial}
-          mostrarName="mostrarCondicionesComercialesMaterial"
-          mostrarDefaultChecked={config.mostrarCondicionesComercialesMaterial}
-          textarea
-        />
-        <LockedField
-          locked={!fiscalUnlocked}
-          name="condicionesOperativasServicio"
-          label="Condiciones operativas — Servicio"
-          defaultValue={config.condicionesOperativasServicio}
-          mostrarName="mostrarCondicionesOperativasServicio"
-          mostrarDefaultChecked={config.mostrarCondicionesOperativasServicio}
-          textarea
-        />
-        <LockedField
-          locked={!fiscalUnlocked}
-          name="condicionesOperativasMaterial"
-          label="Condiciones operativas — Material"
-          defaultValue={config.condicionesOperativasMaterial}
-          mostrarName="mostrarCondicionesOperativasMaterial"
-          mostrarDefaultChecked={config.mostrarCondicionesOperativasMaterial}
-          textarea
-        />
-        <LockedField
-          locked={!fiscalUnlocked}
-          name="garantiaServicio"
-          label="Garantía / calidad — Servicio"
-          defaultValue={config.garantiaServicio}
-          mostrarName="mostrarGarantiaServicio"
-          mostrarDefaultChecked={config.mostrarGarantiaServicio}
-          textarea
-        />
-        <LockedField
-          locked={!fiscalUnlocked}
-          name="garantiaMaterial"
-          label="Garantía / calidad — Material"
-          defaultValue={config.garantiaMaterial}
-          mostrarName="mostrarGarantiaMaterial"
-          mostrarDefaultChecked={config.mostrarGarantiaMaterial}
+          name="condicionesTerminosMaterial"
+          label="Condiciones y Términos — Material"
+          defaultValue={config.condicionesTerminosMaterial}
+          mostrarName="mostrarCondicionesTerminosMaterial"
+          mostrarDefaultChecked={config.mostrarCondicionesTerminosMaterial}
           textarea
         />
       </FiscalSection>
