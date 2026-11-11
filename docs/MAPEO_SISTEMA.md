@@ -1,6 +1,6 @@
 # Quotly — Mapeo del sistema (post-reingeniería)
 
-Actualizado: 2026-11-11 · Base: código en `main` (`e36bb15`) + BD de producción (Supabase Postgres) con las 19 migraciones aplicadas. Reemplaza al mapa diagnóstico previo (que describía el acoplamiento Material⇢Inventario, ya eliminado).
+Actualizado: 2026-11-11 · Base: código en `main` (`a6bbf7f` desplegado; `3b0981a` y `e53efd0` pendientes de push) + BD de producción (Supabase Postgres) con las 20 migraciones aplicadas. Reemplaza al mapa diagnóstico previo (que describía el acoplamiento Material⇢Inventario, ya eliminado).
 
 Stack: Next.js 16.3.4 (App Router), React 19, Prisma 7 + `@prisma/adapter-pg`, Zod 4, Postgres en **Supabase** (pooler 6543 para la app, conexión directa 5432 para migraciones). Auth propia (bcrypt + tabla `Session`, 1 sesión por usuario, 30 min deslizantes).
 
@@ -8,7 +8,7 @@ Stack: Next.js 16.3.4 (App Router), React 19, Prisma 7 + `@prisma/adapter-pg`, Z
 
 ## 1. Módulos y rutas
 
-Todo `(app)/*` exige sesión (`requireSession()` en el layout; cada Server Action y cada `api/*/export` la vuelve a exigir).
+Todo `(app)/*` exige sesión. **Regla (ver sección 8): `requireSession()` se llama en el layout, al inicio de CADA página y en CADA función de `lib/data/*`** (excepto `usuarios.ts`, que sirve al login/setup, y `locks.ts`); además cada Server Action y cada `api/*/export` la exige. Nunca se depende solo del layout.
 
 | Módulo | Ruta(s) | Qué hace |
 |---|---|---|
@@ -155,6 +155,13 @@ Las dos CxC inconsistentes de COT-2026-0002 y COT-2026-0003 (datos de prueba) se
 | 3 Clave SAT | `55f1d9d` | `20261110140000_linea_material_clave_sat` |
 | 4 Condiciones y Términos | `19fd73e` | `20261111120000_condiciones_terminos_unificados` |
 | 5 Duplicación / UI | `e36bb15` | — |
+| Seguridad: auth por página y por función de datos | `75a37d3` | — |
+| Sesión: 1 consulta, escritura cada 2 min | `d0c31c6` | — |
+| Esqueletos de carga (`loading.tsx`) | `0958566` | — |
+| Separa `lib/enums` (cliente) de esquemas zod (servidor) | `10e097e` | — |
+| Eliminar cotización en 1 sentencia | `a6bbf7f` | — |
+| Índices en 10 llaves foráneas | `3b0981a` | `20261111140000_indices_llaves_foraneas` |
+| Cierre por inactividad a 15 min | `e53efd0` | — |
 
 ## 7. Pendientes detectados (fuera de alcance, sin corregir)
 
@@ -162,3 +169,27 @@ Las dos CxC inconsistentes de COT-2026-0002 y COT-2026-0003 (datos de prueba) se
 - El Dashboard dice "Visión general de Multiservicios Yerves" en texto fijo, y el membrete de la app usa otra razón comercial.
 - Las 12 columnas obsoletas de `SystemConfig` siguen en la BD.
 - La documentación del repo padre (`e:\CLAUDE CODE\CLAUDE.md`, proyecto FiscalDesk) menciona "Neon Postgres"; no pertenece a este repositorio. `AGENTS.md` y `schema.prisma` de Quotly no mencionan Neon (la BD es Supabase).
+
+---
+
+## 8. Incidente de seguridad: autenticación solo en el layout (2026-11-11)
+
+**Qué fallaba.** `requireSession()` se llamaba únicamente en `src/app/(app)/layout.tsx`; ninguna de las 14 páginas ni las funciones de `lib/data` la verificaban. Next.js no vuelve a renderizar los layouts en navegaciones del cliente y un layout tampoco detiene el render de la página (guía de autenticación de Next, "Layouts and auth checks"). Resultado, reproducido en local sin ninguna cookie de sesión:
+
+| Petición sin cookie | Resultado antes de la corrección |
+|---|---|
+| RSC (`RSC: 1` + `Next-Router-State-Tree`) | `200` con datos de negocio en 9 de 14 páginas |
+| Normal | `307 → /login`, pero con los datos de negocio dentro del cuerpo de la respuesta, en las mismas 9 páginas |
+
+En las otras 5 páginas la prueba no encontró datos con los marcadores usados (tablero del mes vacío, formulario sin datos de negocio, id inexistente, activo sin marcador, dashboard); no se descarta que expusieran datos no cubiertos por esos marcadores. Las 28 Server Actions y las 5 rutas `api/*/export` siempre estuvieron protegidas (verificado).
+
+**Desde cuándo.** El diseño existe desde el commit inicial (`528a73d`, 2026-08-25, primer deploy de producción registrado). Ninguna página llamó `requireSession()` hasta la corrección. No se revisaron los logs de Vercel para saber si alguien lo explotó; la lectura requería conocer las URLs (los detalles además un id).
+
+**Cómo se corrigió** (commit `75a37d3`, desplegado 2026-11-11):
+- `requireSession()` envuelta en `cache()` de React (una verificación por petición) y con `await cookies()` primero, para que el build nunca prerenderice páginas ni consulte la BD.
+- Se llama al inicio de cada página de `(app)` y de cada función exportada de `lib/data/*`.
+- Prueba antes/después en local (14 páginas, normal y RSC, sin cookie): 9 → 0 páginas con datos. Prueba contra producción tras el deploy (sin cookie ni credenciales): 0 de 14.
+
+**Regla permanente.** Toda página y toda función de datos llama a `requireSession()`. Nunca depender solo del layout. Toda página o función de datos nueva debe incluirla desde el primer commit; repetir la prueba sin cookie (peticiones normal y RSC) al agregar rutas.
+
+**Otras mejoras de la misma entrega** (rendimiento): verificación de sesión de 4 a 1 consulta y escritura de `expiresAt` solo cada 2 min (`sessionRules.ts`); cierre por inactividad a 15 min; bundle del cliente sin zod (de ~340 KB a ~60-80 KB en 4 módulos); borrado de cotización en 1 sentencia; `loading.tsx` en las 6 rutas del menú; índices en las 10 llaves foráneas.
