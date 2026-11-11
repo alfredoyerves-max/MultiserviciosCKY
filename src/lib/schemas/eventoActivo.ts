@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { tipoEventoActivoManualSchema } from "@/lib/enums";
+import { tipoEventoActivoManualSchema } from "@/lib/schemas/enums";
 
 /** "Registrar incidente" — evento manual (Incidente o Nota), nunca cambia
  *  el estado del activo. */

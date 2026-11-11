@@ -10,7 +10,7 @@ import {
 import { existeCuentaPorCobrar } from "@/lib/data/cuentasPorCobrar";
 import { cotizacionInputSchema, cotizacionMaterialInputSchema } from "@/lib/schemas/cotizacion";
 import { generarCuentaPorCobrarSchema } from "@/lib/schemas/cuentas";
-import { estadoCotizacionSchema } from "@/lib/enums";
+import { estadoCotizacionSchema } from "@/lib/schemas/enums";
 import { requireSession } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";

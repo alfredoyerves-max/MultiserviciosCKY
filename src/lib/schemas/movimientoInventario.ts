@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { motivoSalidaSchema } from "@/lib/enums";
+import { motivoSalidaSchema } from "@/lib/schemas/enums";
 
 export const entradaInventarioSchema = z.object({
   productoId: z.string().min(1),

@@ -1,7 +1,9 @@
-import { z } from "zod";
-
-// Los campos "enum" viven como String en SQLite (ver nota en schema.prisma).
+// Los campos "enum" viven como String en la BD (ver nota en schema.prisma).
 // Estas listas son la única fuente de verdad de los valores válidos.
+//
+// Este archivo NO importa zod a propósito: lo importan componentes de cliente
+// (etiquetas y tipos) y zod pesaba ~285 KB en su bundle. Los esquemas zod de
+// estas listas viven en lib/schemas/enums.ts (solo servidor).
 
 export const SERVICIO_CATEGORIAS = [
   "LIMPIEZA",
@@ -11,8 +13,7 @@ export const SERVICIO_CATEGORIAS = [
   "JARDINES",
   "AC",
 ] as const;
-export const servicioCategoriaSchema = z.enum(SERVICIO_CATEGORIAS);
-export type ServicioCategoria = z.infer<typeof servicioCategoriaSchema>;
+export type ServicioCategoria = (typeof SERVICIO_CATEGORIAS)[number];
 
 export const SERVICIO_CATEGORIA_LABELS: Record<ServicioCategoria, string> = {
   LIMPIEZA: "Limpieza",
@@ -24,8 +25,7 @@ export const SERVICIO_CATEGORIA_LABELS: Record<ServicioCategoria, string> = {
 };
 
 export const MODALIDADES = ["HORA", "DIA", "SEMANA", "MES"] as const;
-export const modalidadSchema = z.enum(MODALIDADES);
-export type Modalidad = z.infer<typeof modalidadSchema>;
+export type Modalidad = (typeof MODALIDADES)[number];
 
 export const MODALIDAD_LABELS: Record<Modalidad, string> = {
   HORA: "Hora",
@@ -35,8 +35,7 @@ export const MODALIDAD_LABELS: Record<Modalidad, string> = {
 };
 
 export const TIPOS_CLIENTE = ["PERSONA_MORAL", "PERSONA_FISICA", "GOBIERNO"] as const;
-export const tipoClienteSchema = z.enum(TIPOS_CLIENTE);
-export type TipoCliente = z.infer<typeof tipoClienteSchema>;
+export type TipoCliente = (typeof TIPOS_CLIENTE)[number];
 
 export const TIPO_CLIENTE_LABELS: Record<TipoCliente, string> = {
   PERSONA_MORAL: "Persona Moral",
@@ -50,8 +49,7 @@ export const ESTADOS_COTIZACION = [
   "ACEPTADA",
   "RECHAZADA",
 ] as const;
-export const estadoCotizacionSchema = z.enum(ESTADOS_COTIZACION);
-export type EstadoCotizacion = z.infer<typeof estadoCotizacionSchema>;
+export type EstadoCotizacion = (typeof ESTADOS_COTIZACION)[number];
 
 export const ESTADO_COTIZACION_LABELS: Record<EstadoCotizacion, string> = {
   BORRADOR: "Borrador",
@@ -75,8 +73,7 @@ export const UNIDADES_MEDIDA = [
   "PAR",
   "KIT",
 ] as const;
-export const unidadMedidaSchema = z.enum(UNIDADES_MEDIDA);
-export type UnidadMedida = z.infer<typeof unidadMedidaSchema>;
+export type UnidadMedida = (typeof UNIDADES_MEDIDA)[number];
 
 export const UNIDAD_MEDIDA_LABELS: Record<UnidadMedida, string> = {
   PIEZA: "Pieza",
@@ -95,8 +92,7 @@ export const UNIDAD_MEDIDA_LABELS: Record<UnidadMedida, string> = {
 };
 
 export const MOTIVOS_SALIDA = ["VENTA_CLIENTE", "USO_INTERNO"] as const;
-export const motivoSalidaSchema = z.enum(MOTIVOS_SALIDA);
-export type MotivoSalida = z.infer<typeof motivoSalidaSchema>;
+export type MotivoSalida = (typeof MOTIVOS_SALIDA)[number];
 
 export const MOTIVO_SALIDA_LABELS: Record<MotivoSalida, string> = {
   VENTA_CLIENTE: "Venta a cliente",
@@ -104,8 +100,7 @@ export const MOTIVO_SALIDA_LABELS: Record<MotivoSalida, string> = {
 };
 
 export const TIPOS_COTIZACION = ["SERVICIO", "MATERIAL"] as const;
-export const tipoCotizacionSchema = z.enum(TIPOS_COTIZACION);
-export type TipoCotizacion = z.infer<typeof tipoCotizacionSchema>;
+export type TipoCotizacion = (typeof TIPOS_COTIZACION)[number];
 
 export const TIPO_COTIZACION_LABELS: Record<TipoCotizacion, string> = {
   SERVICIO: "Servicio",
@@ -120,8 +115,7 @@ export const ACTIVO_CATEGORIAS = [
   "EQUIPO_COMPUTO",
   "OTRO",
 ] as const;
-export const activoCategoriaSchema = z.enum(ACTIVO_CATEGORIAS);
-export type ActivoCategoria = z.infer<typeof activoCategoriaSchema>;
+export type ActivoCategoria = (typeof ACTIVO_CATEGORIAS)[number];
 
 export const ACTIVO_CATEGORIA_LABELS: Record<ActivoCategoria, string> = {
   VEHICULO: "Vehículo",
@@ -133,8 +127,7 @@ export const ACTIVO_CATEGORIA_LABELS: Record<ActivoCategoria, string> = {
 };
 
 export const ESTADOS_ACTIVO = ["FUNCIONAL", "EN_REPARACION", "DADO_DE_BAJA"] as const;
-export const estadoActivoSchema = z.enum(ESTADOS_ACTIVO);
-export type EstadoActivo = z.infer<typeof estadoActivoSchema>;
+export type EstadoActivo = (typeof ESTADOS_ACTIVO)[number];
 
 export const ESTADO_ACTIVO_LABELS: Record<EstadoActivo, string> = {
   FUNCIONAL: "Funcional",
@@ -143,8 +136,7 @@ export const ESTADO_ACTIVO_LABELS: Record<EstadoActivo, string> = {
 };
 
 export const TIPOS_EVENTO_ACTIVO = ["CAMBIO_ESTADO", "INCIDENTE", "NOTA"] as const;
-export const tipoEventoActivoSchema = z.enum(TIPOS_EVENTO_ACTIVO);
-export type TipoEventoActivo = z.infer<typeof tipoEventoActivoSchema>;
+export type TipoEventoActivo = (typeof TIPOS_EVENTO_ACTIVO)[number];
 
 export const TIPO_EVENTO_ACTIVO_LABELS: Record<TipoEventoActivo, string> = {
   CAMBIO_ESTADO: "Cambio de estado",
@@ -156,5 +148,4 @@ export const TIPO_EVENTO_ACTIVO_LABELS: Record<TipoEventoActivo, string> = {
  *  incidente" — CAMBIO_ESTADO nunca se captura manualmente, siempre lo
  *  genera el sistema (ver registrarEventoManual en lib/data/activos.ts). */
 export const TIPOS_EVENTO_ACTIVO_MANUAL = ["INCIDENTE", "NOTA"] as const;
-export const tipoEventoActivoManualSchema = z.enum(TIPOS_EVENTO_ACTIVO_MANUAL);
-export type TipoEventoActivoManual = z.infer<typeof tipoEventoActivoManualSchema>;
+export type TipoEventoActivoManual = (typeof TIPOS_EVENTO_ACTIVO_MANUAL)[number];

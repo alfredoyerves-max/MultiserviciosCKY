@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { MODALIDADES, servicioCategoriaSchema } from "@/lib/enums";
+import { MODALIDADES } from "@/lib/enums";
+import { servicioCategoriaSchema } from "@/lib/schemas/enums";
 
 export const servicioSchema = z
   .object({

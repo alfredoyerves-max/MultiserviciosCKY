@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { modalidadSchema, unidadMedidaSchema } from "@/lib/enums";
+import { modalidadSchema, unidadMedidaSchema } from "@/lib/schemas/enums";
 import { clienteSchema } from "./cliente";
 
 export const lineaInputSchema = z.object({

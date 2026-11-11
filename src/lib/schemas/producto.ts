@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { unidadMedidaSchema } from "@/lib/enums";
+import { unidadMedidaSchema } from "@/lib/schemas/enums";
 
 export const productoSchema = z.object({
   nombre: z.string().trim().min(1, "Requerido"),

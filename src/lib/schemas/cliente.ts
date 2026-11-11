@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { tipoClienteSchema } from "@/lib/enums";
+import { tipoClienteSchema } from "@/lib/schemas/enums";
 
 export const clienteSchema = z.object({
   nombreRazonSocial: z.string().trim().min(1, "Requerido"),

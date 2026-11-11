@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { activoCategoriaSchema } from "@/lib/enums";
+import { activoCategoriaSchema } from "@/lib/schemas/enums";
 
 // estado/fechaBaja ya NO se editan desde este formulario general — cambian
 // de estado vía updateEstadoActivoAction (transiciones simples) o
