@@ -5,9 +5,10 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import type { Usuario } from "@/generated/prisma/client";
+import { INACTIVITY_MS, evaluarSesion } from "./sessionRules";
 
 export const SESSION_COOKIE = "quotly_session";
-const INACTIVITY_MS = 30 * 60 * 1000; // 30 minutos
 
 /**
  * Crea (o reemplaza) la sesión de un usuario y fija la cookie. `usuarioId`
@@ -41,29 +42,46 @@ export async function createSession(usuarioId: string) {
 }
 
 /**
- * Devuelve el usuario de la sesión activa, o null. Como efecto lateral,
- * si la sesión es válida extiende expiresAt 30 min más (sliding
- * expiration) — esto es lo que implementa el auto-cierre por inactividad:
- * cualquier request autenticado (carga de página, server action, o el
- * heartbeat de actividad del cliente) cuenta como actividad.
+ * Devuelve el usuario de la sesión activa, o null. UNA sola consulta (sesión
+ * + usuario por join). Como efecto lateral, extiende expiresAt a 30 min desde
+ * ahora (sliding expiration = auto-cierre por inactividad), pero solo si la
+ * última escritura tiene más de RENEW_AFTER_MS (2 min): cualquier request
+ * autenticado cuenta como actividad sin escribir en la BD en cada uno. Ver
+ * evaluarSesion en sessionRules.ts.
  */
 export async function getSession() {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) return null;
 
-  const session = await prisma.session.findUnique({ where: { token }, include: { usuario: true } });
-  if (!session) return null;
+  // Sesión + usuario en UNA consulta (JOIN). Se usa SQL parametrizado en vez
+  // de include porque relationLoadStrategy "join" sigue siendo función en
+  // vista previa en Prisma 7.10 y activarla cambiaría todas las consultas.
+  const rows = await prisma.$queryRaw<
+    (Usuario & { sessionId: string; expiresAt: Date })[]
+  >`
+    SELECT s."id" AS "sessionId", s."expiresAt",
+           u."id", u."email", u."passwordHash", u."nombre", u."createdAt", u."updatedAt"
+    FROM "Session" s
+    JOIN "Usuario" u ON u."id" = s."usuarioId"
+    WHERE s."token" = ${token}
+    LIMIT 1`;
+  const fila = rows[0];
+  if (!fila) return null;
+  const { sessionId, expiresAt, ...usuario } = fila;
+  const session = { id: sessionId, expiresAt, usuario: usuario as Usuario };
 
-  if (session.expiresAt < new Date()) {
+  const estado = evaluarSesion(session.expiresAt, new Date());
+  if (estado === "expirada") {
     await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
     return null;
   }
-
-  await prisma.session.update({
-    where: { id: session.id },
-    data: { expiresAt: new Date(Date.now() + INACTIVITY_MS) },
-  });
+  if (estado === "renovar") {
+    await prisma.session.update({
+      where: { id: session.id },
+      data: { expiresAt: new Date(Date.now() + INACTIVITY_MS) },
+    });
+  }
 
   return session.usuario;
 }
@@ -84,11 +102,12 @@ export const requireSession = cache(async () => {
   // BD, para que el build nunca intente prerenderizarla ni consultar datos.
   await cookies();
 
-  const count = await prisma.usuario.count();
-  if (count === 0) redirect("/setup");
-
   const user = await getSession();
-  if (!user) redirect("/login");
+  if (!user) {
+    // Solo en el camino de falla: sin ninguna cuenta creada se manda a /setup.
+    const count = await prisma.usuario.count();
+    redirect(count === 0 ? "/setup" : "/login");
+  }
 
   return user;
 });
