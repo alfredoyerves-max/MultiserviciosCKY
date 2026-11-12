@@ -12,6 +12,7 @@ import { Field, FieldError, FieldLabel, Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Modal } from "@/components/ui/modal";
+import { ConfirmarBorradoModal } from "@/components/ui/confirmar-borrado-modal";
 import type { CuentaBancaria } from "@/generated/prisma/client";
 
 const initialState: CuentaBancariaActionState = { ok: false };
@@ -26,6 +27,7 @@ export function CuentasBancariasPanel({
   fiscalPassword: string;
 }) {
   const [creating, setCreating] = useState(false);
+  const [eliminando, setEliminando] = useState<CuentaBancaria | null>(null);
 
   return (
     <div className="flex flex-col gap-3">
@@ -42,6 +44,20 @@ export function CuentasBancariasPanel({
           </Button>
         )}
       </div>
+
+      {eliminando && (
+        <ConfirmarBorradoModal
+          titulo={`Eliminar la cuenta de «${eliminando.banco}»`}
+          descripcion="Se borra por completo y dejará de existir en la lista. Esta acción no se puede deshacer."
+          onConfirm={() => deleteCuentaBancariaAction(eliminando.id, fiscalPassword)}
+          onClose={() => setEliminando(null)}
+          alternativa={
+            eliminando.activa
+              ? (cerrar) => <DesactivarCuentaButton cuentaId={eliminando.id} fiscalPassword={fiscalPassword} onDone={cerrar} />
+              : undefined
+          }
+        />
+      )}
 
       {creating && (
         <Modal onClose={() => setCreating(false)}>
@@ -97,11 +113,7 @@ export function CuentasBancariasPanel({
                         type="button"
                         size="sm"
                         variant="ghost"
-                        onClick={() => {
-                          if (confirm(`¿Eliminar la cuenta de "${c.banco}"?`)) {
-                            deleteCuentaBancariaAction(c.id, fiscalPassword).catch((e) => alert(e.message));
-                          }
-                        }}
+                        onClick={() => setEliminando(c)}
                       >
                         Eliminar
                       </Button>
@@ -114,6 +126,42 @@ export function CuentasBancariasPanel({
         </table>
       </div>
     </div>
+  );
+}
+
+/** Salida ofrecida cuando una cuenta activa no se puede eliminar: desactivarla. */
+function DesactivarCuentaButton({
+  cuentaId,
+  fiscalPassword,
+  onDone,
+}: {
+  cuentaId: string;
+  fiscalPassword: string;
+  onDone: () => void;
+}) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <>
+      <Button
+        type="button"
+        disabled={pending}
+        onClick={async () => {
+          setPending(true);
+          setError(null);
+          try {
+            await toggleCuentaBancariaActivaAction(cuentaId, false, fiscalPassword);
+            onDone();
+          } catch {
+            setError("No se pudo desactivar. Revisa la contraseña fiscal y la conexión.");
+            setPending(false);
+          }
+        }}
+      >
+        {pending ? "Desactivando…" : "Desactivar"}
+      </Button>
+      {error && <p className="w-full text-right text-sm text-danger">{error}</p>}
+    </>
   );
 }
 

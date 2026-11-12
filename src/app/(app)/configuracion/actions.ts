@@ -5,6 +5,7 @@ import { createCuentaBancaria, deleteCuentaBancaria, setCuentaBancariaActiva } f
 import { systemConfigSchema, ceavBandasUpdateSchema, PROTECTED_FISCAL_FIELDS } from "@/lib/schemas/config";
 import { cuentaBancariaSchema } from "@/lib/schemas/cuentaBancaria";
 import { requireSession } from "@/lib/auth/session";
+import type { ResultadoBorrado } from "@/lib/dependencias";
 import { verifyPassword } from "@/lib/auth/password";
 import { revalidatePath } from "next/cache";
 import type { Usuario } from "@/generated/prisma/client";
@@ -177,13 +178,18 @@ export async function addCuentaBancariaAction(
   return { ok: true };
 }
 
-export async function deleteCuentaBancariaAction(id: string, password: string) {
+export async function deleteCuentaBancariaAction(id: string, password: string): Promise<ResultadoBorrado> {
   const usuario = await requireSession();
   const formData = new FormData();
   formData.set("fiscalPassword", password);
-  await verificarPasswordFiscal(usuario, formData);
-  await deleteCuentaBancaria(id);
-  revalidatePath("/configuracion");
+  try {
+    await verificarPasswordFiscal(usuario, formData);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "No se pudo verificar la contraseña fiscal." };
+  }
+  const res = await deleteCuentaBancaria(id);
+  if (res.ok) revalidatePath("/configuracion");
+  return res;
 }
 
 export async function toggleCuentaBancariaActivaAction(id: string, activa: boolean, password: string) {
