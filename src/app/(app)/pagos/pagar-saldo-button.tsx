@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ActionState } from "./form-state";
-import { initialActionState } from "./form-state";
+import { initialActionState, ejecutarSeguro } from "./form-state";
+import { useAvisoLento, TEXTO_AVISO_LENTO } from "./use-aviso-lento";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/format";
@@ -38,17 +39,30 @@ export function PagarSaldoButton({
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
+  const enviando = useRef(false);
+
   const [state, formAction, pending] = useActionState(
     async (prev: ActionState, formData: FormData) => {
-      const res = await action(prev, formData);
-      if (res.ok) {
-        setOpen(false);
+      if (enviando.current) return prev; // sin doble envío (Enter + clic, doble clic)
+      enviando.current = true;
+      try {
+        const res = await ejecutarSeguro(action, prev, formData);
+        if (res.ok) setOpen(false);
+        // Con éxito o con fallo, vuelve a leer el estado real de la cuenta:
+        // si la conexión se cortó, el abono pudo haberse guardado.
         router.refresh();
+        return res;
+      } finally {
+        enviando.current = false;
       }
-      return res;
     },
     initialActionState
   );
+  const lento = useAvisoLento(pending);
+  // Mientras se registra no se puede cerrar, salvo que ya tarde más de 15 s.
+  const cerrar = () => {
+    if (!pending || lento) setOpen(false);
+  };
 
   return (
     <>
@@ -56,7 +70,7 @@ export function PagarSaldoButton({
         Pagar saldo ({formatCurrency(saldo)})
       </Button>
       {open && (
-        <Modal onClose={() => setOpen(false)}>
+        <Modal onClose={cerrar}>
           <form action={formAction} className="flex flex-col gap-4 p-5">
             <input type="hidden" name="cuentaId" value={cuentaId} />
             <input type="hidden" name="fecha" value={hoyLocal()} />
@@ -69,9 +83,14 @@ export function PagarSaldoButton({
                 con fecha de hoy, por el saldo completo que queda por {verbo}. La cuenta quedará en cero.
               </p>
             </div>
+            {lento && (
+              <p role="status" className="text-sm text-warning">
+                {TEXTO_AVISO_LENTO}
+              </p>
+            )}
             {state.error && <p className="text-sm text-danger">{state.error}</p>}
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+              <Button type="button" variant="ghost" onClick={cerrar} disabled={pending && !lento}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={pending}>

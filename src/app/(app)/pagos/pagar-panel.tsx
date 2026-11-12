@@ -6,12 +6,12 @@ import { initialActionState } from "./form-state";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { RowActions } from "@/components/ui/row-actions";
 import { SidePanel } from "@/components/ui/side-panel";
 import { Field, FieldError, FieldLabel, Input } from "@/components/ui/input";
 import { calcularSaldo, calcularEstadoCuenta, estaVencida, ESTADO_CUENTA_LABELS_PAGAR } from "@/lib/cuentas";
 import { CuentaFila } from "./cuenta-fila";
 import { PagarSaldoButton } from "./pagar-saldo-button";
+import { AccionesCuentaPagar } from "./pagar/[id]/acciones-cuenta-pagar";
 import type { AbonoPorPagar, CuentaPorPagar } from "@/generated/prisma/client";
 
 export type CuentaPorPagarConDatos = CuentaPorPagar & { abonos: AbonoPorPagar[] };
@@ -91,10 +91,7 @@ export function PagarPanel({ cuentas }: { cuentas: CuentaPorPagarConDatos[] }) {
                       verbo="pagar"
                     />
                   )}
-                  <RowActions
-                    label={`Más acciones de ${c.concepto}`}
-                    actions={[{ label: "Ver detalle y abono parcial", href }]}
-                  />
+                  <AccionesCuentaPagar cuentaId={c.id} nAbonos={c.abonos.length} verDetalleHref={href} />
                 </>
               }
             />

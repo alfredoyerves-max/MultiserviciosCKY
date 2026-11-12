@@ -1,7 +1,9 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import { initialActionState, type ActionState } from "./form-state";
+import { useRouter } from "next/navigation";
+import { initialActionState, ejecutarSeguro, MENSAJE_FALLO_ACCION, type ActionState } from "./form-state";
+import { useAvisoLento, TEXTO_AVISO_LENTO } from "./use-aviso-lento";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel, Input } from "@/components/ui/input";
 
@@ -12,7 +14,24 @@ export function AbonoForm({
   cuentaId: string;
   action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
 }) {
-  const [state, formAction, pending] = useActionState(action, initialActionState);
+  const router = useRouter();
+  const enviando = useRef(false);
+  const [state, formAction, pending] = useActionState(
+    async (prev: ActionState, formData: FormData) => {
+      if (enviando.current) return prev; // sin doble envío
+      enviando.current = true;
+      try {
+        const res = await ejecutarSeguro(action, prev, formData);
+        // Si la conexión falló, el abono pudo guardarse: vuelve a leer el estado real.
+        if (!res.ok && res.error === MENSAJE_FALLO_ACCION) router.refresh();
+        return res;
+      } finally {
+        enviando.current = false;
+      }
+    },
+    initialActionState
+  );
+  const lento = useAvisoLento(pending);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -48,6 +67,11 @@ export function AbonoForm({
       <Button type="submit" disabled={pending} className="col-span-2 sm:w-auto">
         {pending ? "Guardando…" : "+ Registrar abono"}
       </Button>
+      {lento && (
+        <p role="status" className="col-span-2 w-full text-sm text-warning">
+          {TEXTO_AVISO_LENTO}
+        </p>
+      )}
       {state.error && <p className="col-span-2 w-full text-sm text-danger sm:w-full">{state.error}</p>}
     </form>
   );

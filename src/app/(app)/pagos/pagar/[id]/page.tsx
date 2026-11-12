@@ -10,6 +10,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { registrarAbonoPorPagarAction } from "../../actions";
 import { AbonoForm } from "../../abono-form";
 import { PagarSaldoButton } from "../../pagar-saldo-button";
+import { AccionesCuentaPagar } from "./acciones-cuenta-pagar";
 import { requireSession } from "@/lib/auth/session";
 
 // CANCELADA nunca ocurre en Cuentas por Pagar (ese estado es exclusivo de
@@ -56,6 +57,7 @@ export default async function CuentaPorPagarDetallePage({
           {estado !== "PAGADA" && (
             <PagarSaldoButton cuentaId={cuenta.id} saldo={saldo} action={registrarAbonoPorPagarAction} verbo="pagar" size="md" />
           )}
+          <AccionesCuentaPagar cuentaId={cuenta.id} nAbonos={cuenta.abonos.length} />
         </div>
       </div>
 

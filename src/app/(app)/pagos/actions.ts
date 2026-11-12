@@ -8,6 +8,7 @@ import {
 import {
   createCuentaPorPagar,
   registrarAbonoPorPagar,
+  eliminarCuentaPorPagar,
 } from "@/lib/data/cuentasPorPagar";
 import { cuentaPorPagarSchema, abonoSchema } from "@/lib/schemas/cuentas";
 import { requireSession } from "@/lib/auth/session";
@@ -119,6 +120,27 @@ export async function registrarAbonoPorPagarAction(
   }
 
   revalidatePath(`/pagos/pagar/${cuentaId}`);
+  revalidatePath("/pagos");
+  return { ok: true };
+}
+
+/** Solo permitido si la cuenta no tiene abonos (la capa de datos lo vuelve a
+ *  comprobar dentro de la transacción). */
+export async function eliminarCuentaPorPagarAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireSession();
+
+  const cuentaId = String(formData.get("cuentaId") ?? "");
+  if (!cuentaId) return { ok: false, error: "Falta la cuenta." };
+
+  try {
+    await eliminarCuentaPorPagar(cuentaId);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Error al eliminar la cuenta." };
+  }
+
   revalidatePath("/pagos");
   return { ok: true };
 }

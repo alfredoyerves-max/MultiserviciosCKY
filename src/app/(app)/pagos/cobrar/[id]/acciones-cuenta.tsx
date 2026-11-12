@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import { eliminarCuentaPorCobrarAction, cancelarCuentaPorCobrarAction } from "../../actions";
 import { initialActionState } from "../../form-state";
+import { EliminarCuentaModal } from "../../eliminar-cuenta-modal";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { RowActions } from "@/components/ui/row-actions";
@@ -37,48 +38,16 @@ export function AccionesCuenta({
             : { label: "Eliminar cuenta", danger: true, onSelect: () => setModal("eliminar") },
         ]}
       />
-      {modal === "eliminar" && <EliminarCuentaModal cuentaId={cuentaId} onClose={() => setModal(null)} />}
+      {modal === "eliminar" && (
+        <EliminarCuentaModal
+          cuentaId={cuentaId}
+          titulo="Eliminar cuenta por cobrar"
+          action={eliminarCuentaPorCobrarAction}
+          onClose={() => setModal(null)}
+        />
+      )}
       {modal === "cancelar" && <CancelarCuentaModal cuentaId={cuentaId} onClose={() => setModal(null)} />}
     </>
-  );
-}
-
-function EliminarCuentaModal({ cuentaId, onClose }: { cuentaId: string; onClose: () => void }) {
-  const router = useRouter();
-
-  const [state, formAction, pending] = useActionState(
-    async (prev: typeof initialActionState, formData: FormData) => {
-      const res = await eliminarCuentaPorCobrarAction(prev, formData);
-      if (res.ok) {
-        onClose();
-        router.push("/pagos");
-        router.refresh();
-      }
-      return res;
-    },
-    initialActionState
-  );
-
-  return (
-    <Modal onClose={onClose} danger>
-      <form action={formAction} className="flex flex-col gap-4 p-5">
-        <input type="hidden" name="cuentaId" value={cuentaId} />
-        <h3 className="text-sm font-semibold text-text">Eliminar cuenta por cobrar</h3>
-        <p className="text-sm text-text-muted">
-          ¿Confirmas que quieres eliminarla? No tiene abonos registrados, así que se borra por
-          completo — esta acción no se puede deshacer.
-        </p>
-        {state.error && <p className="text-sm text-danger">{state.error}</p>}
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" variant="danger" disabled={pending}>
-            {pending ? "Eliminando…" : "Eliminar"}
-          </Button>
-        </div>
-      </form>
-    </Modal>
   );
 }
 
