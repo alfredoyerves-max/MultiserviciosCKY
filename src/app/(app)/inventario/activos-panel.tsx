@@ -55,7 +55,8 @@ export function ActivosPanel({ activos }: { activos: Activo[] }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3 sm:flex-nowrap">
           <Select
-            className="h-9 w-[200px] shrink-0"
+            className="h-9 shrink-0"
+            style={{ width: 220 }}
             value={filtroCategoria}
             onChange={(e) => setFiltroCategoria(e.target.value as ActivoCategoria | "TODAS")}
           >
@@ -67,7 +68,8 @@ export function ActivosPanel({ activos }: { activos: Activo[] }) {
             ))}
           </Select>
           <Select
-            className="h-9 w-[200px] shrink-0"
+            className="h-9 shrink-0"
+            style={{ width: 220 }}
             value={filtroEstado}
             onChange={(e) => setFiltroEstado(e.target.value as EstadoActivo | "TODOS")}
           >

@@ -51,7 +51,14 @@ export function PagarPanel({ cuentas }: { cuentas: CuentaPorPagarConDatos[] }) {
       <div className="flex flex-col gap-2">
         {cuentas.length === 0 && (
           <Card>
-            <EmptyState title="Sin cuentas por pagar todavía." action={nueva} />
+            <EmptyState
+              title="Sin cuentas por pagar todavía."
+              action={
+                <Button size="sm" variant="secondary" onClick={() => setCreating(true)}>
+                  + Nueva cuenta por pagar
+                </Button>
+              }
+            />
           </Card>
         )}
         {cuentas.map((c) => {

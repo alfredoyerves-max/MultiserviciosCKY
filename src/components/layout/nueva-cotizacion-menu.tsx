@@ -8,7 +8,16 @@ import { cn } from "@/lib/cn";
  * Botón global "+ Nueva cotización" con menú (Servicio / Material), visible en
  * toda pantalla del shell. Sustituye a la pantalla intermedia de elegir tipo.
  */
-export function NuevaCotizacionMenu({ className, block = false }: { className?: string; block?: boolean }) {
+export function NuevaCotizacionMenu({
+  className,
+  block = false,
+  secundario = false,
+}: {
+  className?: string;
+  block?: boolean;
+  /** En un estado vacío: botón secundario, para no duplicar el primario de la pantalla. */
+  secundario?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -38,7 +47,9 @@ export function NuevaCotizacionMenu({ className, block = false }: { className?: 
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(
-          "inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-primary px-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-strong",
+          secundario
+            ? "inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-border-strong bg-surface-2 px-3 text-sm font-medium text-text transition-colors hover:bg-surface-3"
+            : "inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-primary px-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-strong",
           block && "h-10 w-full"
         )}
       >

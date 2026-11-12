@@ -208,7 +208,7 @@ export default async function DashboardPage({
                     <EmptyState
                       title={vista === "anual" ? `Sin cotizaciones en ${anio}.` : "Sin cotizaciones este mes."}
                       description="Crea una cotización de servicio o de material para empezar a ver cifras aquí."
-                      action={<NuevaCotizacionMenu />}
+                      action={<NuevaCotizacionMenu secundario />}
                     />
                   </td>
                 </tr>

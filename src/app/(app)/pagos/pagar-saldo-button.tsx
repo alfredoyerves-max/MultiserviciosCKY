@@ -66,7 +66,7 @@ export function PagarSaldoButton({
               <h3 className="text-sm font-semibold text-text">Registrar pago del saldo</h3>
               <p className="mt-1 text-sm text-text-muted">
                 Se registrará un abono por <strong className="text-text">{formatCurrency(saldo)}</strong>{" "}
-                con fecha de hoy, por el saldo completo que quedaba por {verbo}. La cuenta quedará en cero.
+                con fecha de hoy, por el saldo completo que queda por {verbo}. La cuenta quedará en cero.
               </p>
             </div>
             {state.error && <p className="text-sm text-danger">{state.error}</p>}

@@ -111,7 +111,7 @@ export function ConfigForm({
     <form action={formAction} className="flex flex-col gap-5">
       <input type="hidden" name="fiscalPassword" value={fiscalPassword} />
 
-      <div className="flex gap-1 overflow-x-auto border-b border-border" role="tablist">
+      <div className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-border" role="tablist">
         {PESTANAS.map((p) => (
           <button
             key={p.id}

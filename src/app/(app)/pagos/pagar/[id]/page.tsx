@@ -3,7 +3,7 @@ import { getCuentaPorPagar } from "@/lib/data/cuentasPorPagar";
 import { calcularSaldo, calcularEstadoCuenta, estaVencida, ESTADO_CUENTA_LABELS_PAGAR } from "@/lib/cuentas";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ButtonLink } from "@/components/ui/button";
+import Link from "next/link";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -37,6 +37,10 @@ export default async function CuentaPorPagarDetallePage({
 
   return (
     <div className="flex flex-col gap-6">
+      <Link href="/pagos" className="w-fit text-sm text-text-muted hover:text-text">
+        ← Finanzas
+      </Link>
+
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
@@ -52,9 +56,6 @@ export default async function CuentaPorPagarDetallePage({
           {estado !== "PAGADA" && (
             <PagarSaldoButton cuentaId={cuenta.id} saldo={saldo} action={registrarAbonoPorPagarAction} verbo="pagar" size="md" />
           )}
-          <ButtonLink href="/pagos" variant="secondary" size="sm">
-            ← Volver
-          </ButtonLink>
         </div>
       </div>
 

@@ -113,7 +113,8 @@ export function KanbanBoard({
       {/* Filtros — una sola fila; aplican a todo el tablero. */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <Select
-          className="h-9 w-[200px] shrink-0"
+          className="h-9 shrink-0"
+          style={{ width: 220 }}
           value={tipo ?? "TODOS"}
           aria-label="Tipo de cotización"
           onChange={(e) => setParam("tipo", e.target.value === "TODOS" ? null : e.target.value)}
