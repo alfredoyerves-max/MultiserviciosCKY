@@ -17,8 +17,11 @@
 - Pool de `pg`: `max` 5, `idleTimeoutMillis` 10 s, `keepAlive`. `connectionTimeoutMillis`: **10 s en producción y 30 s en desarrollo** (por `NODE_ENV`), porque en desarrollo la máquina compila y la conexión puede tardar más. Fuera de producción, el mensaje "Connection terminated due to connection timeout" significa que se agotó ese límite.
 - **Un único reintento, solo al adquirir la conexión** (`PoolConReintento`): ocurre antes de enviar cualquier consulta, así que no puede duplicar escrituras. Cubre `pool.connect()` (promesa, la usa Prisma para abrir transacciones) y `pool.connect(callback)` (la usa `pool.query()` en las consultas sueltas). Un error dentro de una consulta o de una transacción interactiva (`$transaction`) NO se reintenta: se propaga.
 - Prueba: `npm run test:pool` (lecturas y transacciones con ROLLBACK; no deja datos).
-- Prisma tiene su propio límite para abrir una transacción interactiva (`maxWait`, 2 s por defecto): con una conexión nueva lenta puede dar `P2028`. Es independiente de este reintento.
+- Transacciones interactivas: `maxWait` (espera para poder iniciarlas) es de **10 s** en `src/lib/prisma.ts` (Prisma usa 2 s por defecto y con una conexión nueva lenta daba `P2028`); `timeout` queda por defecto. Prueba: `npm run test:maxwait`.
 
 ## Totales fiscales de la cotización (`src/lib/fiscalEngine.ts`)
 - Subtotal, IVA y retención se redondean cada uno a 2 decimales (centavos, mitad hacia arriba) y el total es `subtotal + IVA − retención` de esos importes ya redondeados. Pruebas: `npm run test:fiscal`.
 - Las cotizaciones y cuentas ya guardadas **no se recalculan**: COT-2026-0001, 0023 y 0028 conservan sus totales de antes (difieren en ±1 centavo de la suma de sus partes redondeadas).
+
+## Alcance: el móvil está fuera
+- **El móvil queda fuera de alcance**: no se trabaja más en él y no hay un paso final móvil pendiente. **No revertir lo responsivo que ya existe** (tarjetas bajo 640 px, barra inferior, componentes compartidos). Regla que se mantiene en pantallas nuevas: ningún scroll horizontal de la página en móvil, verificado por código.

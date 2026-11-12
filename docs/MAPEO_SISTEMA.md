@@ -165,8 +165,8 @@ Las dos CxC inconsistentes de COT-2026-0002 y COT-2026-0003 (datos de prueba) se
 
 ## 7. Pendientes detectados (fuera de alcance, sin corregir)
 
-- `/cotizaciones/[id]` muestra rótulos fijos "IVA trasladado (16%)" y "Retención ISR (1.25%)" aunque los montos vienen de lo guardado; si cambia `ivaPct` o `retencionIsrPct`, el rótulo de una cotización vieja sería incorrecto.
-- El Dashboard dice "Visión general de Multiservicios Yerves" en texto fijo, y el membrete de la app usa otra razón comercial.
+- ~~`/cotizaciones/[id]` mostraba rótulos fijos "IVA trasladado (16%)" y "Retención ISR (1.25%)"~~ — resuelto en la Fase 7: el detalle y las exportaciones Word/PDF leen la tasa deducida de los montos guardados (`src/lib/tasasCotizacion.ts`).
+- ~~El Dashboard decía "Visión general de Multiservicios Yerves"~~ — resuelto en la Fase 7: "Visión general de Carlos Yerves Multiservicios".
 - Las 12 columnas obsoletas de `SystemConfig` siguen en la BD.
 - La documentación del repo padre (`e:\CLAUDE CODE\CLAUDE.md`, proyecto FiscalDesk) menciona "Neon Postgres"; no pertenece a este repositorio. `AGENTS.md` y `schema.prisma` de Quotly no mencionan Neon (la BD es Supabase).
 
@@ -213,3 +213,11 @@ Tras la corrección, la primera instrucción de `listCotizaciones`, `listCotizac
 - **El `.env` local apunta a la base de producción. Todo dato creado en pruebas es dato real: prefijo PRUEBA y limpiar al terminar.** Se constató en la revisión de la Fase 7: la cotización COT-2026-0028, el cliente "CLIENTE PRUEBA 2", un producto y un puesto de prueba creados desde `localhost` están en la base real (limpieza prevista en la Fase 9).
 - **Conexión (`src/lib/db/pool.ts`).** Pool con `max` 5, `idleTimeoutMillis` 10 s y `keepAlive`; tiempo límite de conexión de 10 s en producción y 30 s en desarrollo; un único reintento solo al adquirir la conexión (antes de cualquier consulta, para `pool.connect()` y `pool.connect(callback)`). Las transacciones interactivas no se reintentan. Prueba: `npm run test:pool`. El error "Connection terminated due to connection timeout" visto en la revisión provenía del límite de 10 s del primer hotfix, que en desarrollo (compilando) se quedó corto.
 - **Redondeo fiscal (`src/lib/fiscalEngine.ts`).** Subtotal, IVA y retención a 2 decimales (mitad hacia arriba) y total como suma de esos importes: para 650.00 → IVA 104.00, retención 8.13, total 745.87. Solo aplica a cotizaciones nuevas; las existentes no se recalcularon (COT-2026-0001 y 0023 difieren en 1 centavo de la suma de sus partes redondeadas, igual que 0028).
+
+## 10. Alcance: el móvil queda fuera (2026-11-12)
+
+Por decisión de Luis, **el móvil queda fuera de alcance**: no se trabaja más en él y no hay un "paso final móvil" pendiente. Lo responsivo que ya existe (tarjetas bajo 640 px, barra inferior, componentes compartidos) **se conserva y no se revierte**. La única regla que se mantiene para pantallas nuevas es no generar scroll horizontal de la página en móvil, verificado por código.
+
+## 11. Transacciones de Prisma (2026-11-12)
+
+`maxWait` (espera para poder iniciar una transacción interactiva) sube de 2 s (valor por defecto de Prisma) a **10 s** en `src/lib/prisma.ts`; `timeout` queda en su valor por defecto. Evita `P2028` con una conexión nueva lenta. Prueba: `npm run test:maxwait` (con una conexión simulada de 3 s: sin el ajuste falla con P2028, con él funciona; todo con ROLLBACK).
