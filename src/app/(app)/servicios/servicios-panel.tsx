@@ -368,7 +368,7 @@ function ServicioCardMobile({
           </p>
         )}
 
-        <div className="flex items-center justify-between border-t border-border pt-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2.5">
           <div className="flex items-center gap-1.5">
             {bajoMinimo && <SalarioBajoAviso salarioMinimoMensual={config.salarioMinimoMensual} />}
             <div>
