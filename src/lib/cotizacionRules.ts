@@ -14,3 +14,7 @@ export function puedeEliminarseCotizacion(cotizacion: {
 }): boolean {
   return cotizacion.estado !== "ACEPTADA" && cotizacion.cuentaPorCobrar === null;
 }
+
+/** Motivo por el que una cotización no se puede eliminar (lo muestra la interfaz y lo devuelve el servidor). */
+export const MENSAJE_COTIZACION_NO_ELIMINABLE =
+  "No se puede eliminar: esta cotización está Aceptada o tiene una cuenta por cobrar asociada.";

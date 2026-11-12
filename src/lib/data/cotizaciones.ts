@@ -3,7 +3,7 @@ import { getSystemConfigConCeav } from "./config";
 import { calcularCostoReal, costoRealPorModalidad } from "@/lib/costEngine";
 import { calcularTotalesFiscales } from "@/lib/fiscalEngine";
 import { sueldoMensualEfectivo } from "@/lib/servicioCosto";
-import { puedeEliminarseCotizacion } from "@/lib/cotizacionRules";
+import { puedeEliminarseCotizacion, MENSAJE_COTIZACION_NO_ELIMINABLE } from "@/lib/cotizacionRules";
 import { createCliente } from "./clientes";
 import type { CotizacionInput, CotizacionMaterialInput } from "@/lib/schemas/cotizacion";
 import type { ClienteInput } from "@/lib/schemas/cliente";
@@ -288,7 +288,7 @@ export async function deleteCotizacion(id: string) {
   const existe = await prisma.cotizacion.findUnique({ where: { id }, select: { id: true } });
   throw new Error(
     existe
-      ? "No se puede eliminar: esta cotización está Aceptada o tiene una cuenta por cobrar asociada."
+      ? MENSAJE_COTIZACION_NO_ELIMINABLE
       : "Esta cotización ya no existe."
   );
 }

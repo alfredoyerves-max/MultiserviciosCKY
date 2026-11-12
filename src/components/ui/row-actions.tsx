@@ -51,7 +51,7 @@ export function RowActions({ actions, label = "Más acciones" }: { actions: RowA
     if (!r) return;
     const left = Math.min(Math.max(8, r.right - MENU_WIDTH), window.innerWidth - MENU_WIDTH - 8);
     // Si no cabe hacia abajo, abre hacia arriba.
-    const alto = actions.length * 40 + 8;
+    const alto = actions.reduce((n, a) => n + (!("href" in a) && a.disabled && a.hint ? 76 : 40), 8);
     const top = r.bottom + alto > window.innerHeight ? Math.max(8, r.top - alto - 4) : r.bottom + 4;
     setPos({ top, left });
     setOpen(true);
@@ -108,9 +108,11 @@ export function RowActions({ actions, label = "Más acciones" }: { actions: RowA
                     setOpen(false);
                     a.onSelect();
                   }}
-                  className={cn(itemBase, a.danger ? "text-danger" : "text-text")}
+                  className={cn(itemBase, a.danger ? "text-danger" : "text-text", a.disabled && a.hint && "flex-col items-start gap-0.5")}
                 >
                   {a.label}
+                  {/* Una acción desactivada dice por qué, a la vista (no solo en el tooltip). */}
+                  {a.disabled && a.hint && <span className="text-xs font-normal leading-snug text-text-muted">{a.hint}</span>}
                 </button>
               )
             )}

@@ -10,7 +10,7 @@ import {
 } from "./confirm-modals";
 import { Button } from "@/components/ui/button";
 import { RowActions, type RowAction } from "@/components/ui/row-actions";
-import { puedeEliminarseCotizacion } from "@/lib/cotizacionRules";
+import { puedeEliminarseCotizacion, MENSAJE_COTIZACION_NO_ELIMINABLE } from "@/lib/cotizacionRules";
 import type { EstadoCotizacion } from "@/lib/enums";
 
 export interface CotizacionParaAcciones {
@@ -106,9 +106,14 @@ export function AccionesCotizacion({
       hint: bloqueadoPorAbonos ? MENSAJE_BLOQUEO : undefined,
     })),
   ];
-  if (puedeEliminarseCotizacion(cotizacion)) {
-    acciones.push({ label: "Eliminar", onSelect: () => setModal("ELIMINAR"), danger: true });
-  }
+  const eliminable = puedeEliminarseCotizacion(cotizacion);
+  acciones.push({
+    label: "Eliminar",
+    onSelect: () => setModal("ELIMINAR"),
+    danger: true,
+    disabled: !eliminable,
+    hint: eliminable ? undefined : MENSAJE_COTIZACION_NO_ELIMINABLE,
+  });
 
   return (
     <div className="flex flex-col gap-1">
