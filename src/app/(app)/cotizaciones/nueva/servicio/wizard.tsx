@@ -17,24 +17,22 @@ export interface ServicioOption {
   categoria: string;
   modalidadesDisponibles: Modalidad[];
   costoPorModalidad: Record<Modalidad, number>;
+  /** Puesto y sueldo mensual: distinguen servicios con el mismo nombre. */
+  puestoNombre: string;
+  sueldoMensual: number;
   /** Sueldo base del puesto por debajo del salario mínimo mensual vigente
    *  — se muestra como ícono de aviso junto a esta opción específica en el
    *  selector, para no tener que seleccionarla primero para descubrirlo. */
   bajoMinimo: boolean;
 }
 
-/** Texto de una opción del selector: nombre + costo real de la modalidad
- *  base (la primera disponible, ej. "$53.41/hora") — así dos servicios
- *  con el mismo nombre pero sueldos/costos distintos se distinguen sin
- *  tener que seleccionarlos primero. */
+/** Texto de una opción del selector: nombre + puesto + sueldo mensual, para
+ *  distinguir servicios con el mismo nombre sin seleccionarlos primero. */
 function servicioOptionLabel(s: ServicioOption): string {
-  const modalidadBase = s.modalidadesDisponibles[0];
-  if (!modalidadBase) return s.nombre;
-  const costo = s.costoPorModalidad[modalidadBase];
-  const unidad = MODALIDAD_LABELS[modalidadBase].toLowerCase();
-  const aviso = s.bajoMinimo ? " ⚠" : "";
-  return `${s.nombre} — ${formatCurrency(costo)}/${unidad}${aviso}`;
+  return `${s.nombre} — ${s.puestoNombre} · ${formatCurrency(s.sueldoMensual)}/mes`;
 }
+
+const AVISO_SUELDO_BAJO = "Sueldo por debajo del mínimo — costo calculado sobre piso legal";
 
 interface LineaState {
   key: string;
@@ -123,16 +121,17 @@ export function Wizard({
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-6">
+    <form action={formAction} className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_340px]">
       <input type="hidden" name="lineasJson" value={JSON.stringify(lineas)} />
       <input type="hidden" name="margenUtilidadPct" value={margenUtilidadPct} />
       <ClienteHiddenFields estado={cliente} />
 
+      <div className="flex flex-col gap-6">
       <ClienteStep clientes={clientes} {...cliente} />
 
       <Card>
         <CardHeader className="items-start justify-between">
-          <CardTitle>2. Servicios</CardTitle>
+          <CardTitle>Servicios</CardTitle>
           <Button type="button" size="sm" onClick={addLinea}>
             + Agregar línea
           </Button>
@@ -147,7 +146,14 @@ export function Wizard({
                 className="grid grid-cols-1 items-end gap-3 rounded-lg border border-border-strong bg-surface-2 p-3 sm:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto]"
               >
                 <Field>
-                  <FieldLabel>Servicio</FieldLabel>
+                  <FieldLabel>
+                    Servicio
+                    {servicio?.bajoMinimo && (
+                      <span title={AVISO_SUELDO_BAJO} aria-label={AVISO_SUELDO_BAJO} className="ml-1 cursor-help text-warning-soft">
+                        ⚠
+                      </span>
+                    )}
+                  </FieldLabel>
                   <Select
                     value={l.servicioId}
                     onChange={(e) => {
@@ -185,6 +191,7 @@ export function Wizard({
                     min={1}
                     step="1"
                     value={l.personas}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => updateLinea(l.key, { personas: Number(e.target.value) || 1 })}
                   />
                 </Field>
@@ -195,6 +202,7 @@ export function Wizard({
                     min={1}
                     step="1"
                     value={l.duracion}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => updateLinea(l.key, { duracion: Number(e.target.value) || 1 })}
                   />
                 </Field>
@@ -218,9 +226,11 @@ export function Wizard({
           })}
         </CardContent>
       </Card>
+      </div>
 
       <ResumenCotizacionCard
-        titulo="3. Margen y resumen"
+        titulo="Resumen"
+        aviso={lineasCalculadas.some((l) => l.servicio?.bajoMinimo) ? AVISO_SUELDO_BAJO : undefined}
         diasVigencia={diasVigencia}
         setDiasVigencia={setDiasVigencia}
         esSoporte={esSoporte}
@@ -239,6 +249,7 @@ export function Wizard({
             type="number"
             step="0.01"
             value={margenUtilidadPct}
+            onFocus={(e) => e.target.select()}
             onChange={(e) => setMargenUtilidadPct(Number(e.target.value) || 0)}
           />
         </Field>

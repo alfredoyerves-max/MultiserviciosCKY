@@ -95,7 +95,7 @@ export function Wizard({
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-6">
+    <form action={formAction} className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_340px]">
       <input
         type="hidden"
         name="lineasMaterialJson"
@@ -103,11 +103,12 @@ export function Wizard({
       />
       <ClienteHiddenFields estado={cliente} />
 
+      <div className="flex flex-col gap-6">
       <ClienteStep clientes={clientes} {...cliente} />
 
       <Card>
         <CardHeader className="items-start justify-between">
-          <CardTitle>2. Materiales</CardTitle>
+          <CardTitle>Materiales</CardTitle>
           <Button type="button" size="sm" onClick={addLinea}>
             + Agregar línea
           </Button>
@@ -172,6 +173,7 @@ export function Wizard({
                     min={0.01}
                     step="0.01"
                     value={l.cantidad}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => updateLinea(l.key, { cantidad: Number(e.target.value) || 0 })}
                   />
                 </Field>
@@ -182,6 +184,7 @@ export function Wizard({
                     min={0}
                     step="0.01"
                     value={l.precioUnitario}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => updateLinea(l.key, { precioUnitario: Number(e.target.value) || 0 })}
                   />
                 </Field>
@@ -205,9 +208,10 @@ export function Wizard({
           ))}
         </CardContent>
       </Card>
+      </div>
 
       <ResumenCotizacionCard
-        titulo="3. Resumen"
+        titulo="Resumen"
         diasVigencia={diasVigencia}
         setDiasVigencia={setDiasVigencia}
         esSoporte={esSoporte}

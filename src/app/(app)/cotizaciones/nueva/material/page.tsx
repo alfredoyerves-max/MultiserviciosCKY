@@ -1,6 +1,7 @@
 import { listProductosActivos } from "@/lib/data/productos";
 import { listClientes } from "@/lib/data/clientes";
 import { getSystemConfigConCeav } from "@/lib/data/config";
+import { PageHeader } from "@/components/ui/page-header";
 import { Wizard } from "./wizard";
 import { requireSession } from "@/lib/auth/session";
 
@@ -14,13 +15,10 @@ export default async function NuevaCotizacionMaterialPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold text-text">Nueva cotización de material</h1>
-        <p className="text-sm text-text-muted">
-          Captura cada línea directo (descripción, unidad, cantidad, precio). Puedes
-          precargarla desde un producto guardado, pero no es obligatorio.
-        </p>
-      </div>
+      <PageHeader
+        title="Nueva cotización de material"
+        description="Captura cada línea o precárgala desde un producto guardado."
+      />
 
       <Wizard
         productos={productos}
