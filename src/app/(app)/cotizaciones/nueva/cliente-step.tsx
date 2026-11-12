@@ -1,5 +1,6 @@
 "use client";
 
+import { avisoRfc } from "@/lib/rfc";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -163,6 +164,9 @@ export function ClienteStep({
                 value={clienteNuevo.rfc}
                 onChange={(e) => setClienteNuevo((c) => ({ ...c, rfc: e.target.value }))}
               />
+              {avisoRfc(clienteNuevo.rfc, clienteNuevo.tipoCliente) && (
+                <p className="mt-1 text-xs text-warning-soft">{avisoRfc(clienteNuevo.rfc, clienteNuevo.tipoCliente)}</p>
+              )}
             </Field>
             <Field>
               <FieldLabel>Contacto (opcional)</FieldLabel>
