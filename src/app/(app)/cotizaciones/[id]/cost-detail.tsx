@@ -29,34 +29,31 @@ export function CostDetail({ lineas }: { lineas: LineaCosto[] }) {
         {open ? "Ocultar" : "Ver"} detalle de costos (interno)
       </button>
       {open && (
-        <div className="overflow-x-auto">
-          <table className="mt-3 w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-text-dim">
-                <th className="py-2 font-medium">Servicio</th>
-                <th className="py-2 text-right font-medium">Costo real</th>
-                <th className="py-2 text-right font-medium">Precio venta</th>
-                <th className="py-2 text-right font-medium">Margen</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lineas.map((l) => (
-                <tr key={l.id} className="border-t border-border">
-                  <td className="py-2 text-text">{l.servicioNombre}</td>
-                  <td className="py-2 text-right font-mono tabular-nums text-text-muted">
-                    {formatCurrency(l.costoRealTotal)}
-                  </td>
-                  <td className="py-2 text-right font-mono tabular-nums text-text">
-                    {formatCurrency(l.precioVenta)}
-                  </td>
-                  <td className="py-2 text-right font-mono tabular-nums text-success-soft">
+        // Una tarjeta por servicio: cabe en el panel angosto sin scroll horizontal,
+        // con cualquier nombre largo y con 3 o más servicios.
+        <ul className="mt-3 flex flex-col gap-2">
+          {lineas.map((l) => (
+            <li key={l.id} className="rounded-lg border border-border bg-surface-2 p-3">
+              <p className="break-words text-sm font-medium text-text">{l.servicioNombre}</p>
+              <dl className="mt-2 flex flex-col gap-1 text-sm">
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-text-dim">Costo real</dt>
+                  <dd className="font-mono tabular-nums text-text-muted">{formatCurrency(l.costoRealTotal)}</dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-text-dim">Precio de venta</dt>
+                  <dd className="font-mono tabular-nums text-text">{formatCurrency(l.precioVenta)}</dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-3 border-t border-border pt-1">
+                  <dt className="text-text-dim">Margen</dt>
+                  <dd className="font-mono tabular-nums text-success-soft">
                     {formatCurrency(l.precioVenta - l.costoRealTotal)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </dd>
+                </div>
+              </dl>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
