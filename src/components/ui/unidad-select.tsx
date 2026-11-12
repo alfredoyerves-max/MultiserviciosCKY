@@ -43,6 +43,7 @@ export function UnidadSelect({
           autoFocus={value === ""}
           placeholder="Escribe la unidad"
           onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
         />
       )}
     </div>
