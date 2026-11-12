@@ -1,63 +1,38 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { unlockFiscalAction, type UnlockActionState } from "./actions";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Field, FieldLabel, Input } from "@/components/ui/input";
-import { CardHeader, CardTitle } from "@/components/ui/card";
 
 const initialUnlockState: UnlockActionState = { ok: false };
 
-export function FiscalSectionHeader({
-  title,
-  hint,
-  unlocked,
-  onUnlock,
-}: {
-  title: string;
-  hint?: string;
-  unlocked: boolean;
-  /** Recibe la contraseña que se acaba de verificar — el formulario
-   *  principal la reenvía como campo oculto para que el servidor la
-   *  vuelva a verificar al guardar (ver saveSystemConfigAction). */
-  onUnlock: (password: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <>
-      <CardHeader className="flex-col items-start gap-1">
-        <div className="flex w-full flex-wrap items-center justify-between gap-3">
-          <CardTitle>{title}</CardTitle>
-          {unlocked ? (
-            <span className="text-xs font-medium text-success-soft">Desbloqueado</span>
-          ) : (
-            <Button type="button" size="sm" variant="secondary" onClick={() => setOpen(true)}>
-              🔒 Editar valores fiscales
-            </Button>
-          )}
-        </div>
-        {hint && <p className="text-xs text-text-dim">{hint}</p>}
-      </CardHeader>
-
-      {open && (
-        <UnlockModal
-          onCancel={() => setOpen(false)}
-          onUnlocked={(password) => {
-            onUnlock(password);
-            setOpen(false);
-          }}
-        />
-      )}
-    </>
+/** Indicador de cada sección: "Protegido" mientras el candado sigue puesto,
+ *  "Editable" cuando se puede modificar (sin candado o ya desbloqueada). */
+export function ProteccionBadge({ protegido }: { protegido: boolean }) {
+  return protegido ? (
+    <Badge tone="neutral" title="Se necesita tu contraseña para editar esta sección.">
+      🔒 Protegido
+    </Badge>
+  ) : (
+    <Badge tone="success">Editable</Badge>
   );
 }
 
-function UnlockModal({
+/**
+ * Pide la contraseña UNA vez para desbloquear una pestaña. Solo verifica la
+ * identidad (unlockFiscalAction no escribe nada); la contraseña verificada se
+ * entrega a quien llama para retenerla únicamente en memoria de la pantalla.
+ * El servidor la vuelve a verificar en cada guardado protegido.
+ */
+export function UnlockModal({
+  titulo,
   onCancel,
   onUnlocked,
 }: {
+  titulo: string;
   onCancel: () => void;
   onUnlocked: (password: string) => void;
 }) {
@@ -76,8 +51,8 @@ function UnlockModal({
         <div>
           <h3 className="text-sm font-semibold text-text">Confirma tu contraseña</h3>
           <p className="mt-1 text-xs text-text-dim">
-            Los valores fiscales son datos normativos — confirma tu identidad antes de
-            editarlos.
+            {titulo} contiene datos protegidos — confirma tu identidad antes de editarlos. Solo se
+            te pedirá una vez para esta pestaña.
           </p>
         </div>
 

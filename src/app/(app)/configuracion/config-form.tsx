@@ -2,11 +2,12 @@
 
 import { useActionState, useState } from "react";
 import { saveSystemConfigAction, type ConfigActionState } from "./actions";
-import { FiscalSectionHeader } from "./fiscal-lock";
+import { ProteccionBadge, UnlockModal } from "./fiscal-lock";
 import { CuentasBancariasPanel } from "./cuentas-bancarias-panel";
 import { Field, FieldError, FieldLabel, Input, Textarea } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/cn";
 import type { CuentaBancaria, SystemConfig } from "@/generated/prisma/client";
 import type { CeavBandaInput } from "@/lib/costEngine";
 import {
@@ -30,13 +31,24 @@ function toPctDisplay(fraction: number) {
  *  con hasta 3 decimales significativos (ej. 3.676%), y su input ya tiene
  *  step="0.001". Con solo 2 decimales de precisión en el valor por
  *  defecto, guardar la configuración por CUALQUIER otro campo fiscal
- *  (todas las secciones fiscales comparten un solo candado, así que
- *  desbloquear una las desbloquea todas) reenvía este valor redondeado
- *  como si fuera intencional y degrada silenciosamente la tasa guardada
- *  — este helper evita esa pérdida de precisión. */
+ *  reenvía este valor redondeado como si fuera intencional y degrada
+ *  silenciosamente la tasa guardada — este helper evita esa pérdida de
+ *  precisión. */
 function toPctDisplayPrecise(fraction: number) {
   return String(Math.round(fraction * 1000000) / 10000);
 }
+
+type Pestana = "empresa" | "fiscal" | "cuentas" | "condiciones";
+
+const PESTANAS: { id: Pestana; label: string }[] = [
+  { id: "empresa", label: "Empresa" },
+  { id: "fiscal", label: "Fiscal" },
+  { id: "cuentas", label: "Cuentas y pagos" },
+  { id: "condiciones", label: "Condiciones y términos" },
+];
+
+const TODAS_BLOQUEADAS: Record<Pestana, boolean> = { empresa: false, fiscal: false, cuentas: false, condiciones: false };
+const CLAVES_EN_CERO: Record<Pestana, number> = { empresa: 0, fiscal: 0, cuentas: 0, condiciones: 0 };
 
 export function ConfigForm({
   config,
@@ -47,267 +59,317 @@ export function ConfigForm({
   bandasCeav: CeavBandaInput[];
   cuentasBancarias: CuentaBancaria[];
 }) {
-  const [state, formAction, pending] = useActionState(saveSystemConfigAction, initialState);
-  const [fiscalUnlocked, setFiscalUnlocked] = useState(false);
-  // Se reenvía como campo oculto para que el servidor la vuelva a
-  // verificar al guardar (defensa en profundidad — ver saveSystemConfigAction).
+  const [tab, setTab] = useState<Pestana>("empresa");
+  const [desbloqueadas, setDesbloqueadas] = useState(TODAS_BLOQUEADAS);
+  // Cambiar la clave de una pestaña vuelve a montar sus campos con los valores
+  // guardados (así "Cancelar" descarta lo escrito).
+  const [claves, setClaves] = useState(CLAVES_EN_CERO);
+  const [desbloqueando, setDesbloqueando] = useState<Pestana | null>(null);
+  // La contraseña verificada vive SOLO en memoria de esta pantalla (nunca en
+  // localStorage ni sessionStorage). Se reenvía como campo oculto para que el
+  // servidor la vuelva a verificar en cada guardado protegido (ver
+  // saveSystemConfigAction, que no cambia). Se descarta al guardar, al
+  // cancelar la última pestaña desbloqueada o al salir de la pantalla.
   const [fiscalPassword, setFiscalPassword] = useState("");
 
-  function handleUnlock(password: string) {
-    setFiscalUnlocked(true);
+  const [state, formAction, pending] = useActionState(
+    async (prev: ConfigActionState, formData: FormData) => {
+      const res = await saveSystemConfigAction(prev, formData);
+      if (res.ok) {
+        setDesbloqueadas(TODAS_BLOQUEADAS);
+        setFiscalPassword("");
+        setClaves((c) => ({
+          empresa: c.empresa + 1,
+          fiscal: c.fiscal + 1,
+          cuentas: c.cuentas + 1,
+          condiciones: c.condiciones + 1,
+        }));
+      }
+      return res;
+    },
+    initialState
+  );
+
+  function desbloquear(p: Pestana, password: string) {
+    setDesbloqueadas((d) => ({ ...d, [p]: true }));
     setFiscalPassword(password);
+    setDesbloqueando(null);
   }
 
+  function cancelar(p: Pestana) {
+    const siguiente = { ...desbloqueadas, [p]: false };
+    setDesbloqueadas(siguiente);
+    if (!Object.values(siguiente).some(Boolean)) setFiscalPassword("");
+    setClaves((c) => ({ ...c, [p]: c[p] + 1 }));
+  }
+
+  const err = state.fieldErrors;
+  const bloqueada = (p: Pestana) => !desbloqueadas[p];
+
   return (
-    <form action={formAction} className="flex flex-col gap-6">
+    <form action={formAction} className="flex flex-col gap-5">
       <input type="hidden" name="fiscalPassword" value={fiscalPassword} />
 
-      <FiscalSection
-        title="UMA, salario mínimo y tope salarial"
-        hint="Normativo — cambia por ley cada año."
-        unlocked={fiscalUnlocked}
-        onUnlock={handleUnlock}
-      >
-        <NumField locked={!fiscalUnlocked} name="umaDiaria" label="UMA diaria ($)" defaultValue={config.umaDiaria} error={state.fieldErrors?.umaDiaria} step="0.01" />
-        <NumField locked={!fiscalUnlocked} name="umaMensual" label="UMA mensual ($)" defaultValue={config.umaMensual} error={state.fieldErrors?.umaMensual} step="0.01" />
-        <NumField locked={!fiscalUnlocked} name="topeSbcUmas" label="Tope SBC (múltiplo de UMA)" defaultValue={config.topeSbcUmas} error={state.fieldErrors?.topeSbcUmas} step="1" />
-        <NumField locked={!fiscalUnlocked} name="salarioMinimoDiario" label="Salario mínimo diario ($)" defaultValue={config.salarioMinimoDiario} error={state.fieldErrors?.salarioMinimoDiario} step="0.01" />
-        <NumField locked={!fiscalUnlocked} name="salarioMinimoMensual" label="Salario mínimo mensual ($)" defaultValue={config.salarioMinimoMensual} error={state.fieldErrors?.salarioMinimoMensual} step="0.01" />
-      </FiscalSection>
+      <div className="flex gap-1 overflow-x-auto border-b border-border" role="tablist">
+        {PESTANAS.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === p.id}
+            onClick={() => setTab(p.id)}
+            className={cn(
+              "-mb-px shrink-0 border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+              tab === p.id ? "border-primary text-primary" : "border-transparent text-text-muted hover:text-text"
+            )}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
 
-      <FiscalSection
-        title="Tabla CEAV — Cesantía y Vejez por banda de SBC"
-        hint="Cuota patronal según en qué banda cae el SBC mensual del trabajador (Reforma LSS/LSAR, DOF 16-dic-2020). Sube cada enero hasta 2030."
-        unlocked={fiscalUnlocked}
-        onUnlock={handleUnlock}
-        bare
-      >
-        <CeavBandasTable bandas={bandasCeav} locked={!fiscalUnlocked} />
-      </FiscalSection>
+      {/* Todas las pestañas siguen montadas (solo se ocultan) para que un único
+          envío lleve todos los campos que el servidor espera. */}
+      <PestanaCuerpo id="empresa" activa={tab} clave={claves.empresa}>
+        <AvisoPestana desbloqueada={desbloqueadas.empresa} onEditar={() => setDesbloqueando("empresa")}>
+          Los datos del prestador están protegidos. Lo demás se edita directo.
+        </AvisoPestana>
+        <Seccion
+          titulo="Datos del prestador de servicio"
+          hint="Identidad del negocio — se usan en el membrete de las cotizaciones exportadas a Word/PDF."
+          protegida
+          desbloqueada={desbloqueadas.empresa}
+        >
+          <LockedField locked={bloqueada("empresa")} name="prestadorNombre" label="Nombre / razón social" defaultValue={config.prestadorNombre} error={err?.prestadorNombre} required />
+          <LockedField locked={bloqueada("empresa")} name="prestadorRfc" label="RFC (opcional)" defaultValue={config.prestadorRfc ?? ""} />
+          <LockedField locked={bloqueada("empresa")} name="prestadorRegimenFiscal" label="Régimen fiscal (opcional)" defaultValue={config.prestadorRegimenFiscal ?? ""} />
+          <LockedField locked={bloqueada("empresa")} name="prestadorTelefono" label="Teléfono (opcional)" defaultValue={config.prestadorTelefono ?? ""} />
+          <LockedField locked={bloqueada("empresa")} name="prestadorEmail" label="Correo (opcional)" defaultValue={config.prestadorEmail ?? ""} />
+          <LockedField locked={bloqueada("empresa")} name="prestadorDireccion" label="Dirección (opcional)" defaultValue={config.prestadorDireccion ?? ""} className="sm:col-span-2" textarea />
+        </Seccion>
 
-      <Section
-        title="IMSS e INFONAVIT (cuotas fijas de ley)"
-        hint="Fijas en la Ley del Seguro Social y la Ley del INFONAVIT — no se indexan año con año, así que no son editables. Solo de referencia."
-      >
-        <ReadOnlyRate label="Enf. y maternidad — cuota fija (% de 1 UMA mensual)" fraction={IMSS_ENF_MAT_CUOTA_FIJA_PCT} />
-        <ReadOnlyRate label="Enf. y maternidad — cuota adicional (% excedente sobre 3 UMA)" fraction={IMSS_ENF_MAT_CUOTA_ADIC_PCT} />
-        <ReadOnlyRate label="Enf. y maternidad — en dinero (%)" fraction={IMSS_PRESTACIONES_DINERO_PCT} />
-        <ReadOnlyRate label="Gastos médicos pensionados (%)" fraction={IMSS_GASTOS_MED_PENS_PCT} />
-        <ReadOnlyRate label="Invalidez y vida (%)" fraction={IMSS_INVALIDEZ_VIDA_PCT} />
-        <ReadOnlyRate label="Guarderías y prestaciones sociales (%)" fraction={IMSS_GUARDERIAS_PCT} />
-        <ReadOnlyRate label="Retiro — RCV (%)" fraction={IMSS_RETIRO_PCT} />
-        <ReadOnlyRate label="INFONAVIT (% del SBC)" fraction={INFONAVIT_PCT} />
-      </Section>
+        <Seccion titulo="Prima de riesgo (negocio)" hint="Dato de negocio de la empresa — editable sin contraseña.">
+          <NumField name="primaRiesgoPct" label="Prima de riesgo de trabajo (%)" defaultValue={toPctDisplay(config.primaRiesgoPct)} error={err?.primaRiesgoPct} />
+        </Seccion>
 
-      <FiscalSection
-        title="ISN e impuestos estatales"
-        unlocked={fiscalUnlocked}
-        onUnlock={handleUnlock}
-      >
-        <NumField locked={!fiscalUnlocked} name="isnPct" label="ISN Campeche (% de la nómina)" defaultValue={toPctDisplay(config.isnPct)} error={state.fieldErrors?.isnPct} suffix="%" />
-        <NumField locked={!fiscalUnlocked} name="impuestoAdicionalPct" label="Impuesto adicional Cultura/Infraestructura/Deporte (% del ISN)" defaultValue={toPctDisplay(config.impuestoAdicionalPct)} error={state.fieldErrors?.impuestoAdicionalPct} suffix="%" />
-      </FiscalSection>
+        <Seccion titulo="Prestaciones">
+          <NumField name="diasAguinaldo" label="Días de aguinaldo" defaultValue={config.diasAguinaldo} error={err?.diasAguinaldo} step="1" />
+          <NumField name="diasVacaciones" label="Días de vacaciones (año 1)" defaultValue={config.diasVacaciones} error={err?.diasVacaciones} step="1" />
+          <NumField name="primaVacacionalPct" label="Prima vacacional (%)" defaultValue={toPctDisplay(config.primaVacacionalPct)} error={err?.primaVacacionalPct} />
+        </Seccion>
 
-      <Section title="Prima de riesgo (negocio)" hint="Dato de negocio de la empresa — editable sin candado.">
-        <NumField name="primaRiesgoPct" label="Prima de riesgo de trabajo (%)" defaultValue={toPctDisplay(config.primaRiesgoPct)} error={state.fieldErrors?.primaRiesgoPct} />
-      </Section>
+        <Seccion titulo="Jornada laboral">
+          <NumField name="horasPorDia" label="Horas por día laboral" defaultValue={config.horasPorDia} error={err?.horasPorDia} step="1" />
+          <NumField name="diasPorSemana" label="Días por semana laboral" defaultValue={config.diasPorSemana} error={err?.diasPorSemana} step="1" />
+        </Seccion>
 
-      <Section title="Prestaciones">
-        <NumField name="diasAguinaldo" label="Días de aguinaldo" defaultValue={config.diasAguinaldo} error={state.fieldErrors?.diasAguinaldo} step="1" />
-        <NumField name="diasVacaciones" label="Días de vacaciones (año 1)" defaultValue={config.diasVacaciones} error={state.fieldErrors?.diasVacaciones} step="1" />
-        <NumField name="primaVacacionalPct" label="Prima vacacional (%)" defaultValue={toPctDisplay(config.primaVacacionalPct)} error={state.fieldErrors?.primaVacacionalPct} />
-      </Section>
+        <Seccion titulo="Margen de utilidad">
+          <NumField name="margenUtilidadDefaultPct" label="Margen de utilidad por defecto (%)" defaultValue={toPctDisplay(config.margenUtilidadDefaultPct)} error={err?.margenUtilidadDefaultPct} />
+        </Seccion>
+      </PestanaCuerpo>
 
-      <FiscalSection
-        title="Fiscal (cotización)"
-        hint="IVA y retención ISR de las cotizaciones — protegidos por contraseña."
-        unlocked={fiscalUnlocked}
-        onUnlock={handleUnlock}
-      >
-        <NumField locked={!fiscalUnlocked} name="ivaPct" label="IVA (%)" defaultValue={toPctDisplay(config.ivaPct)} error={state.fieldErrors?.ivaPct} />
-        <NumField locked={!fiscalUnlocked} name="retencionIsrPct" label="Retención ISR RESICO Art. 113-J (%, solo Persona Moral)" defaultValue={toPctDisplay(config.retencionIsrPct)} error={state.fieldErrors?.retencionIsrPct} />
-      </FiscalSection>
+      <PestanaCuerpo id="fiscal" activa={tab} clave={claves.fiscal}>
+        <AvisoPestana desbloqueada={desbloqueadas.fiscal} onEditar={() => setDesbloqueando("fiscal")}>
+          Valores normativos: cambian por ley cada año y están protegidos.
+        </AvisoPestana>
+        <Seccion titulo="UMA, salario mínimo y tope salarial" hint="Normativo — cambia por ley cada año." protegida desbloqueada={desbloqueadas.fiscal}>
+          <NumField locked={bloqueada("fiscal")} name="umaDiaria" label="UMA diaria ($)" defaultValue={config.umaDiaria} error={err?.umaDiaria} step="0.01" />
+          <NumField locked={bloqueada("fiscal")} name="umaMensual" label="UMA mensual ($)" defaultValue={config.umaMensual} error={err?.umaMensual} step="0.01" />
+          <NumField locked={bloqueada("fiscal")} name="topeSbcUmas" label="Tope SBC (múltiplo de UMA)" defaultValue={config.topeSbcUmas} error={err?.topeSbcUmas} step="1" />
+          <NumField locked={bloqueada("fiscal")} name="salarioMinimoDiario" label="Salario mínimo diario ($)" defaultValue={config.salarioMinimoDiario} error={err?.salarioMinimoDiario} step="0.01" />
+          <NumField locked={bloqueada("fiscal")} name="salarioMinimoMensual" label="Salario mínimo mensual ($)" defaultValue={config.salarioMinimoMensual} error={err?.salarioMinimoMensual} step="0.01" />
+        </Seccion>
 
-      <Section title="Jornada laboral">
-        <NumField name="horasPorDia" label="Horas por día laboral" defaultValue={config.horasPorDia} error={state.fieldErrors?.horasPorDia} step="1" />
-        <NumField name="diasPorSemana" label="Días por semana laboral" defaultValue={config.diasPorSemana} error={state.fieldErrors?.diasPorSemana} step="1" />
-      </Section>
+        <Seccion
+          titulo="Tabla CEAV — Cesantía y Vejez por banda de SBC"
+          hint="Cuota patronal según en qué banda cae el SBC mensual del trabajador (Reforma LSS/LSAR, DOF 16-dic-2020). Sube cada enero hasta 2030."
+          protegida
+          desbloqueada={desbloqueadas.fiscal}
+          bare
+        >
+          <CeavBandasTable bandas={bandasCeav} locked={bloqueada("fiscal")} />
+        </Seccion>
 
-      <Section title="Margen de utilidad">
-        <NumField name="margenUtilidadDefaultPct" label="Margen de utilidad por defecto (%)" defaultValue={toPctDisplay(config.margenUtilidadDefaultPct)} error={state.fieldErrors?.margenUtilidadDefaultPct} />
-      </Section>
+        <Seccion
+          titulo="IMSS e INFONAVIT (cuotas fijas de ley)"
+          hint="Fijas en la Ley del Seguro Social y la Ley del INFONAVIT — no se indexan año con año, así que no son editables. Solo de referencia."
+          protegida
+          desbloqueada={false}
+        >
+          <ReadOnlyRate label="Enf. y maternidad — cuota fija (% de 1 UMA mensual)" fraction={IMSS_ENF_MAT_CUOTA_FIJA_PCT} />
+          <ReadOnlyRate label="Enf. y maternidad — cuota adicional (% excedente sobre 3 UMA)" fraction={IMSS_ENF_MAT_CUOTA_ADIC_PCT} />
+          <ReadOnlyRate label="Enf. y maternidad — en dinero (%)" fraction={IMSS_PRESTACIONES_DINERO_PCT} />
+          <ReadOnlyRate label="Gastos médicos pensionados (%)" fraction={IMSS_GASTOS_MED_PENS_PCT} />
+          <ReadOnlyRate label="Invalidez y vida (%)" fraction={IMSS_INVALIDEZ_VIDA_PCT} />
+          <ReadOnlyRate label="Guarderías y prestaciones sociales (%)" fraction={IMSS_GUARDERIAS_PCT} />
+          <ReadOnlyRate label="Retiro — RCV (%)" fraction={IMSS_RETIRO_PCT} />
+          <ReadOnlyRate label="INFONAVIT (% del SBC)" fraction={INFONAVIT_PCT} />
+        </Seccion>
 
-      <FiscalSection
-        title="Datos del prestador de servicio"
-        hint="Identidad del negocio — se usan en el membrete de las cotizaciones exportadas a Word/PDF. Protegidos por contraseña."
-        unlocked={fiscalUnlocked}
-        onUnlock={handleUnlock}
-      >
-        <LockedField
-          locked={!fiscalUnlocked}
-          name="prestadorNombre"
-          label="Nombre / razón social"
-          defaultValue={config.prestadorNombre}
-          error={state.fieldErrors?.prestadorNombre}
-          required
-        />
-        <LockedField
-          locked={!fiscalUnlocked}
-          name="prestadorRfc"
-          label="RFC (opcional)"
-          defaultValue={config.prestadorRfc ?? ""}
-        />
-        <LockedField
-          locked={!fiscalUnlocked}
-          name="prestadorRegimenFiscal"
-          label="Régimen fiscal (opcional)"
-          defaultValue={config.prestadorRegimenFiscal ?? ""}
-        />
-        <LockedField
-          locked={!fiscalUnlocked}
-          name="prestadorTelefono"
-          label="Teléfono (opcional)"
-          defaultValue={config.prestadorTelefono ?? ""}
-        />
-        <LockedField
-          locked={!fiscalUnlocked}
-          name="prestadorEmail"
-          label="Correo (opcional)"
-          defaultValue={config.prestadorEmail ?? ""}
-        />
-        <LockedField
-          locked={!fiscalUnlocked}
-          name="prestadorDireccion"
-          label="Dirección (opcional)"
-          defaultValue={config.prestadorDireccion ?? ""}
-          className="sm:col-span-2"
-          textarea
-        />
-      </FiscalSection>
+        <Seccion titulo="ISN e impuestos estatales" protegida desbloqueada={desbloqueadas.fiscal}>
+          <NumField locked={bloqueada("fiscal")} name="isnPct" label="ISN Campeche (% de la nómina)" defaultValue={toPctDisplay(config.isnPct)} error={err?.isnPct} suffix="%" />
+          <NumField locked={bloqueada("fiscal")} name="impuestoAdicionalPct" label="Impuesto adicional Cultura/Infraestructura/Deporte (% del ISN)" defaultValue={toPctDisplay(config.impuestoAdicionalPct)} error={err?.impuestoAdicionalPct} suffix="%" />
+        </Seccion>
 
-      <FiscalSection
-        title="Cuentas bancarias y métodos de pago"
-        hint="Solo las cuentas activas se incluyen en las cotizaciones exportadas. Protegidas por contraseña."
-        unlocked={fiscalUnlocked}
-        onUnlock={handleUnlock}
-        bare
-      >
-        <div className="flex flex-col gap-5">
-          <CuentasBancariasPanel
-            cuentas={cuentasBancarias}
-            locked={!fiscalUnlocked}
-            fiscalPassword={fiscalPassword}
-          />
-          <div className="border-t border-border pt-4">
-            <p className="mb-3 text-xs uppercase tracking-wide text-text-dim">Métodos de pago aceptados</p>
-            <div className="flex flex-wrap gap-4">
-              <CheckboxField
-                locked={!fiscalUnlocked}
-                name="aceptaEfectivo"
-                label="Efectivo"
-                defaultChecked={config.aceptaEfectivo}
-              />
-              <CheckboxField
-                locked={!fiscalUnlocked}
-                name="aceptaTransferencia"
-                label="Transferencia"
-                defaultChecked={config.aceptaTransferencia}
-              />
-              <CheckboxField
-                locked={!fiscalUnlocked}
-                name="aceptaCheque"
-                label="Cheque"
-                defaultChecked={config.aceptaCheque}
-              />
+        <Seccion titulo="Fiscal (cotización)" hint="IVA y retención ISR de las cotizaciones." protegida desbloqueada={desbloqueadas.fiscal}>
+          <NumField locked={bloqueada("fiscal")} name="ivaPct" label="IVA (%)" defaultValue={toPctDisplay(config.ivaPct)} error={err?.ivaPct} />
+          <NumField locked={bloqueada("fiscal")} name="retencionIsrPct" label="Retención ISR RESICO Art. 113-J (%, solo Persona Moral)" defaultValue={toPctDisplay(config.retencionIsrPct)} error={err?.retencionIsrPct} />
+        </Seccion>
+      </PestanaCuerpo>
+
+      <PestanaCuerpo id="cuentas" activa={tab} clave={claves.cuentas}>
+        <AvisoPestana desbloqueada={desbloqueadas.cuentas} onEditar={() => setDesbloqueando("cuentas")}>
+          Cuentas bancarias y métodos de pago: datos sensibles, protegidos.
+        </AvisoPestana>
+        <Seccion
+          titulo="Cuentas bancarias y métodos de pago"
+          hint="Solo las cuentas activas se incluyen en las cotizaciones exportadas. Las cuentas se agregan, activan o eliminan al momento; los métodos de pago se guardan con el botón Guardar."
+          protegida
+          desbloqueada={desbloqueadas.cuentas}
+          bare
+        >
+          <div className="flex flex-col gap-5">
+            <CuentasBancariasPanel cuentas={cuentasBancarias} locked={bloqueada("cuentas")} fiscalPassword={fiscalPassword} />
+            <div className="border-t border-border pt-4">
+              <p className="mb-3 text-xs uppercase tracking-wide text-text-dim">Métodos de pago aceptados</p>
+              <div className="flex flex-wrap gap-4">
+                <CheckboxField locked={bloqueada("cuentas")} name="aceptaEfectivo" label="Efectivo" defaultChecked={config.aceptaEfectivo} />
+                <CheckboxField locked={bloqueada("cuentas")} name="aceptaTransferencia" label="Transferencia" defaultChecked={config.aceptaTransferencia} />
+                <CheckboxField locked={bloqueada("cuentas")} name="aceptaCheque" label="Cheque" defaultChecked={config.aceptaCheque} />
+              </div>
             </div>
           </div>
-        </div>
-      </FiscalSection>
+        </Seccion>
+      </PestanaCuerpo>
 
-      <FiscalSection
-        title="Condiciones y Términos de la cotización"
-        hint="Un texto para cotizaciones de Servicio y otro para Material — se elige automáticamente según el tipo. Protegidos por contraseña."
-        unlocked={fiscalUnlocked}
-        onUnlock={handleUnlock}
+      <PestanaCuerpo id="condiciones" activa={tab} clave={claves.condiciones}>
+        <AvisoPestana desbloqueada={desbloqueadas.condiciones} onEditar={() => setDesbloqueando("condiciones")}>
+          Textos que salen en las cotizaciones: protegidos.
+        </AvisoPestana>
+        <Seccion
+          titulo="Condiciones y Términos de la cotización"
+          hint="Un texto para cotizaciones de Servicio y otro para Material — se elige automáticamente según el tipo."
+          protegida
+          desbloqueada={desbloqueadas.condiciones}
+        >
+          <LockedField
+            locked={bloqueada("condiciones")}
+            name="condicionesTerminosServicio"
+            label="Condiciones y Términos — Servicio"
+            defaultValue={config.condicionesTerminosServicio}
+            mostrarName="mostrarCondicionesTerminosServicio"
+            mostrarDefaultChecked={config.mostrarCondicionesTerminosServicio}
+            textarea
+          />
+          <LockedField
+            locked={bloqueada("condiciones")}
+            name="condicionesTerminosMaterial"
+            label="Condiciones y Términos — Material"
+            defaultValue={config.condicionesTerminosMaterial}
+            mostrarName="mostrarCondicionesTerminosMaterial"
+            mostrarDefaultChecked={config.mostrarCondicionesTerminosMaterial}
+            textarea
+          />
+        </Seccion>
+      </PestanaCuerpo>
+
+      {/* Un solo Guardar por pestaña, fijo al fondo (sobre la barra inferior en móvil). */}
+      <div
+        className="sticky bottom-16 z-20 -mx-1 flex flex-wrap items-center justify-end gap-3 rounded-xl border border-border-strong bg-surface-1/95 px-4 py-3 shadow-lg backdrop-blur lg:bottom-4"
       >
-        <LockedField
-          locked={!fiscalUnlocked}
-          name="condicionesTerminosServicio"
-          label="Condiciones y Términos — Servicio"
-          defaultValue={config.condicionesTerminosServicio}
-          mostrarName="mostrarCondicionesTerminosServicio"
-          mostrarDefaultChecked={config.mostrarCondicionesTerminosServicio}
-          textarea
-        />
-        <LockedField
-          locked={!fiscalUnlocked}
-          name="condicionesTerminosMaterial"
-          label="Condiciones y Términos — Material"
-          defaultValue={config.condicionesTerminosMaterial}
-          mostrarName="mostrarCondicionesTerminosMaterial"
-          mostrarDefaultChecked={config.mostrarCondicionesTerminosMaterial}
-          textarea
-        />
-      </FiscalSection>
-
-      {state.error && (
-        <p className="text-sm text-danger">{state.error}</p>
-      )}
-      {state.ok && (
-        <p className="text-sm text-success-soft">Configuración guardada.</p>
-      )}
-
-      <div className="flex justify-end">
+        <div className="mr-auto min-w-0 text-sm">
+          {state.error && <span className="text-danger">{state.error}</span>}
+          {state.ok && !state.error && <span className="text-success-soft">Configuración guardada.</span>}
+        </div>
+        {desbloqueadas[tab] && (
+          <Button type="button" variant="ghost" onClick={() => cancelar(tab)} disabled={pending}>
+            Cancelar
+          </Button>
+        )}
         <Button type="submit" disabled={pending}>
-          {pending ? "Guardando…" : "Guardar configuración"}
+          {pending ? "Guardando…" : "Guardar"}
         </Button>
       </div>
+
+      {desbloqueando && (
+        <UnlockModal
+          titulo={`La pestaña «${PESTANAS.find((p) => p.id === desbloqueando)?.label}»`}
+          onCancel={() => setDesbloqueando(null)}
+          onUnlocked={(password) => desbloquear(desbloqueando, password)}
+        />
+      )}
     </form>
   );
 }
 
-function Section({
-  title,
-  hint,
+/** Cuerpo de una pestaña: siempre montado, visible solo si es la activa. */
+function PestanaCuerpo({
+  id,
+  activa,
+  clave,
   children,
 }: {
-  title: string;
+  id: Pestana;
+  activa: Pestana;
+  clave: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <div key={clave} role="tabpanel" hidden={activa !== id} className={cn("flex-col gap-5", activa === id ? "flex" : "hidden")}>
+      {children}
+    </div>
+  );
+}
+
+/** Franja de la pestaña: pide la contraseña una vez ("Editar") o indica que ya se puede editar. */
+function AvisoPestana({
+  desbloqueada,
+  onEditar,
+  children,
+}: {
+  desbloqueada: boolean;
+  onEditar: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface-1 px-4 py-3">
+      <p className="text-sm text-text-muted">{desbloqueada ? "Pestaña desbloqueada: ya puedes editar sus secciones protegidas." : children}</p>
+      {desbloqueada ? (
+        <span className="text-xs font-medium text-success-soft">Desbloqueada</span>
+      ) : (
+        <Button type="button" size="sm" variant="secondary" onClick={onEditar}>
+          🔒 Editar
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/** Sección con indicador Protegido / Editable. `bare` = sin la rejilla de 2 columnas (tablas). */
+function Seccion({
+  titulo,
+  hint,
+  protegida = false,
+  desbloqueada = false,
+  bare = false,
+  children,
+}: {
+  titulo: string;
   hint?: string;
+  protegida?: boolean;
+  desbloqueada?: boolean;
+  bare?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <Card>
       <CardHeader className="flex-col items-start gap-1">
-        <CardTitle>{title}</CardTitle>
+        <div className="flex w-full flex-wrap items-center justify-between gap-3">
+          <CardTitle>{titulo}</CardTitle>
+          <ProteccionBadge protegido={protegida && !desbloqueada} />
+        </div>
         {hint && <p className="text-xs text-text-dim">{hint}</p>}
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{children}</div>
-      </CardContent>
-    </Card>
-  );
-}
-
-/** Igual que Section, pero con candado de contraseña en el header. */
-function FiscalSection({
-  title,
-  hint,
-  unlocked,
-  onUnlock,
-  bare = false,
-  children,
-}: {
-  title: string;
-  hint?: string;
-  unlocked: boolean;
-  onUnlock: (password: string) => void;
-  /** true = sin el grid de 2 columnas (para tablas, ej. bandas CEAV). */
-  bare?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <Card className={unlocked ? undefined : "border-border"}>
-      <FiscalSectionHeader title={title} hint={hint} unlocked={unlocked} onUnlock={onUnlock} />
       <CardContent>
         {bare ? children : <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{children}</div>}
       </CardContent>
