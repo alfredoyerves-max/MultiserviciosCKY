@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test:fiscal": "tsx tests/fiscalEngine.test.ts",
     "test:pool": "tsx tests/poolReintento.test.ts",
+    "test:maxwait": "tsx tests/transaccionMaxWait.test.ts",
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate"
   },

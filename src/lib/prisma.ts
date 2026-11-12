@@ -16,7 +16,15 @@ const globalForPrisma = globalThis as unknown as {
 // y reintenta UNA vez solo al adquirir la conexión (ver lib/db/pool.ts).
 const adapter = new PrismaPg(crearPool(process.env.DATABASE_URL));
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
+// Transacciones interactivas: Prisma espera por defecto solo 2 s (maxWait) para
+// poder iniciarlas, y una conexión nueva a Supabase desde una red lenta puede
+// tardar más (P2028 "Unable to start a transaction in the given time"). Se sube
+// a 10 s; el tiempo máximo de ejecución (timeout) se queda en el valor por defecto.
+export const TRANSACTION_MAX_WAIT_MS = 10_000;
+
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({ adapter, transactionOptions: { maxWait: TRANSACTION_MAX_WAIT_MS } });
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
