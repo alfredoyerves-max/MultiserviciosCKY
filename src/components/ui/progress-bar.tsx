@@ -3,8 +3,8 @@ import { cn } from "@/lib/cn";
 /**
  * Barra de progreso abonado vs. saldo pendiente (Sección 7 del documento
  * de diseño) — usada en las cuentas de Pagos y Cobros. `pct` es el
- * porcentaje ya abonado (0-100); el color usa el token semántico de
- * éxito (mismo verde que "Aceptada"/"Cobrada" en el resto de la app).
+ * porcentaje ya abonado (0-100); el color es el acento del sistema
+ * (turquesa): el color queda reservado a los estados.
  */
 export function ProgressBar({ pct, className }: { pct: number; className?: string }) {
   const clamped = Math.max(0, Math.min(100, pct));
@@ -16,7 +16,7 @@ export function ProgressBar({ pct, className }: { pct: number; className?: strin
       aria-valuemin={0}
       aria-valuemax={100}
     >
-      <div className="h-full rounded-full bg-success transition-[width]" style={{ width: `${clamped}%` }} />
+      <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${clamped}%` }} />
     </div>
   );
 }

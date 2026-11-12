@@ -9,6 +9,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { registrarAbonoPorPagarAction } from "../../actions";
 import { AbonoForm } from "../../abono-form";
+import { PagarSaldoButton } from "../../pagar-saldo-button";
 import { requireSession } from "@/lib/auth/session";
 
 // CANCELADA nunca ocurre en Cuentas por Pagar (ese estado es exclusivo de
@@ -39,7 +40,7 @@ export default async function CuentaPorPagarDetallePage({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-xl font-semibold text-text">{cuenta.concepto}</h1>
+            <h1 className="text-xl font-semibold text-primary">{cuenta.concepto}</h1>
             <Badge tone={ESTADO_TONE[estado]}>{ESTADO_CUENTA_LABELS_PAGAR[estado]}</Badge>
             {vencida && <Badge tone="danger">Vencida</Badge>}
           </div>
@@ -47,9 +48,14 @@ export default async function CuentaPorPagarDetallePage({
             {cuenta.proveedor} · Vence {formatDate(cuenta.fechaVencimiento)}
           </p>
         </div>
-        <ButtonLink href="/pagos" variant="secondary" size="sm">
-          ← Volver
-        </ButtonLink>
+        <div className="flex flex-wrap items-center gap-2">
+          {estado !== "PAGADA" && (
+            <PagarSaldoButton cuentaId={cuenta.id} saldo={saldo} action={registrarAbonoPorPagarAction} verbo="pagar" size="md" />
+          )}
+          <ButtonLink href="/pagos" variant="secondary" size="sm">
+            ← Volver
+          </ButtonLink>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
@@ -61,7 +67,7 @@ export default async function CuentaPorPagarDetallePage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Registrar abono</CardTitle>
+          <CardTitle>Registrar abono parcial</CardTitle>
         </CardHeader>
         <CardContent>
           <AbonoForm cuentaId={cuenta.id} action={registrarAbonoPorPagarAction} />

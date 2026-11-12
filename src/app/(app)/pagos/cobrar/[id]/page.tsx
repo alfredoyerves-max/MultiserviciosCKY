@@ -11,6 +11,7 @@ import { TIPO_CLIENTE_LABELS, type TipoCliente } from "@/lib/enums";
 import { registrarAbonoPorCobrarAction } from "../../actions";
 import { AbonoForm } from "../../abono-form";
 import { AccionesCuenta } from "./acciones-cuenta";
+import { PagarSaldoButton } from "../../pagar-saldo-button";
 import Link from "next/link";
 import { requireSession } from "@/lib/auth/session";
 
@@ -39,7 +40,7 @@ export default async function CuentaPorCobrarDetallePage({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-xl font-semibold text-text">Cuenta por cobrar</h1>
+            <h1 className="text-xl font-semibold text-primary">Cuenta por cobrar</h1>
             <Badge tone={ESTADO_TONE[estado]}>{ESTADO_CUENTA_LABELS_COBRAR[estado]}</Badge>
             {vencida && <Badge tone="danger">Vencida</Badge>}
           </div>
@@ -56,6 +57,9 @@ export default async function CuentaPorCobrarDetallePage({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {!cuenta.cancelada && estado !== "PAGADA" && (
+            <PagarSaldoButton cuentaId={cuenta.id} saldo={saldo} action={registrarAbonoPorCobrarAction} verbo="cobrar" size="md" />
+          )}
           {!cuenta.cancelada && (
             <AccionesCuenta cuentaId={cuenta.id} tieneAbonos={cuenta.abonos.length > 0} />
           )}
@@ -82,7 +86,7 @@ export default async function CuentaPorCobrarDetallePage({
       {!cuenta.cancelada && (
         <Card>
           <CardHeader>
-            <CardTitle>Registrar abono</CardTitle>
+            <CardTitle>Registrar abono parcial</CardTitle>
           </CardHeader>
           <CardContent>
             <AbonoForm cuentaId={cuenta.id} action={registrarAbonoPorCobrarAction} />

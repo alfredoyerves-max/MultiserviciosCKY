@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ProgressBar } from "@/components/ui/progress-bar";
-import { formatCurrency, formatDate } from "@/lib/format";
 import { calcularSaldo, calcularEstadoCuenta, estaVencida, ESTADO_CUENTA_LABELS_COBRAR } from "@/lib/cuentas";
+import { CuentaFila } from "./cuenta-fila";
+import { PagarSaldoButton } from "./pagar-saldo-button";
+import { AccionesCuenta } from "./cobrar/[id]/acciones-cuenta";
+import { registrarAbonoPorCobrarAction } from "./actions";
 import type { AbonoPorCobrar, Cliente, Cotizacion, CuentaPorCobrar } from "@/generated/prisma/client";
 
 export type CuentaPorCobrarConDatos = CuentaPorCobrar & {
@@ -34,43 +34,49 @@ export function CobrarPanel({ cuentas }: { cuentas: CuentaPorCobrarConDatos[] })
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
       {cuentas.map((c) => {
         const saldo = calcularSaldo(c.montoTotal, c.abonos);
         const estado = calcularEstadoCuenta(c.montoTotal, c.abonos, c.cancelada);
         const vencida = !c.cancelada && estaVencida(c.fechaVencimiento, saldo);
         const pctAbonado = c.montoTotal > 0 ? ((c.montoTotal - saldo) / c.montoTotal) * 100 : 0;
+        const href = `/pagos/cobrar/${c.id}`;
+        const abierta = !c.cancelada && estado !== "PAGADA";
 
         return (
-          <Link key={c.id} href={`/pagos/cobrar/${c.id}`}>
-            <Card
-              className={
-                vencida ? "border-danger-strong/50 transition-colors hover:bg-surface-2" : "transition-colors hover:bg-surface-2"
-              }
-            >
-              <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-sm text-primary">{c.cotizacion.folio}</span>
-                    <Badge tone={ESTADO_TONE[estado]}>{ESTADO_CUENTA_LABELS_COBRAR[estado]}</Badge>
-                    {vencida && <Badge tone="danger">Vencida</Badge>}
-                  </div>
-                  <p className="mt-1 text-sm text-text">{c.cotizacion.cliente.nombreRazonSocial}</p>
-                  <p className="mt-0.5 text-xs text-text-dim">
-                    Vence {formatDate(c.fechaVencimiento)} · {c.abonos.length} abono(s)
-                  </p>
-                  <ProgressBar pct={pctAbonado} className="mt-2 max-w-48" />
-                </div>
-                <div className="text-right">
-                  <p className="text-xs uppercase tracking-wide text-text-dim">Saldo pendiente</p>
-                  <p className="font-mono text-lg font-semibold tabular-nums text-text">
-                    {formatCurrency(saldo)}
-                  </p>
-                  <p className="mt-0.5 text-xs text-text-dim">de {formatCurrency(c.montoTotal)}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+          <CuentaFila
+            key={c.id}
+            href={href}
+            titulo={c.cotizacion.folio}
+            tituloMono
+            subtitulo={c.cotizacion.cliente.nombreRazonSocial}
+            estado={{ label: ESTADO_CUENTA_LABELS_COBRAR[estado], tone: ESTADO_TONE[estado] }}
+            vencida={vencida}
+            fechaVencimiento={c.fechaVencimiento}
+            nAbonos={c.abonos.length}
+            pctAbonado={pctAbonado}
+            saldo={saldo}
+            montoTotal={c.montoTotal}
+            acciones={
+              <>
+                {abierta && (
+                  <PagarSaldoButton
+                    cuentaId={c.id}
+                    saldo={saldo}
+                    action={registrarAbonoPorCobrarAction}
+                    verbo="cobrar"
+                  />
+                )}
+                {c.cancelada ? (
+                  <a href={href} className="px-2 text-sm text-primary hover:underline">
+                    Ver detalle
+                  </a>
+                ) : (
+                  <AccionesCuenta cuentaId={c.id} tieneAbonos={c.abonos.length > 0} verDetalleHref={href} />
+                )}
+              </>
+            }
+          />
         );
       })}
     </div>
