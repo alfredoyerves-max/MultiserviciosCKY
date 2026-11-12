@@ -7,13 +7,8 @@ import { initialActionState, ejecutarSeguro } from "./form-state";
 import { useAvisoLento, TEXTO_AVISO_LENTO } from "./use-aviso-lento";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
+import { hoyMexico } from "@/lib/fechaLocal";
 import { formatCurrency } from "@/lib/format";
-
-/** Fecha de hoy en hora local (AAAA-MM-DD), no en UTC. */
-function hoyLocal() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 /**
  * "Pagar saldo ($X)": registra un abono por el saldo completo en dos clics
@@ -73,7 +68,7 @@ export function PagarSaldoButton({
         <Modal onClose={cerrar}>
           <form action={formAction} className="flex flex-col gap-4 p-5">
             <input type="hidden" name="cuentaId" value={cuentaId} />
-            <input type="hidden" name="fecha" value={hoyLocal()} />
+            <input type="hidden" name="fecha" value={hoyMexico()} />
             <input type="hidden" name="monto" value={String(saldo)} />
             <input type="hidden" name="nota" value="Pago del saldo completo" />
             <div>

@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { initialActionState, ejecutarSeguro, MENSAJE_FALLO_ACCION, type ActionState } from "./form-state";
 import { useAvisoLento, TEXTO_AVISO_LENTO } from "./use-aviso-lento";
+import { hoyMexico } from "@/lib/fechaLocal";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel, Input } from "@/components/ui/input";
 
@@ -50,7 +51,7 @@ export function AbonoForm({
           id="fecha"
           name="fecha"
           type="date"
-          defaultValue={new Date().toISOString().slice(0, 10)}
+          defaultValue={hoyMexico()}
           required
         />
         <FieldError>{state.fieldErrors?.fecha}</FieldError>
