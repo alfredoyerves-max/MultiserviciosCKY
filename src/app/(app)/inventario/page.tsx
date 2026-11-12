@@ -1,5 +1,6 @@
 import { listProductosConMovimientos } from "@/lib/data/productos";
 import { listActivos } from "@/lib/data/activos";
+import { PageHeader } from "@/components/ui/page-header";
 import { InventarioTabs } from "./inventario-tabs";
 import { requireSession } from "@/lib/auth/session";
 
@@ -9,13 +10,10 @@ export default async function InventarioPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold text-module-inventario">Inventario y Activos</h1>
-        <p className="text-sm text-text-muted">
-          Catálogo de productos y control de almacén — materiales para reventa y de uso interno
-          comparten el mismo inventario.
-        </p>
-      </div>
+      <PageHeader
+        title="Inventario y Activos"
+        description="Catálogo de productos, control de almacén y activos de la empresa."
+      />
 
       <InventarioTabs productos={productos} activos={activos} />
     </div>

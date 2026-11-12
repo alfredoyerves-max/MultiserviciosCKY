@@ -43,7 +43,7 @@ export default async function ActivoDetallePage({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-xl font-semibold text-text">{activo.nombre}</h1>
+            <h1 className="text-xl font-semibold text-primary">{activo.nombre}</h1>
             <Badge tone="neutral">{ACTIVO_CATEGORIA_LABELS[activo.categoria as ActivoCategoria]}</Badge>
             <Badge tone={ESTADO_TONE[estado]}>{ESTADO_ACTIVO_LABELS[estado]}</Badge>
           </div>

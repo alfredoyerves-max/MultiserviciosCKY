@@ -26,7 +26,7 @@ export default async function ProductoDetallePage({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-xl font-semibold text-text">{producto.nombre}</h1>
+            <h1 className="text-xl font-semibold text-primary">{producto.nombre}</h1>
             {!producto.activo && <Badge tone="danger">Inactivo</Badge>}
           </div>
           {producto.descripcion && (

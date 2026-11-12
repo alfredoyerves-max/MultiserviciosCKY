@@ -3,10 +3,12 @@
 import { useActionState, useMemo, useState } from "react";
 import { saveActivoAction } from "./actions";
 import { initialFormState } from "./form-state";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Modal } from "@/components/ui/modal";
+import { RowActions } from "@/components/ui/row-actions";
 import { Field, FieldError, FieldLabel, Input, Select, Textarea } from "@/components/ui/input";
 import { formatCurrency, formatDate } from "@/lib/format";
 import {
@@ -26,8 +28,6 @@ const ESTADO_TONE: Record<EstadoActivo, "success" | "warning" | "neutral"> = {
   DADO_DE_BAJA: "neutral",
 };
 
-const COLS = 7;
-
 export function ActivosPanel({ activos }: { activos: Activo[] }) {
   const [editing, setEditing] = useState<Activo | null>(null);
   const [creating, setCreating] = useState(false);
@@ -44,12 +44,18 @@ export function ActivosPanel({ activos }: { activos: Activo[] }) {
     [activos, filtroCategoria, filtroEstado]
   );
 
+  const nuevoActivo = (
+    <Button size="sm" onClick={() => setCreating(true)}>
+      + Nuevo activo
+    </Button>
+  );
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 sm:flex-nowrap">
           <Select
-            className="h-9 w-auto"
+            className="h-9 w-[200px] shrink-0"
             value={filtroCategoria}
             onChange={(e) => setFiltroCategoria(e.target.value as ActivoCategoria | "TODAS")}
           >
@@ -61,7 +67,7 @@ export function ActivosPanel({ activos }: { activos: Activo[] }) {
             ))}
           </Select>
           <Select
-            className="h-9 w-auto"
+            className="h-9 w-[200px] shrink-0"
             value={filtroEstado}
             onChange={(e) => setFiltroEstado(e.target.value as EstadoActivo | "TODOS")}
           >
@@ -73,28 +79,13 @@ export function ActivosPanel({ activos }: { activos: Activo[] }) {
             ))}
           </Select>
         </div>
-        {!creating && (
-          <Button size="sm" onClick={() => setCreating(true)}>
-            + Nuevo activo
-          </Button>
-        )}
+        {nuevoActivo}
       </div>
-
-      {creating && <ActivoForm onDone={() => setCreating(false)} onCancel={() => setCreating(false)} />}
 
       {activosFiltrados.length === 0 ? (
         <Card>
           {activos.length === 0 ? (
-            <EmptyState
-              title="Sin activos todavía."
-              action={
-                !creating && (
-                  <Button size="sm" onClick={() => setCreating(true)}>
-                    + Nuevo activo
-                  </Button>
-                )
-              }
-            />
+            <EmptyState title="Sin activos todavía." action={nuevoActivo} />
           ) : (
             <EmptyState title="Ningún activo coincide con el filtro." />
           )}
@@ -116,32 +107,35 @@ export function ActivosPanel({ activos }: { activos: Activo[] }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {activosFiltrados.map((a) =>
-                    editing?.id === a.id ? (
-                      <tr key={a.id} className="border-b border-border last:border-0">
-                        <td colSpan={COLS} className="p-4">
-                          <ActivoForm activo={a} onDone={() => setEditing(null)} onCancel={() => setEditing(null)} />
-                        </td>
-                      </tr>
-                    ) : (
-                      <ActivoRow key={a.id} activo={a} onEdit={() => setEditing(a)} />
-                    )
-                  )}
+                  {activosFiltrados.map((a) => (
+                    <ActivoRow key={a.id} activo={a} onEdit={() => setEditing(a)} />
+                  ))}
                 </tbody>
               </table>
             </div>
           </Card>
 
           <div className="flex flex-col gap-3 md:hidden">
-            {activosFiltrados.map((a) =>
-              editing?.id === a.id ? (
-                <ActivoForm key={a.id} activo={a} onDone={() => setEditing(null)} onCancel={() => setEditing(null)} />
-              ) : (
-                <ActivoCardMobile key={a.id} activo={a} onEdit={() => setEditing(a)} />
-              )
-            )}
+            {activosFiltrados.map((a) => (
+              <ActivoCardMobile key={a.id} activo={a} onEdit={() => setEditing(a)} />
+            ))}
           </div>
         </>
+      )}
+
+      {(creating || editing) && (
+        <ActivoForm
+          key={editing?.id ?? "nuevo"}
+          activo={editing ?? undefined}
+          onDone={() => {
+            setCreating(false);
+            setEditing(null);
+          }}
+          onCancel={() => {
+            setCreating(false);
+            setEditing(null);
+          }}
+        />
       )}
     </div>
   );
@@ -169,17 +163,12 @@ function ActivoRow({ activo, onEdit }: { activo: Activo; onEdit: () => void }) {
       </td>
       <td className="px-5 py-3 text-text-muted">{formatDate(activo.fechaAdquisicion)}</td>
       <td className="px-5 py-3 text-text-muted">{activo.proveedor || "—"}</td>
-      <td className="px-5 py-3 text-right">
-        <div className="flex justify-end gap-2">
-          <Link
-            href={`/inventario/activos/${activo.id}`}
-            className="inline-flex h-8 items-center rounded-lg px-3 text-sm font-medium text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
-          >
+      <td className="px-5 py-3">
+        <div className="flex items-center justify-end gap-1">
+          <ButtonLink href={`/inventario/activos/${activo.id}`} size="sm" variant="secondary">
             Historial
-          </Link>
-          <Button size="sm" variant="ghost" onClick={onEdit}>
-            Editar
-          </Button>
+          </ButtonLink>
+          <RowActions label={`Más acciones de ${activo.nombre}`} actions={[{ label: "Editar", onSelect: onEdit }]} />
         </div>
       </td>
     </tr>
@@ -217,16 +206,13 @@ function ActivoCardMobile({ activo, onEdit }: { activo: Activo; onEdit: () => vo
           <dd className="text-right text-text-muted">{activo.proveedor || "—"}</dd>
         </dl>
 
-        <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-2.5">
-          <Link
-            href={`/inventario/activos/${activo.id}`}
-            className="inline-flex h-8 items-center rounded-lg px-3 text-sm font-medium text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
-          >
+        <div className="flex justify-end border-t border-border pt-2.5">
+          <div className="flex items-center justify-end gap-1">
+          <ButtonLink href={`/inventario/activos/${activo.id}`} size="sm" variant="secondary">
             Historial
-          </Link>
-          <Button size="sm" variant="ghost" onClick={onEdit}>
-            Editar
-          </Button>
+          </ButtonLink>
+          <RowActions label={`Más acciones de ${activo.nombre}`} actions={[{ label: "Editar", onSelect: onEdit }]} />
+        </div>
         </div>
       </CardContent>
     </Card>
@@ -252,12 +238,9 @@ function ActivoForm({
   );
 
   return (
-    <Card className="border-primary/30">
-      <CardHeader>
-        <CardTitle>{activo ? "Editar activo" : "Nuevo activo"}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form action={formAction} className="flex flex-col gap-4">
+    <Modal onClose={onCancel} size="md">
+        <form action={formAction} className="flex flex-col gap-4 p-5">
+          <h3 className="text-sm font-semibold text-primary">{activo ? "Editar activo" : "Nuevo activo"}</h3>
           {activo && <input type="hidden" name="id" value={activo.id} />}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -349,7 +332,6 @@ function ActivoForm({
             </Button>
           </div>
         </form>
-      </CardContent>
-    </Card>
+    </Modal>
   );
 }
