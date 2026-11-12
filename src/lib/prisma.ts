@@ -7,7 +7,18 @@ const globalForPrisma = globalThis as unknown as {
 
 // Conexión con pool (pgbouncer, puerto 6543) — correcta para el runtime de
 // la app; las migraciones usan DIRECT_URL en su lugar (ver prisma.config.ts).
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+//
+// El pooler de Supabase cierra las conexiones ociosas y, en serverless, las
+// instancias se congelan: la siguiente consulta puede toparse con una conexión
+// muerta ("Server has closed the connection", P1017). El pool descarta sus
+// conexiones ociosas antes de que lo haga el pooler y mantiene vivas las activas.
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL,
+  max: 5,
+  idleTimeoutMillis: 10_000,
+  connectionTimeoutMillis: 10_000,
+  keepAlive: true,
+});
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
 
