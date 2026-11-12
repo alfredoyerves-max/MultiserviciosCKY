@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { SidePanel } from "@/components/ui/side-panel";
 import { Field, FieldError, FieldLabel, Input } from "@/components/ui/input";
 import { calcularSaldo, calcularEstadoCuenta, estaVencida, ESTADO_CUENTA_LABELS_PAGAR } from "@/lib/cuentas";
+import { hoyMexicoMasDias } from "@/lib/fechaLocal";
 import { CuentaFila } from "./cuenta-fila";
 import { PagarSaldoButton } from "./pagar-saldo-button";
 import { AccionesCuentaPagar } from "./pagar/[id]/acciones-cuenta-pagar";
@@ -25,12 +26,6 @@ const ESTADO_TONE = {
   PAGADA: "success",
   CANCELADA: "neutral",
 } as const;
-
-function fechaDefault(diasDesdeHoy: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + diasDesdeHoy);
-  return d.toISOString().slice(0, 10);
-}
 
 export function PagarPanel({ cuentas }: { cuentas: CuentaPorPagarConDatos[] }) {
   const [creating, setCreating] = useState(false);
@@ -151,7 +146,7 @@ function CuentaPorPagarForm({ onDone, onCancel }: { onDone: () => void; onCancel
             id="fechaVencimiento"
             name="fechaVencimiento"
             type="date"
-            defaultValue={fechaDefault(30)}
+            defaultValue={hoyMexicoMasDias(30)}
             required
           />
           <FieldError>{state.fieldErrors?.fechaVencimiento}</FieldError>

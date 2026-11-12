@@ -14,3 +14,9 @@ export function hoyMexico(ahora: Date = new Date()): string {
     day: "2-digit",
   }).format(ahora);
 }
+
+/** Hoy en México más `dias` días (calendario), como AAAA-MM-DD. Suma sobre la fecha ya fijada en México, no sobre la hora del equipo. */
+export function hoyMexicoMasDias(dias: number, ahora: Date = new Date()): string {
+  const [a, m, d] = hoyMexico(ahora).split("-").map(Number);
+  return new Date(Date.UTC(a, m - 1, d + dias)).toISOString().slice(0, 10);
+}
