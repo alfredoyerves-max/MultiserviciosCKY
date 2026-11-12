@@ -1,4 +1,5 @@
 import { PrismaPg } from "@prisma/adapter-pg";
+import { crearPool } from "@/lib/db/pool";
 import { PrismaClient } from "@/generated/prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
@@ -11,14 +12,9 @@ const globalForPrisma = globalThis as unknown as {
 // El pooler de Supabase cierra las conexiones ociosas y, en serverless, las
 // instancias se congelan: la siguiente consulta puede toparse con una conexión
 // muerta ("Server has closed the connection", P1017). El pool descarta sus
-// conexiones ociosas antes de que lo haga el pooler y mantiene vivas las activas.
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
-  max: 5,
-  idleTimeoutMillis: 10_000,
-  connectionTimeoutMillis: 10_000,
-  keepAlive: true,
-});
+// conexiones ociosas antes de que lo haga el pooler, mantiene vivas las activas
+// y reintenta UNA vez solo al adquirir la conexión (ver lib/db/pool.ts).
+const adapter = new PrismaPg(crearPool(process.env.DATABASE_URL));
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
 

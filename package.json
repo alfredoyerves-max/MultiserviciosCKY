@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:fiscal": "tsx tests/fiscalEngine.test.ts",
+    "test:pool": "tsx tests/poolReintento.test.ts",
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate"
   },
