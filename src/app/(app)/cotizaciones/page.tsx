@@ -1,4 +1,4 @@
-import { listCotizacionesKanban } from "@/lib/data/cotizaciones";
+import { listCotizacionesKanban, resumenHistorico } from "@/lib/data/cotizaciones";
 import { KanbanBoard } from "./kanban-board";
 import { PageHeader } from "@/components/ui/page-header";
 import { TIPOS_COTIZACION, type TipoCotizacion } from "@/lib/enums";
@@ -12,18 +12,24 @@ export default async function CotizacionesPage({
   await requireSession();
   const sp = await searchParams;
 
-  const hoy = new Date();
-  const [anioStr, mesStr] = (
-    sp.mes ?? `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}`
-  ).split("-");
-  const anio = Number(anioStr);
-  const mes = Number(mesStr);
   const incluirSoporte = sp.soporte === "1";
   const tipo = TIPOS_COTIZACION.includes(sp.tipo as TipoCotizacion)
     ? (sp.tipo as TipoCotizacion)
     : undefined;
 
-  const cotizaciones = await listCotizacionesKanban({ anio, mes, incluirSoporte, tipo });
+  // Histórico: por defecto se abre en el mes más reciente que tenga datos (no
+  // en el mes calendario, que puede estar vacío). "todo" muestra todo el
+  // histórico; un mes explícito en la URL gana sobre el valor por defecto.
+  const resumen = await resumenHistorico({ incluirSoporte, tipo });
+  const hoy = new Date();
+  const porDefecto = resumen.ultimoMes ?? { anio: hoy.getFullYear(), mes: hoy.getMonth() + 1 };
+  const todo = sp.mes === "todo";
+  const [anioStr, mesStr] = (sp.mes && !todo ? sp.mes : `${porDefecto.anio}-${porDefecto.mes}`).split("-");
+  const anio = Number(anioStr);
+  const mes = Number(mesStr);
+  const mesPorDefecto = `${porDefecto.anio}-${String(porDefecto.mes).padStart(2, "0")}`;
+
+  const cotizaciones = await listCotizacionesKanban({ anio, mes, todo, incluirSoporte, tipo });
 
   // El botón primario de esta pantalla es el "+ Nueva cotización" global del
   // menú superior; no se repite aquí.
@@ -38,6 +44,9 @@ export default async function CotizacionesPage({
         cotizaciones={cotizaciones}
         anio={anio}
         mes={mes}
+        todo={todo}
+        totalHistorico={resumen.total}
+        mesPorDefecto={mesPorDefecto}
         incluirSoporte={incluirSoporte}
         tipo={tipo}
       />

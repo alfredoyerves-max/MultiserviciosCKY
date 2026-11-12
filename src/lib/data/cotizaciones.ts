@@ -201,6 +201,8 @@ export async function listCotizaciones(opts: { incluirSoporte?: boolean } = {}) 
 export interface KanbanFiltros {
   anio: number;
   mes: number; // 1-12
+  /** true = histórico completo, sin recortar por mes (anio/mes se ignoran). */
+  todo?: boolean;
   incluirSoporte: boolean;
   /** Sin filtrar (todos) si se omite. */
   tipo?: TipoCotizacion;
@@ -219,7 +221,10 @@ export async function listCotizacionesKanban(filtros: KanbanFiltros) {
     where: {
       OR: [
         { estado: { in: ["BORRADOR", "ENVIADA"] } },
-        { estado: { in: ["ACEPTADA", "RECHAZADA"] }, createdAt: { gte: inicio, lt: finExclusivo } },
+        {
+          estado: { in: ["ACEPTADA", "RECHAZADA"] },
+          ...(filtros.todo ? {} : { createdAt: { gte: inicio, lt: finExclusivo } }),
+        },
       ],
       ...(filtros.incluirSoporte ? {} : { esSoporte: false }),
       ...(filtros.tipo ? { tipo: filtros.tipo } : {}),
@@ -230,6 +235,26 @@ export async function listCotizacionesKanban(filtros: KanbanFiltros) {
     },
     orderBy: { createdAt: "desc" },
   });
+}
+
+/** Resumen del histórico (Aceptadas y Rechazadas) con los mismos filtros del
+ *  tablero: cuántas hay en total y de qué mes es la más reciente — para abrir
+ *  el histórico en un mes que tenga datos en vez de en un mes vacío. */
+export async function resumenHistorico(filtros: { incluirSoporte: boolean; tipo?: TipoCotizacion }) {
+  await requireSession();
+  const where = {
+    estado: { in: ["ACEPTADA", "RECHAZADA"] },
+    ...(filtros.incluirSoporte ? {} : { esSoporte: false }),
+    ...(filtros.tipo ? { tipo: filtros.tipo } : {}),
+  };
+  const [total, ultima] = await Promise.all([
+    prisma.cotizacion.count({ where }),
+    prisma.cotizacion.findFirst({ where, orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
+  ]);
+  return {
+    total,
+    ultimoMes: ultima ? { anio: ultima.createdAt.getFullYear(), mes: ultima.createdAt.getMonth() + 1 } : null,
+  };
 }
 
 export async function getCotizacion(id: string) {

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
+import { cn } from "@/lib/cn";
 import { AccionesCotizacion } from "./acciones-cotizacion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -51,12 +52,21 @@ export function KanbanBoard({
   cotizaciones,
   anio,
   mes,
+  todo,
+  totalHistorico,
+  mesPorDefecto,
   incluirSoporte,
   tipo,
 }: {
   cotizaciones: CotizacionConCliente[];
   anio: number;
   mes: number;
+  /** Histórico completo (sin recortar por mes). */
+  todo: boolean;
+  /** Cuántas Aceptadas/Rechazadas hay en total con los filtros actuales. */
+  totalHistorico: number;
+  /** Mes más reciente que tiene histórico (AAAA-MM). */
+  mesPorDefecto: string;
   incluirSoporte: boolean;
   tipo?: TipoCotizacion;
 }) {
@@ -72,8 +82,8 @@ export function KanbanBoard({
   }
 
   const mesValue = `${anio}-${String(mes).padStart(2, "0")}`;
-  const hoy = new Date();
-  const mesActualValue = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}`;
+  const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  const etiquetaMes = `${MESES_CORTOS[mes - 1]} ${anio}`;
 
   const [busqueda, setBusqueda] = useState("");
 
@@ -83,6 +93,8 @@ export function KanbanBoard({
     estado,
     cotizaciones: cotizaciones.filter((c) => c.estado === estado),
   }));
+
+  const enPeriodo = cotizaciones.filter((c) => ESTADOS_HISTORICOS.includes(c.estado as EstadoCotizacion)).length;
 
   const historicas = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
@@ -153,17 +165,33 @@ export function KanbanBoard({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-text">
             Histórico — Aceptadas y Rechazadas
-            <span className="ml-2 text-xs font-normal text-text-dim">{historicas.length}</span>
+            <span className="ml-2 text-xs font-normal text-text-dim">
+              {totalHistorico} en total
+              {!todo && ` · ${enPeriodo} en ${etiquetaMes}`}
+            </span>
           </h2>
           <div className="flex flex-wrap items-center gap-3">
             <MonthPicker value={mesValue} onChange={(v) => setParam("mes", v)} label="Mes del histórico" />
-            {mesValue !== mesActualValue && (
+            <button
+              type="button"
+              onClick={() => setParam("mes", todo ? mesPorDefecto : "todo")}
+              aria-pressed={todo}
+              className={cn(
+                "h-9 rounded-lg border px-3 text-sm font-medium transition-colors",
+                todo
+                  ? "border-primary bg-primary/15 text-primary"
+                  : "border-border-strong bg-surface-2 text-text-muted hover:bg-surface-3 hover:text-text"
+              )}
+            >
+              Todo
+            </button>
+            {!todo && mesValue !== mesPorDefecto && (
               <button
                 type="button"
                 onClick={() => setParam("mes", null)}
                 className="text-xs text-primary hover:underline"
               >
-                Volver a este mes
+                Ir al más reciente
               </button>
             )}
             <Input
