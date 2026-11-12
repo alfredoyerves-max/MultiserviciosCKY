@@ -30,7 +30,12 @@ export function CuentasBancariasPanel({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs uppercase tracking-wide text-text-dim">Cuentas bancarias</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-xs uppercase tracking-wide text-text-dim">Cuentas bancarias</p>
+          <Badge tone="primary" title="Agregar, activar o eliminar una cuenta se guarda en el momento; no depende del botón Guardar de la pestaña.">
+            Se guardan al instante
+          </Badge>
+        </div>
         {!locked && !creating && (
           <Button type="button" size="sm" variant="secondary" onClick={() => setCreating(true)}>
             + Agregar cuenta

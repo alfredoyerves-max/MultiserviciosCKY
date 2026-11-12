@@ -6,6 +6,7 @@ import { ProteccionBadge, UnlockModal } from "./fiscal-lock";
 import { CuentasBancariasPanel } from "./cuentas-bancarias-panel";
 import { Field, FieldError, FieldLabel, Input, Textarea } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import type { CuentaBancaria, SystemConfig } from "@/generated/prisma/client";
@@ -231,7 +232,10 @@ export function ConfigForm({
           <div className="flex flex-col gap-5">
             <CuentasBancariasPanel cuentas={cuentasBancarias} locked={bloqueada("cuentas")} fiscalPassword={fiscalPassword} />
             <div className="border-t border-border pt-4">
-              <p className="mb-3 text-xs uppercase tracking-wide text-text-dim">Métodos de pago aceptados</p>
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <p className="text-xs uppercase tracking-wide text-text-dim">Métodos de pago aceptados</p>
+                <Badge tone="neutral">Se guardan con el botón Guardar</Badge>
+              </div>
               <div className="flex flex-wrap gap-4">
                 <CheckboxField locked={bloqueada("cuentas")} name="aceptaEfectivo" label="Efectivo" defaultChecked={config.aceptaEfectivo} />
                 <CheckboxField locked={bloqueada("cuentas")} name="aceptaTransferencia" label="Transferencia" defaultChecked={config.aceptaTransferencia} />
