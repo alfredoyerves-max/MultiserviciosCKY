@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
+import { MonthPicker } from "@/components/ui/month-picker";
 
 export type VistaDashboard = "mensual" | "anual";
 
@@ -31,43 +32,9 @@ export function DashboardControls({
     router.push(`${pathname}?${params.toString()}`);
   }
 
-  function shiftMonth(delta: number) {
-    const [anio, m] = mes.split("-").map(Number);
-    const d = new Date(anio, m - 1 + delta, 1);
-    const nuevo = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    setParam("mes", nuevo);
-  }
-
-  const puedeAnterior = mes > mesMinimo;
-
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <div className="flex items-center gap-1">
-        <button
-          type="button"
-          onClick={() => shiftMonth(-1)}
-          disabled={!puedeAnterior}
-          aria-label="Mes anterior"
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-border-strong bg-surface-2 text-text-muted transition-colors hover:bg-surface-3 hover:text-text disabled:pointer-events-none disabled:opacity-40"
-        >
-          ‹
-        </button>
-        <input
-          type="month"
-          value={mes}
-          min={mesMinimo}
-          onChange={(e) => e.target.value && setParam("mes", e.target.value)}
-          className="h-9 rounded-lg border border-border-strong bg-surface-2 px-3 text-sm text-text outline-none focus:border-primary"
-        />
-        <button
-          type="button"
-          onClick={() => shiftMonth(1)}
-          aria-label="Mes siguiente"
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-border-strong bg-surface-2 text-text-muted transition-colors hover:bg-surface-3 hover:text-text disabled:pointer-events-none disabled:opacity-40"
-        >
-          ›
-        </button>
-      </div>
+      <MonthPicker value={mes} onChange={(v) => v >= mesMinimo && setParam("mes", v)} label="Mes del dashboard" />
 
       <div className="flex rounded-lg border border-border-strong bg-surface-2 p-0.5">
         <button

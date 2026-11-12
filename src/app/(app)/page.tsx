@@ -1,15 +1,16 @@
 import { listCotizaciones } from "@/lib/data/cotizaciones";
 import { listCuentasPorCobrar } from "@/lib/data/cuentasPorCobrar";
 import { getSystemConfig } from "@/lib/data/config";
-import { calcularSaldo } from "@/lib/cuentas";
+import { calcularSaldo, estaVencida } from "@/lib/cuentas";
 import { StatTile } from "@/components/ui/stat-tile";
+import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { NuevaCotizacionMenu } from "@/components/layout/nueva-cotizacion-menu";
 import { DashboardControls, type VistaDashboard } from "./dashboard-controls";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { ESTADO_COTIZACION_LABELS, type EstadoCotizacion } from "@/lib/enums";
+import { ESTADO_COTIZACION_LABELS, type EstadoCotizacion, type TipoCotizacion } from "@/lib/enums";
 import Link from "next/link";
 import { requireSession } from "@/lib/auth/session";
 
@@ -19,6 +20,9 @@ const ESTADO_TONE: Record<EstadoCotizacion, "neutral" | "primary" | "success" | 
   ACEPTADA: "success",
   RECHAZADA: "danger",
 };
+
+/** Días de anticipación para la alerta de cotizaciones por vencer. */
+const DIAS_ALERTA_VIGENCIA = 3;
 
 function mesLabel(anio: number, mes: number) {
   return `${anio}-${String(mes).padStart(2, "0")}`;
@@ -59,50 +63,109 @@ export default async function DashboardPage({
   const finExclusivo = vista === "anual" ? new Date(anio + 1, 0, 1) : new Date(anio, mes, 1);
 
   const delRango = cotizaciones.filter((c) => c.createdAt >= inicio && c.createdAt < finExclusivo);
-  const totalRango = delRango.reduce((sum, c) => sum + c.netoARecibir, 0);
-  const aceptadasRango = delRango.filter((c) => c.estado === "ACEPTADA");
-  const totalAceptado = aceptadasRango.reduce((sum, c) => sum + c.netoARecibir, 0);
 
-  // "Por cobrar" — cuentas no canceladas cuya fecha de vencimiento cae en
-  // el rango seleccionado, sin importar si la cotización que las originó
-  // fue de servicio o material (se lee de CuentaPorCobrar directamente,
-  // no del tipo de la cotización).
+  // "Por cobrar" — cuentas no canceladas cuya fecha de vencimiento cae en el
+  // rango seleccionado. Se separan por el tipo de la cotización que las originó.
   const porCobrarRango = cuentasPorCobrar.filter(
     (cc) => !cc.cancelada && cc.fechaVencimiento >= inicio && cc.fechaVencimiento < finExclusivo
   );
-  const totalPorCobrar = porCobrarRango.reduce((sum, cc) => sum + calcularSaldo(cc.montoTotal, cc.abonos), 0);
+
+  /** Cotizado / Aceptado / Por cobrar de un tipo de cotización en el rango. */
+  function kpisDe(tipo: TipoCotizacion) {
+    const cot = delRango.filter((c) => c.tipo === tipo);
+    const aceptadas = cot.filter((c) => c.estado === "ACEPTADA");
+    const cuentas = porCobrarRango.filter((cc) => cc.cotizacion.tipo === tipo);
+    return {
+      cotizado: cot.reduce((sum, c) => sum + c.netoARecibir, 0),
+      nCotizadas: cot.length,
+      aceptado: aceptadas.reduce((sum, c) => sum + c.netoARecibir, 0),
+      nAceptadas: aceptadas.length,
+      porCobrar: cuentas.reduce((sum, cc) => sum + calcularSaldo(cc.montoTotal, cc.abonos), 0),
+      nCuentas: cuentas.length,
+    };
+  }
+  const servicio = kpisDe("SERVICIO");
+  const material = kpisDe("MATERIAL");
+
+  // Alertas (no dependen del mes elegido: son lo que requiere atención hoy).
+  const inicioHoy = new Date(hoy);
+  inicioHoy.setHours(0, 0, 0, 0);
+  const porVencer = cotizaciones.filter((c) => {
+    if (c.estado !== "BORRADOR" && c.estado !== "ENVIADA") return false;
+    const venc = new Date(c.fechaVigencia);
+    venc.setHours(0, 0, 0, 0);
+    const dias = Math.round((venc.getTime() - inicioHoy.getTime()) / 86400000);
+    return dias <= DIAS_ALERTA_VIGENCIA;
+  });
+  const cuentasVencidas = cuentasPorCobrar.filter(
+    (cc) => !cc.cancelada && estaVencida(cc.fechaVencimiento, calcularSaldo(cc.montoTotal, cc.abonos))
+  );
+  const montoVencido = cuentasVencidas.reduce((sum, cc) => sum + calcularSaldo(cc.montoTotal, cc.abonos), 0);
 
   const labelSufijo = vista === "anual" ? `en ${anio}` : "este mes";
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-text">Dashboard de Cotización</h1>
-          <p className="text-sm text-text-muted">Visión general de Multiservicios Yerves.</p>
-        </div>
-      </div>
+      <PageHeader title="Dashboard" description="Visión general de Carlos Yerves Multiservicios" />
 
       <DashboardControls mes={mesParam} mesMinimo={mesMinimo} vista={vista} />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatTile
-          label={`Cotizado ${labelSufijo}`}
-          value={formatCurrency(totalRango)}
-          hint={`${delRango.length} cotización(es)`}
-          accent
-        />
-        <StatTile
-          label={`Aceptado ${labelSufijo}`}
-          value={formatCurrency(totalAceptado)}
-          hint={`${aceptadasRango.length} cotización(es)`}
-        />
-        <StatTile
-          label={`Por cobrar ${labelSufijo}`}
-          value={formatCurrency(totalPorCobrar)}
-          hint={`${porCobrarRango.length} cuenta(s) por vencer`}
-        />
-      </div>
+      {/* Alertas — solo aparecen cuando hay algo que atender. */}
+      {(porVencer.length > 0 || cuentasVencidas.length > 0) && (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {porVencer.length > 0 && (
+            <Link
+              href="/cotizaciones"
+              className="rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 transition-colors hover:bg-warning/15"
+            >
+              <p className="text-sm font-semibold text-warning-soft">
+                {porVencer.length} cotización(es) vencen en {DIAS_ALERTA_VIGENCIA} días o menos
+              </p>
+              <p className="mt-0.5 text-xs text-text-muted">
+                Borradores y enviadas abiertas, incluidas las que ya vencieron. Ver tablero →
+              </p>
+            </Link>
+          )}
+          {cuentasVencidas.length > 0 && (
+            <Link
+              href="/pagos"
+              className="rounded-xl border border-danger-strong/50 bg-danger-strong/10 px-4 py-3 transition-colors hover:bg-danger-strong/15"
+            >
+              <p className="text-sm font-semibold text-danger">
+                {cuentasVencidas.length} cuenta(s) por cobrar vencida(s) · {formatCurrency(montoVencido)}
+              </p>
+              <p className="mt-0.5 text-xs text-text-muted">Saldo pendiente con fecha de vencimiento pasada. Ver Finanzas →</p>
+            </Link>
+          )}
+        </div>
+      )}
+
+      {[
+        { titulo: "Servicio", k: servicio },
+        { titulo: "Material", k: material },
+      ].map(({ titulo, k }) => (
+        <section key={titulo} className="flex flex-col gap-3">
+          <h2 className="text-sm font-semibold text-text">{titulo}</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <StatTile
+              label={`Cotizado ${labelSufijo}`}
+              value={formatCurrency(k.cotizado)}
+              hint={`${k.nCotizadas} cotización(es)`}
+              accent
+            />
+            <StatTile
+              label={`Aceptado ${labelSufijo}`}
+              value={formatCurrency(k.aceptado)}
+              hint={`${k.nAceptadas} cotización(es)`}
+            />
+            <StatTile
+              label={`Por cobrar ${labelSufijo}`}
+              value={formatCurrency(k.porCobrar)}
+              hint={`${k.nCuentas} cuenta(s) por vencer`}
+            />
+          </div>
+        </section>
+      ))}
 
       <Card>
         <CardHeader className="items-start justify-between">
@@ -128,7 +191,8 @@ export default async function DashboardPage({
                   <td colSpan={5}>
                     <EmptyState
                       title={vista === "anual" ? `Sin cotizaciones en ${anio}.` : "Sin cotizaciones este mes."}
-                      action={<ButtonLink href="/cotizaciones/nueva" size="sm">+ Nueva cotización</ButtonLink>}
+                      description="Crea una cotización de servicio o de material para empezar a ver cifras aquí."
+                      action={<NuevaCotizacionMenu />}
                     />
                   </td>
                 </tr>
