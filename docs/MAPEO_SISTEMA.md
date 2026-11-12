@@ -205,3 +205,11 @@ Tras la corrección, la primera instrucción de `listCotizaciones`, `listCotizac
 **Regla permanente.** Toda página y toda función de datos llama a `requireSession()`. Nunca depender solo del layout. Toda página o función de datos nueva debe incluirla desde el primer commit; repetir la prueba sin cookie (peticiones normal y RSC) al agregar rutas.
 
 **Otras mejoras de la misma entrega** (rendimiento): verificación de sesión de 4 a 1 consulta y escritura de `expiresAt` solo cada 2 min (`sessionRules.ts`); cierre por inactividad a 15 min; bundle del cliente sin zod (de ~340 KB a ~60-80 KB en 4 módulos); borrado de cotización en 1 sentencia; `loading.tsx` en las 6 rutas del menú; índices en las 10 llaves foráneas.
+
+---
+
+## 9. Pruebas, conexión y redondeo fiscal (2026-11-12)
+
+- **El `.env` local apunta a la base de producción. Todo dato creado en pruebas es dato real: prefijo PRUEBA y limpiar al terminar.** Se constató en la revisión de la Fase 7: la cotización COT-2026-0028, el cliente "CLIENTE PRUEBA 2", un producto y un puesto de prueba creados desde `localhost` están en la base real (limpieza prevista en la Fase 9).
+- **Conexión (`src/lib/db/pool.ts`).** Pool con `max` 5, `idleTimeoutMillis` 10 s y `keepAlive`; tiempo límite de conexión de 10 s en producción y 30 s en desarrollo; un único reintento solo al adquirir la conexión (antes de cualquier consulta, para `pool.connect()` y `pool.connect(callback)`). Las transacciones interactivas no se reintentan. Prueba: `npm run test:pool`. El error "Connection terminated due to connection timeout" visto en la revisión provenía del límite de 10 s del primer hotfix, que en desarrollo (compilando) se quedó corto.
+- **Redondeo fiscal (`src/lib/fiscalEngine.ts`).** Subtotal, IVA y retención a 2 decimales (mitad hacia arriba) y total como suma de esos importes: para 650.00 → IVA 104.00, retención 8.13, total 745.87. Solo aplica a cotizaciones nuevas; las existentes no se recalcularon (COT-2026-0001 y 0023 difieren en 1 centavo de la suma de sus partes redondeadas, igual que 0028).
