@@ -1,5 +1,6 @@
 "use server";
 
+import type { ResultadoBorrado } from "@/lib/dependencias";
 import { createPuesto, deletePuesto, updatePuesto } from "@/lib/data/puestos";
 import { createServicio, setServicioActivo, updateServicio } from "@/lib/data/servicios";
 import { puestoSchema } from "@/lib/schemas/puesto";
@@ -35,10 +36,11 @@ export async function savePuestoAction(
   return { ok: true };
 }
 
-export async function deletePuestoAction(id: string) {
+export async function deletePuestoAction(id: string): Promise<ResultadoBorrado> {
   await requireSession();
-  await deletePuesto(id);
-  revalidatePath("/servicios");
+  const res = await deletePuesto(id);
+  if (res.ok) revalidatePath("/servicios");
+  return res;
 }
 
 export async function saveServicioAction(

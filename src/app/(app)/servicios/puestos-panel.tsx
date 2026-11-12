@@ -7,13 +7,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel, Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ConfirmarBorradoModal } from "@/components/ui/confirmar-borrado-modal";
 import { RowActions } from "@/components/ui/row-actions";
 import { SidePanel } from "@/components/ui/side-panel";
 import { formatCurrency } from "@/lib/format";
 import type { Puesto } from "@/generated/prisma/client";
 
-export function PuestosPanel({ puestos }: { puestos: Puesto[] }) {
+export function PuestosPanel({ puestos, onVerServicios }: { puestos: Puesto[]; onVerServicios: () => void }) {
   const [editing, setEditing] = useState<Puesto | null>(null);
+  const [eliminando, setEliminando] = useState<Puesto | null>(null);
   const [creating, setCreating] = useState(false);
 
   const nuevoPuesto = (
@@ -66,11 +68,7 @@ export function PuestosPanel({ puestos }: { puestos: Puesto[] }) {
                           {
                             label: "Eliminar",
                             danger: true,
-                            onSelect: async () => {
-                              if (confirm(`¿Eliminar el puesto "${p.nombre}"?`)) {
-                                await deletePuestoAction(p.id).catch((e) => alert(e.message));
-                              }
-                            },
+                            onSelect: () => setEliminando(p),
                           },
                         ]}
                       />
@@ -82,6 +80,26 @@ export function PuestosPanel({ puestos }: { puestos: Puesto[] }) {
           </table>
         </CardContent>
       </Card>
+
+      {eliminando && (
+        <ConfirmarBorradoModal
+          titulo={`Eliminar el puesto «${eliminando.nombre}»`}
+          descripcion="Se borra por completo. Solo se puede si ningún servicio lo usa; esta acción no se puede deshacer."
+          onConfirm={() => deletePuestoAction(eliminando.id)}
+          onClose={() => setEliminando(null)}
+          alternativa={(cerrar) => (
+            <Button
+              type="button"
+              onClick={() => {
+                cerrar();
+                onVerServicios();
+              }}
+            >
+              Ver servicios
+            </Button>
+          )}
+        />
+      )}
 
       {(creating || editing) && (
         <PuestoForm

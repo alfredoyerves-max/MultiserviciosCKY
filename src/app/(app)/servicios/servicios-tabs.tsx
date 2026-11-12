@@ -34,7 +34,7 @@ export function ServiciosTabs({
       {tab === "servicios" ? (
         <ServiciosPanel servicios={servicios} puestos={puestos} config={config} />
       ) : (
-        <PuestosPanel puestos={puestos} />
+        <PuestosPanel puestos={puestos} onVerServicios={() => setTab("servicios")} />
       )}
     </div>
   );
