@@ -284,6 +284,9 @@ export function ConfigForm({
         <div className="mr-auto min-w-0 text-sm">
           {state.error && <span className="text-danger">{state.error}</span>}
           {state.ok && !state.error && <span className="text-success-soft">Configuración guardada.</span>}
+          {desbloqueadas[tab] && !state.error && (
+            <span className="text-text-dim">Se protege de nuevo al guardar.</span>
+          )}
         </div>
         {desbloqueadas[tab] && (
           <Button type="button" variant="ghost" onClick={() => cancelar(tab)} disabled={pending}>
