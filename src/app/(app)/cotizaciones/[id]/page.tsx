@@ -11,12 +11,11 @@ import {
   MODALIDAD_LABELS,
   TIPO_CLIENTE_LABELS,
   TIPO_COTIZACION_LABELS,
-  UNIDAD_MEDIDA_LABELS,
+  etiquetaUnidad,
   type EstadoCotizacion,
   type Modalidad,
   type TipoCliente,
   type TipoCotizacion,
-  type UnidadMedida,
 } from "@/lib/enums";
 import { AccionesCotizacion } from "../acciones-cotizacion";
 import { CostDetail } from "./cost-detail";
@@ -129,7 +128,7 @@ export default async function CotizacionDetallePage({
                     <td className="px-5 py-3 font-mono text-text-muted">{l.claveSat || "—"}</td>
                     <td className="px-5 py-3 text-text">{l.descripcion}</td>
                     <td className="px-5 py-3 text-text-muted">
-                      {l.cantidad} {UNIDAD_MEDIDA_LABELS[l.unidadMedida as UnidadMedida]}
+                      {l.cantidad} {etiquetaUnidad(l.unidadMedida)}
                     </td>
                     <td className="px-5 py-3 text-right font-mono tabular-nums text-text-muted">
                       {formatCurrency(l.precioUnitario)}

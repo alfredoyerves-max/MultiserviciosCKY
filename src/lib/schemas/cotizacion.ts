@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { modalidadSchema, unidadMedidaSchema } from "@/lib/schemas/enums";
+import { modalidadSchema } from "@/lib/schemas/enums";
 import { clienteSchema } from "./cliente";
 
 export const lineaInputSchema = z.object({
@@ -17,7 +17,8 @@ export const lineaMaterialInputSchema = z.object({
     .transform((v) => (v ? v : undefined)),
   claveSat: z.string().trim().max(20, "Máximo 20 caracteres").optional().default(""),
   descripcion: z.string().trim().min(1, "Describe el material"),
-  unidadMedida: unidadMedidaSchema,
+  // Catálogo (PIEZA, LITRO…) o texto capturado con "Otra…" solo en la línea de cotización; la columna es texto.
+  unidadMedida: z.string().trim().min(1, "Indica la unidad").max(20, "Máximo 20 caracteres"),
   cantidad: z.coerce.number().positive("Debe ser mayor a 0"),
   precioUnitario: z.coerce.number().min(0),
 });

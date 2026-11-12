@@ -1,4 +1,4 @@
-import { MODALIDAD_LABELS, TIPO_CLIENTE_LABELS, UNIDAD_MEDIDA_LABELS, type Modalidad, type TipoCliente, type UnidadMedida } from "@/lib/enums";
+import { MODALIDAD_LABELS, TIPO_CLIENTE_LABELS, etiquetaUnidad, type Modalidad, type TipoCliente } from "@/lib/enums";
 import { tasasMostradas } from "@/lib/tasasCotizacion";
 import type { getCotizacion } from "@/lib/data/cotizaciones";
 import type { CuentaBancaria, SystemConfig } from "@/generated/prisma/client";
@@ -131,7 +131,7 @@ export function buildCotizacionExportData(
       claveSat: l.claveSat,
       descripcion: l.descripcion,
       cantidad: l.cantidad,
-      unidadLabel: UNIDAD_MEDIDA_LABELS[l.unidadMedida as UnidadMedida],
+      unidadLabel: etiquetaUnidad(l.unidadMedida),
       precioUnitario: l.precioUnitario,
       importe: l.importe,
     })),

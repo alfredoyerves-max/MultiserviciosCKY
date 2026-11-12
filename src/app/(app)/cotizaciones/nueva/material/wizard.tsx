@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel, Input, Select } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/format";
-import { UNIDADES_MEDIDA, UNIDAD_MEDIDA_LABELS, type UnidadMedida } from "@/lib/enums";
+import { etiquetaUnidad } from "@/lib/enums";
+import { UnidadSelect } from "@/components/ui/unidad-select";
 import type { Cliente, Producto } from "@/generated/prisma/client";
 
 /** Valor del selector de atajo cuando la línea se captura libre. */
@@ -20,7 +21,7 @@ interface LineaState {
   productoId: string;
   claveSat: string;
   descripcion: string;
-  unidadMedida: UnidadMedida;
+  unidadMedida: string;
   cantidad: number;
   precioUnitario: number;
 }
@@ -81,7 +82,7 @@ export function Wizard({
     updateLinea(key, {
       productoId,
       descripcion: producto.nombre,
-      unidadMedida: producto.unidadMedida as UnidadMedida,
+      unidadMedida: producto.unidadMedida,
       precioUnitario: producto.precioVentaSugerido ?? 0,
     });
   }
@@ -130,7 +131,7 @@ export function Wizard({
                     <option value={SIN_PRODUCTO}>— Captura libre —</option>
                     {productos.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.nombre} ({UNIDAD_MEDIDA_LABELS[p.unidadMedida as UnidadMedida]})
+                        {p.nombre} ({etiquetaUnidad(p.unidadMedida)})
                       </option>
                     ))}
                   </Select>
@@ -155,16 +156,7 @@ export function Wizard({
                 </Field>
                 <Field>
                   <FieldLabel>Unidad</FieldLabel>
-                  <Select
-                    value={l.unidadMedida}
-                    onChange={(e) => updateLinea(l.key, { unidadMedida: e.target.value as UnidadMedida })}
-                  >
-                    {UNIDADES_MEDIDA.map((u) => (
-                      <option key={u} value={u}>
-                        {UNIDAD_MEDIDA_LABELS[u]}
-                      </option>
-                    ))}
-                  </Select>
+                  <UnidadSelect value={l.unidadMedida} onChange={(v) => updateLinea(l.key, { unidadMedida: v })} />
                 </Field>
                 <Field>
                   <FieldLabel>Cantidad</FieldLabel>

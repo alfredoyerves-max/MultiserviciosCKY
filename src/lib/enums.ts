@@ -91,6 +91,11 @@ export const UNIDAD_MEDIDA_LABELS: Record<UnidadMedida, string> = {
   KIT: "Kit",
 };
 
+/** Etiqueta de una unidad guardada: la del catálogo o, si es texto capturado ("Otra…"), el texto tal cual. */
+export function etiquetaUnidad(unidad: string): string {
+  return (UNIDAD_MEDIDA_LABELS as Record<string, string>)[unidad] ?? unidad;
+}
+
 export const MOTIVOS_SALIDA = ["VENTA_CLIENTE", "USO_INTERNO"] as const;
 export type MotivoSalida = (typeof MOTIVOS_SALIDA)[number];
 
