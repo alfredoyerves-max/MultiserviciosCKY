@@ -49,9 +49,15 @@ function siguientePaso(estado: string): EstadoCotizacion | null {
 export function AccionesCotizacion({
   cotizacion,
   conPrincipal = false,
+  compacto = false,
+  enDetalle = false,
 }: {
   cotizacion: CotizacionParaAcciones;
   conPrincipal?: boolean;
+  /** Fila compacta del tablero: el botón no se estira. */
+  compacto?: boolean;
+  /** En el detalle: botón principal grande, sin "Ver detalle" y, al eliminar, vuelve al tablero. */
+  enDetalle?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -92,7 +98,7 @@ export function AccionesCotizacion({
   );
 
   const acciones: RowAction[] = [
-    { label: "Ver detalle", href: `/cotizaciones/${cotizacion.id}` },
+    ...(enDetalle ? [] : [{ label: "Ver detalle", href: `/cotizaciones/${cotizacion.id}` } as RowAction]),
     ...destinos.map<RowAction>((e) => ({
       label: ACCION_HACIA[e],
       onSelect: () => irA(e),
@@ -108,7 +114,7 @@ export function AccionesCotizacion({
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-2">
         {principal && (
-          <Button type="button" size="sm" className="flex-1" disabled={pending} onClick={() => irA(principal)}>
+          <Button type="button" size={enDetalle ? "md" : "sm"} className={compacto || enDetalle ? undefined : "flex-1"} disabled={pending} onClick={() => irA(principal)}>
             {pending ? "Guardando…" : ACCION_HACIA[principal]}
           </Button>
         )}
@@ -135,7 +141,7 @@ export function AccionesCotizacion({
         <ConfirmarEliminacionModal
           cotizacion={resumen}
           onClose={() => setModal(null)}
-          onDeleted={() => router.refresh()}
+          onDeleted={() => (enDetalle ? router.push("/cotizaciones") : router.refresh())}
         />
       )}
     </div>

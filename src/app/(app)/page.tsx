@@ -81,7 +81,6 @@ export default async function DashboardPage({
           <h1 className="text-xl font-semibold text-text">Dashboard de Cotización</h1>
           <p className="text-sm text-text-muted">Visión general de Multiservicios Yerves.</p>
         </div>
-        <ButtonLink href="/cotizaciones/nueva">+ Nueva cotización</ButtonLink>
       </div>
 
       <DashboardControls mes={mesParam} mesMinimo={mesMinimo} vista={vista} />

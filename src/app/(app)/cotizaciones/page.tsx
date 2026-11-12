@@ -31,7 +31,8 @@ export default async function CotizacionesPage({
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Cotizaciones"
-        description="Lo abierto (Borrador y Enviada) se ve siempre; el mes filtra solo el histórico."
+        description="Seguimiento de tus cotizaciones."
+        hint="Lo abierto (Borrador y Enviada) se ve siempre, sin importar el mes. El selector de mes filtra solo el histórico (Aceptadas y Rechazadas)."
       />
       <KanbanBoard
         cotizaciones={cotizaciones}

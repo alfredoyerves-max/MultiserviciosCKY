@@ -12,11 +12,9 @@ import { Select, Input } from "@/components/ui/input";
 import { formatCurrency, formatDate } from "@/lib/format";
 import {
   ESTADO_COTIZACION_LABELS,
-  TIPO_CLIENTE_LABELS,
   TIPOS_COTIZACION,
   TIPO_COTIZACION_LABELS,
   type EstadoCotizacion,
-  type TipoCliente,
   type TipoCotizacion,
 } from "@/lib/enums";
 import type { AbonoPorCobrar, Cliente, Cotizacion, CuentaPorCobrar } from "@/generated/prisma/client";
@@ -103,7 +101,7 @@ export function KanbanBoard({
       {/* Filtros — una sola fila; aplican a todo el tablero. */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <Select
-          className="h-9 w-auto"
+          className="h-9 w-[200px] shrink-0"
           value={tipo ?? "TODOS"}
           aria-label="Tipo de cotización"
           onChange={(e) => setParam("tipo", e.target.value === "TODOS" ? null : e.target.value)}
@@ -137,7 +135,7 @@ export function KanbanBoard({
               <h2 className="text-sm font-semibold text-text">{ESTADO_COTIZACION_LABELS[col.estado]}</h2>
               <span className="text-xs text-text-dim">{col.cotizaciones.length}</span>
             </div>
-            <div className="flex flex-col gap-3">
+            <div className="flex max-h-[28rem] flex-col gap-2 overflow-y-auto pr-1">
               {col.cotizaciones.length === 0 && (
                 <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs text-text-dim">
                   Sin cotizaciones
@@ -266,49 +264,38 @@ function EstadoBadge({ estado }: { estado: string }) {
 function KanbanCard({ cotizacion }: { cotizacion: CotizacionConCliente }) {
   const vigencia = vigenciaInfo(cotizacion.fechaVigencia);
 
+  // Fila compacta (~64 px): identificación y vigencia a la izquierda; total,
+  // acción principal y "⋯" a la derecha. Borde neutro siempre; si está vencida,
+  // solo una franja lateral fina en rojo (la insignia lleva el color).
   return (
-    <Card
-      className={
-        vigencia.tone === "danger"
-          ? "border-danger-strong/50"
-          : vigencia.tone === "warning"
-            ? "border-warning/40"
-            : undefined
-      }
-    >
-      <CardContent className="flex flex-col gap-2 p-4">
-        <div className="flex items-start justify-between gap-2">
-          <Link href={`/cotizaciones/${cotizacion.id}`} className="font-mono text-sm text-primary hover:underline">
-            {cotizacion.folio}
-          </Link>
-          <div className="flex flex-wrap items-center justify-end gap-1">
-            <Badge tone="neutral">{TIPO_COTIZACION_LABELS[cotizacion.tipo as TipoCotizacion]}</Badge>
+    <Card className={vigencia.tone === "danger" ? "border-l-[3px] border-l-danger-strong" : undefined}>
+      <div className="flex items-center gap-3 px-3 py-2.5">
+        <div className="min-w-0 flex-1">
+          <p className="flex min-w-0 items-baseline gap-2">
+            <Link href={`/cotizaciones/${cotizacion.id}`} className="shrink-0 font-mono text-sm text-primary hover:underline">
+              {cotizacion.folio}
+            </Link>
+            <span className="truncate text-sm text-text">{cotizacion.cliente.nombreRazonSocial}</span>
+          </p>
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <Badge tone={vigencia.tone}>{vigencia.label}</Badge>
+            <span className="text-xs text-text-dim">
+              {TIPO_COTIZACION_LABELS[cotizacion.tipo as TipoCotizacion]}
+            </span>
             {cotizacion.esSoporte && (
               <Badge tone="neutral" title={TOOLTIP_SOLO_TRAMITE}>
                 Solo trámite
               </Badge>
             )}
-          </div>
-        </div>
-
-        <p className="text-sm text-text">{cotizacion.cliente.nombreRazonSocial}</p>
-        <p className="text-xs text-text-dim">
-          {TIPO_CLIENTE_LABELS[cotizacion.cliente.tipoCliente as TipoCliente]}
-        </p>
-
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="font-mono text-base font-semibold tabular-nums text-text">
-            {formatCurrency(cotizacion.netoARecibir)}
           </p>
-          <Badge tone={vigencia.tone}>{vigencia.label}</Badge>
         </div>
-
-        <p className="text-xs text-text-dim">Vigente hasta {formatDate(cotizacion.fechaVigencia)}</p>
-
-        <div className="mt-1">
-          <AccionesCotizacion cotizacion={cotizacion} conPrincipal />
+        <p className="shrink-0 font-mono text-sm font-semibold tabular-nums text-text">
+          {formatCurrency(cotizacion.netoARecibir)}
+        </p>
+        <div className="shrink-0">
+          <AccionesCotizacion cotizacion={cotizacion} conPrincipal compacto />
         </div>
-      </CardContent>
+      </div>
     </Card>
   );
 }

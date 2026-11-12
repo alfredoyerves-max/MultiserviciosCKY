@@ -18,10 +18,10 @@ export function PagosTabs({
     <div className="flex flex-col gap-5">
       <div className="flex gap-1 border-b border-border">
         <TabButton active={tab === "cobrar"} onClick={() => setTab("cobrar")}>
-          Por Cobrar
+          Por cobrar
         </TabButton>
         <TabButton active={tab === "pagar"} onClick={() => setTab("pagar")}>
-          Por Pagar
+          Por pagar
         </TabButton>
       </div>
 

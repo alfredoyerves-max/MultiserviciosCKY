@@ -34,6 +34,8 @@ function isActive(pathname: string, href: string) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  // El botón global se oculta en las propias pantallas de nueva cotización.
+  const mostrarNueva = !pathname.startsWith("/cotizaciones/nueva");
 
   return (
     <div className="flex min-h-dvh flex-col lg:flex-row">
@@ -59,7 +61,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
 
         <div className="flex shrink-0 items-center gap-1">
-          <NuevaCotizacionMenu />
+          {mostrarNueva && <NuevaCotizacionMenu />}
           <ThemeToggle compact />
           <MobileMenu />
         </div>
@@ -80,6 +82,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <p className="text-sm font-semibold text-text leading-tight">Carlos Yerves Multiservicios</p>
         </div>
+
+        {/* Botón global — en escritorio vive aquí, bajo el logo; en móvil/tablet, en el header. */}
+        {mostrarNueva && <NuevaCotizacionMenu block className="mb-4" />}
 
         <nav className="flex flex-col gap-1">
           {NAV_ITEMS.map((item) => {
@@ -120,10 +125,6 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className="flex-1 overflow-x-hidden pb-20 lg:pb-0">
         <div className="mx-auto w-full max-w-[1280px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          {/* Botón global — en escritorio vive aquí; en móvil/tablet, en el header. */}
-          <div className="mb-4 hidden justify-end lg:flex">
-            <NuevaCotizacionMenu />
-          </div>
           {children}
         </div>
       </main>

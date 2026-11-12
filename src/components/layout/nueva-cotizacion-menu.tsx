@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
  * Botón global "+ Nueva cotización" con menú (Servicio / Material), visible en
  * toda pantalla del shell. Sustituye a la pantalla intermedia de elegir tipo.
  */
-export function NuevaCotizacionMenu({ className }: { className?: string }) {
+export function NuevaCotizacionMenu({ className, block = false }: { className?: string; block?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -37,7 +37,10 @@ export function NuevaCotizacionMenu({ className }: { className?: string }) {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-primary px-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-strong"
+        className={cn(
+          "inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-primary px-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-strong",
+          block && "h-10 w-full"
+        )}
       >
         <span className="sm:hidden" aria-hidden>+ Nueva</span>
         <span className="hidden sm:inline">+ Nueva cotización</span>
@@ -49,7 +52,10 @@ export function NuevaCotizacionMenu({ className }: { className?: string }) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-11 z-50 w-48 overflow-hidden rounded-lg border border-border-strong bg-surface-1 py-1 shadow-xl"
+          className={cn(
+            "absolute z-50 overflow-hidden rounded-lg border border-border-strong bg-surface-1 py-1 shadow-xl",
+            block ? "left-0 top-12 w-full" : "right-0 top-11 w-48"
+          )}
         >
           <Link role="menuitem" href="/cotizaciones/nueva/servicio" onClick={() => setOpen(false)} className={item}>
             Servicio

@@ -1,6 +1,7 @@
 import { listCuentasPorCobrar } from "@/lib/data/cuentasPorCobrar";
 import { listCuentasPorPagar } from "@/lib/data/cuentasPorPagar";
 import { calcularSaldo, estaVencida } from "@/lib/cuentas";
+import { PageHeader } from "@/components/ui/page-header";
 import { StatTile } from "@/components/ui/stat-tile";
 import { AnchorButton } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/format";
@@ -38,17 +39,15 @@ export default async function PagosPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-module-pagos">Pagos y Cobros</h1>
-          <p className="text-sm text-text-muted">
-            Cuentas por cobrar y por pagar, con abonos parciales y seguimiento de vencimiento.
-          </p>
-        </div>
-        <AnchorButton href="/api/pagos/export" download>
-          Exportar a Excel
-        </AnchorButton>
-      </div>
+      <PageHeader
+        title="Finanzas"
+        description="Cuentas por cobrar y por pagar, con abonos y seguimiento de vencimiento."
+        action={
+          <AnchorButton href="/api/pagos/export" download>
+            Exportar a Excel
+          </AnchorButton>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatTile label="Total por cobrar" value={formatCurrency(totalPorCobrar)} accent />
