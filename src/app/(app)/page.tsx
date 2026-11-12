@@ -90,12 +90,19 @@ export default async function DashboardPage({
   // Alertas (no dependen del mes elegido: son lo que requiere atención hoy).
   const inicioHoy = new Date(hoy);
   inicioHoy.setHours(0, 0, 0, 0);
-  const porVencer = cotizaciones.filter((c) => {
-    if (c.estado !== "BORRADOR" && c.estado !== "ENVIADA") return false;
+  // Cotizaciones abiertas (Borrador o Enviada) según su vigencia: ya vencidas
+  // (rojo) o que vencen hoy o en los próximos 3 días (ámbar). Son dos alertas
+  // distintas que nunca se cuentan juntas.
+  const abiertas = cotizaciones.filter((c) => c.estado === "BORRADOR" || c.estado === "ENVIADA");
+  const diasParaVencer = (c: { fechaVigencia: Date }) => {
     const venc = new Date(c.fechaVigencia);
     venc.setHours(0, 0, 0, 0);
-    const dias = Math.round((venc.getTime() - inicioHoy.getTime()) / 86400000);
-    return dias <= DIAS_ALERTA_VIGENCIA;
+    return Math.round((venc.getTime() - inicioHoy.getTime()) / 86400000);
+  };
+  const vencidas = abiertas.filter((c) => diasParaVencer(c) < 0);
+  const porVencer = abiertas.filter((c) => {
+    const dias = diasParaVencer(c);
+    return dias >= 0 && dias <= DIAS_ALERTA_VIGENCIA;
   });
   const cuentasVencidas = cuentasPorCobrar.filter(
     (cc) => !cc.cancelada && estaVencida(cc.fechaVencimiento, calcularSaldo(cc.montoTotal, cc.abonos))
@@ -111,8 +118,19 @@ export default async function DashboardPage({
       <DashboardControls mes={mesParam} mesMinimo={mesMinimo} vista={vista} />
 
       {/* Alertas — solo aparecen cuando hay algo que atender. */}
-      {(porVencer.length > 0 || cuentasVencidas.length > 0) && (
+      {(vencidas.length > 0 || porVencer.length > 0 || cuentasVencidas.length > 0) && (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {vencidas.length > 0 && (
+            <Link
+              href="/cotizaciones"
+              className="rounded-xl border border-danger-strong/50 bg-danger-strong/10 px-4 py-3 transition-colors hover:bg-danger-strong/15"
+            >
+              <p className="text-sm font-semibold text-danger">{vencidas.length} cotización(es) vencida(s)</p>
+              <p className="mt-0.5 text-xs text-text-muted">
+                Borradores y enviadas cuya vigencia ya pasó. Ver tablero →
+              </p>
+            </Link>
+          )}
           {porVencer.length > 0 && (
             <Link
               href="/cotizaciones"
@@ -121,9 +139,7 @@ export default async function DashboardPage({
               <p className="text-sm font-semibold text-warning-soft">
                 {porVencer.length} cotización(es) vencen en {DIAS_ALERTA_VIGENCIA} días o menos
               </p>
-              <p className="mt-0.5 text-xs text-text-muted">
-                Borradores y enviadas abiertas, incluidas las que ya vencieron. Ver tablero →
-              </p>
+              <p className="mt-0.5 text-xs text-text-muted">Vencen hoy o en los próximos días. Ver tablero →</p>
             </Link>
           )}
           {cuentasVencidas.length > 0 && (
