@@ -3,9 +3,11 @@
 import { useActionState, useMemo, useState } from "react";
 import { saveServicioAction, toggleServicioActivoAction } from "./actions";
 import { initialFormState } from "./form-state";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { AnchorButton, Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { RowActions } from "@/components/ui/row-actions";
+import { SidePanel } from "@/components/ui/side-panel";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, FieldError, FieldLabel, Input, Select, Textarea } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/format";
@@ -17,7 +19,7 @@ import {
 } from "@/lib/enums";
 import { calcularCostoReal, type CostConfigInput, type CostoRealResult } from "@/lib/costEngine";
 import { parseModalidades } from "@/lib/modalidades";
-import { sueldoMensualEfectivo, nombrePuestoEfectivo, esSueldoBajoMinimo } from "@/lib/servicioCosto";
+import { sueldoMensualEfectivo, nombrePuestoEfectivo, esSueldoBajoMinimo, costoDeServicio } from "@/lib/servicioCosto";
 import { cn } from "@/lib/cn";
 import type { Puesto, Servicio } from "@/generated/prisma/client";
 
@@ -114,43 +116,52 @@ export function ServiciosPanel({
 }) {
   const [editing, setEditing] = useState<ServicioConPuesto | null>(null);
   const [creating, setCreating] = useState(false);
+  const [verInactivos, setVerInactivos] = useState(false);
+
+  // Inactivos ocultos por defecto; el interruptor los muestra.
+  const visibles = verInactivos ? servicios : servicios.filter((s) => s.activo);
+  const inactivos = servicios.length - servicios.filter((s) => s.activo).length;
+  const conSueldoBajo = visibles.filter((s) =>
+    esSueldoBajoMinimo(sueldoMensualEfectivo(s), config.salarioMinimoMensual)
+  ).length;
+
+  const nuevoServicio = (
+    <Button size="sm" onClick={() => setCreating(true)}>
+      + Nuevo servicio
+    </Button>
+  );
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-text-muted">Catálogo de servicios ofrecidos.</p>
+        <label className="flex cursor-pointer items-center gap-2 whitespace-nowrap text-sm text-text-muted">
+          <input
+            type="checkbox"
+            checked={verInactivos}
+            onChange={(e) => setVerInactivos(e.target.checked)}
+            className="h-4 w-4 rounded border-border-strong bg-surface-2 accent-[var(--color-primary)]"
+          />
+          Ver inactivos{inactivos > 0 && <span className="text-text-dim">({inactivos})</span>}
+        </label>
         <div className="flex flex-wrap gap-2">
           <AnchorButton href="/api/servicios/export" download>
             Exportar a Excel
           </AnchorButton>
-          {!creating && (
-            <Button size="sm" onClick={() => setCreating(true)}>
-              + Nuevo servicio
-            </Button>
-          )}
+          {nuevoServicio}
         </div>
       </div>
 
-      {creating && (
-        <ServicioForm
-          puestos={puestos}
-          config={config}
-          onDone={() => setCreating(false)}
-          onCancel={() => setCreating(false)}
-        />
+      {conSueldoBajo > 0 && (
+        <p className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning-soft">
+          ⚠ {conSueldoBajo} servicio(s) con sueldo por debajo del mínimo — costo calculado sobre piso legal
+        </p>
       )}
 
-      {servicios.length === 0 ? (
+      {visibles.length === 0 ? (
         <Card>
           <EmptyState
-            title="Sin servicios todavía."
-            action={
-              !creating && (
-                <Button size="sm" onClick={() => setCreating(true)}>
-                  + Nuevo servicio
-                </Button>
-              )
-            }
+            title={servicios.length === 0 ? "Sin servicios todavía." : "No hay servicios activos."}
+            action={nuevoServicio}
           />
         </Card>
       ) : (
@@ -171,23 +182,9 @@ export function ServiciosPanel({
                   </tr>
                 </thead>
                 <tbody>
-                  {servicios.map((s) =>
-                    editing?.id === s.id ? (
-                      <tr key={s.id} className="border-b border-border last:border-0">
-                        <td colSpan={COLS} className="p-4">
-                          <ServicioForm
-                            servicio={s}
-                            puestos={puestos}
-                            config={config}
-                            onDone={() => setEditing(null)}
-                            onCancel={() => setEditing(null)}
-                          />
-                        </td>
-                      </tr>
-                    ) : (
-                      <ServicioRow key={s.id} servicio={s} config={config} onEdit={() => setEditing(s)} />
-                    )
-                  )}
+                  {visibles.map((s) => (
+                    <ServicioRow key={s.id} servicio={s} config={config} onEdit={() => setEditing(s)} />
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -197,23 +194,60 @@ export function ServiciosPanel({
               columnas ahí obliga a hacer zoom o se corta, así que cada
               servicio es su propia tarjeta con la misma información. */}
           <div className="flex flex-col gap-3 md:hidden">
-            {servicios.map((s) =>
-              editing?.id === s.id ? (
-                <ServicioForm
-                  key={s.id}
-                  servicio={s}
-                  puestos={puestos}
-                  config={config}
-                  onDone={() => setEditing(null)}
-                  onCancel={() => setEditing(null)}
-                />
-              ) : (
-                <ServicioCardMobile key={s.id} servicio={s} config={config} onEdit={() => setEditing(s)} />
-              )
-            )}
+            {visibles.map((s) => (
+              <ServicioCardMobile key={s.id} servicio={s} config={config} onEdit={() => setEditing(s)} />
+            ))}
           </div>
         </>
       )}
+
+      {(creating || editing) && (
+        <ServicioForm
+          key={editing?.id ?? "nuevo"}
+          servicio={editing ?? undefined}
+          puestos={puestos}
+          config={config}
+          onDone={() => {
+            setCreating(false);
+            setEditing(null);
+          }}
+          onCancel={() => {
+            setCreating(false);
+            setEditing(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Acción principal visible ("Ver desglose") + menú "⋯" (Editar, Desactivar / Activar). */
+function AccionesServicio({
+  servicio,
+  expandido,
+  onToggleDesglose,
+  onEdit,
+}: {
+  servicio: ServicioConPuesto;
+  expandido: boolean;
+  onToggleDesglose: () => void;
+  onEdit: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-end gap-1">
+      <Button size="sm" variant="secondary" onClick={onToggleDesglose} aria-expanded={expandido}>
+        {expandido ? "Ocultar desglose" : "Ver desglose"}
+      </Button>
+      <RowActions
+        label={`Más acciones de ${servicio.nombre}`}
+        actions={[
+          { label: "Editar", onSelect: onEdit },
+          {
+            label: servicio.activo ? "Desactivar" : "Activar",
+            onSelect: () => toggleServicioActivoAction(servicio.id, !servicio.activo),
+          },
+        ]}
+      />
     </div>
   );
 }
@@ -228,18 +262,7 @@ function ServicioRow({
   onEdit: () => void;
 }) {
   const [expandido, setExpandido] = useState(false);
-  const sueldoMensual = sueldoMensualEfectivo(servicio);
-  const bajoMinimo = esSueldoBajoMinimo(sueldoMensual, config.salarioMinimoMensual);
-
-  const costo = calcularCostoReal(config, {
-    sueldoMensualPuesto: sueldoMensual,
-    incluyeUniforme: servicio.incluyeUniforme,
-    costoUniforme: servicio.costoUniforme,
-    vidaUtilUniformeMeses: servicio.vidaUtilUniformeMeses,
-    incluyeMaterial: servicio.incluyeMaterial,
-    costoMaterial: servicio.costoMaterial,
-    vidaUtilMaterialMeses: servicio.vidaUtilMaterialMeses,
-  });
+  const { costo, bajoMinimo } = costoDeServicio(servicio, config);
   const modalidades = parseModalidades(servicio.modalidadesJson);
 
   return (
@@ -276,22 +299,13 @@ function ServicioRow({
           </div>
           <p className="text-xs text-text-dim">{formatCurrency(costo.costoRealHora)}/hora</p>
         </td>
-        <td className="px-5 py-3 text-right">
-          <div className="flex justify-end gap-2">
-            <Button size="sm" variant="ghost" onClick={() => setExpandido((v) => !v)}>
-              {expandido ? "Ocultar desglose" : "Ver desglose"}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={onEdit}>
-              Editar
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => toggleServicioActivoAction(servicio.id, !servicio.activo)}
-            >
-              {servicio.activo ? "Desactivar" : "Activar"}
-            </Button>
-          </div>
+        <td className="px-5 py-3">
+          <AccionesServicio
+            servicio={servicio}
+            expandido={expandido}
+            onToggleDesglose={() => setExpandido((v) => !v)}
+            onEdit={onEdit}
+          />
         </td>
       </tr>
       {expandido && (
@@ -317,18 +331,7 @@ function ServicioCardMobile({
   onEdit: () => void;
 }) {
   const [expandido, setExpandido] = useState(false);
-  const sueldoMensual = sueldoMensualEfectivo(servicio);
-  const bajoMinimo = esSueldoBajoMinimo(sueldoMensual, config.salarioMinimoMensual);
-
-  const costo = calcularCostoReal(config, {
-    sueldoMensualPuesto: sueldoMensual,
-    incluyeUniforme: servicio.incluyeUniforme,
-    costoUniforme: servicio.costoUniforme,
-    vidaUtilUniformeMeses: servicio.vidaUtilUniformeMeses,
-    incluyeMaterial: servicio.incluyeMaterial,
-    costoMaterial: servicio.costoMaterial,
-    vidaUtilMaterialMeses: servicio.vidaUtilMaterialMeses,
-  });
+  const { costo, bajoMinimo } = costoDeServicio(servicio, config);
   const modalidades = parseModalidades(servicio.modalidadesJson);
 
   return (
@@ -375,21 +378,15 @@ function ServicioCardMobile({
               <p className="text-xs text-text-dim">{formatCurrency(costo.costoRealHora)}/hora</p>
             </div>
           </div>
+          <AccionesServicio
+            servicio={servicio}
+            expandido={expandido}
+            onToggleDesglose={() => setExpandido((v) => !v)}
+            onEdit={onEdit}
+          />
         </div>
 
         {expandido && <DesgloseCargasPatronales costo={costo} />}
-
-        <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-2.5">
-          <Button size="sm" variant="ghost" onClick={() => setExpandido((v) => !v)}>
-            {expandido ? "Ocultar desglose" : "Ver desglose"}
-          </Button>
-          <Button size="sm" variant="ghost" onClick={onEdit}>
-            Editar
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => toggleServicioActivoAction(servicio.id, !servicio.activo)}>
-            {servicio.activo ? "Desactivar" : "Activar"}
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );
@@ -446,12 +443,21 @@ function ServicioForm({
   );
 
   return (
-    <Card className="border-primary/30">
-      <CardHeader>
-        <CardTitle>{servicio ? "Editar servicio" : "Nuevo servicio"}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form action={formAction} className="flex flex-col gap-4">
+    <SidePanel
+      title={servicio ? "Editar servicio" : "Nuevo servicio"}
+      onClose={onCancel}
+      footer={(solicitarCierre) => (
+        <>
+          <Button type="button" variant="ghost" onClick={solicitarCierre}>
+            Cancelar
+          </Button>
+          <Button type="submit" form="servicio-form" disabled={pending}>
+            {pending ? "Guardando…" : "Guardar"}
+          </Button>
+        </>
+      )}
+    >
+        <form id="servicio-form" action={formAction} className="flex flex-col gap-4">
           {servicio && <input type="hidden" name="id" value={servicio.id} />}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -669,16 +675,7 @@ function ServicioForm({
           </div>
 
           {state.error && <p className="text-sm text-danger">{state.error}</p>}
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={onCancel}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Guardando…" : "Guardar"}
-            </Button>
-          </div>
         </form>
-      </CardContent>
-    </Card>
+    </SidePanel>
   );
 }

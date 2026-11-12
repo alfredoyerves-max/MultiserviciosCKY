@@ -1,6 +1,7 @@
 import { listServicios } from "@/lib/data/servicios";
 import { listPuestos } from "@/lib/data/puestos";
 import { getSystemConfigConCeav } from "@/lib/data/config";
+import { PageHeader } from "@/components/ui/page-header";
 import { ServiciosTabs } from "./servicios-tabs";
 import { requireSession } from "@/lib/auth/session";
 
@@ -14,12 +15,7 @@ export default async function ServiciosPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold text-module-servicios">Servicios</h1>
-        <p className="text-sm text-text-muted">
-          Catálogo de servicios y puestos de trabajo asociados.
-        </p>
-      </div>
+      <PageHeader title="Servicios" description="Catálogo de servicios y puestos de trabajo asociados." />
 
       <ServiciosTabs servicios={servicios} puestos={puestos} config={config} />
     </div>
