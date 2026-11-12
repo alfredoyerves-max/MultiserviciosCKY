@@ -168,3 +168,20 @@ body {
     font-size: 16px !important;
   }
 }
+
+/* Entrada del panel lateral (SidePanel). Se desactiva si el usuario pidió menos movimiento. */
+@keyframes side-panel-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .side-panel {
+    animation: side-panel-in 160ms ease-out;
+  }
+}
