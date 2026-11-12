@@ -1,21 +1,24 @@
 import { ResumenItem } from "@/components/ui/resumen-item";
-import { getCotizacion, puedeEliminarseCotizacion } from "@/lib/data/cotizaciones";
+import { getCotizacion } from "@/lib/data/cotizaciones";
+import { getSystemConfig } from "@/lib/data/config";
+import { tasasMostradas, rotuloConTasa } from "@/lib/tasasCotizacion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AnchorButton, ButtonLink } from "@/components/ui/button";
+import { AnchorButton } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate, formatPercent } from "@/lib/format";
 import {
+  ESTADO_COTIZACION_LABELS,
   MODALIDAD_LABELS,
   TIPO_CLIENTE_LABELS,
   TIPO_COTIZACION_LABELS,
   UNIDAD_MEDIDA_LABELS,
+  type EstadoCotizacion,
   type Modalidad,
   type TipoCliente,
   type TipoCotizacion,
   type UnidadMedida,
 } from "@/lib/enums";
-import { EstadoSelect } from "../estado-select";
-import { EliminarCotizacionButton } from "../eliminar-cotizacion-button";
+import { AccionesCotizacion } from "../acciones-cotizacion";
 import { CostDetail } from "./cost-detail";
 import Link from "next/link";
 import { requireSession } from "@/lib/auth/session";
@@ -27,34 +30,37 @@ export default async function CotizacionDetallePage({
 }) {
   await requireSession();
   const { id } = await params;
-  const cotizacion = await getCotizacion(id);
+  const [cotizacion, config] = await Promise.all([getCotizacion(id), getSystemConfig()]);
   const tipo = cotizacion.tipo as TipoCotizacion;
-  const puedeEliminar = puedeEliminarseCotizacion(cotizacion);
+  // Tasas para los rótulos: deducidas de los montos guardados (la cotización no guarda tasas).
+  const tasas = tasasMostradas(cotizacion, config);
 
   return (
     <div className="flex flex-col gap-6">
+      <Link href="/cotizaciones" className="w-fit text-sm text-text-muted hover:text-text">
+        ← Cotizaciones
+      </Link>
+
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="font-mono text-xl font-semibold text-text">{cotizacion.folio}</h1>
+            <h1 className="font-mono text-xl font-semibold text-primary">{cotizacion.folio}</h1>
             <Badge tone="neutral">{TIPO_COTIZACION_LABELS[tipo]}</Badge>
-            <EstadoSelect
-              cotizacion={{
-                ...cotizacion,
-                tieneCuentaPorCobrar: cotizacion.cuentaPorCobrar !== null,
-                tieneAbonos: (cotizacion.cuentaPorCobrar?.abonos.length ?? 0) > 0,
-              }}
-            />
-            {cotizacion.esSoporte && <Badge tone="neutral">Soporte</Badge>}
+            <Badge tone={cotizacion.estado === "ACEPTADA" ? "success" : "neutral"}>
+              {ESTADO_COTIZACION_LABELS[cotizacion.estado as EstadoCotizacion]}
+            </Badge>
+            {cotizacion.esSoporte && (
+              <Badge tone="neutral" title="Trámite interno del cliente, no es una venta.">
+                Solo trámite
+              </Badge>
+            )}
           </div>
           <p className="mt-1 text-sm text-text-muted">
             {cotizacion.cliente.nombreRazonSocial} ·{" "}
             {TIPO_CLIENTE_LABELS[cotizacion.cliente.tipoCliente as TipoCliente]} ·{" "}
             {formatDate(cotizacion.createdAt)} · Vigente hasta {formatDate(cotizacion.fechaVigencia)}
           </p>
-          {cotizacion.proyecto && (
-            <p className="text-sm text-text-dim">Proyecto: {cotizacion.proyecto}</p>
-          )}
+          {cotizacion.proyecto && <p className="text-sm text-text-dim">Proyecto: {cotizacion.proyecto}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <AnchorButton href={`/api/cotizaciones/${cotizacion.id}/export?format=docx`} download>
@@ -63,27 +69,12 @@ export default async function CotizacionDetallePage({
           <AnchorButton href={`/api/cotizaciones/${cotizacion.id}/export?format=pdf`} download>
             Exportar PDF
           </AnchorButton>
-          {puedeEliminar && (
-            <EliminarCotizacionButton
-              cotizacion={{
-                id: cotizacion.id,
-                folio: cotizacion.folio,
-                tipo: cotizacion.tipo,
-                clienteNombre: cotizacion.cliente.nombreRazonSocial,
-                total: cotizacion.netoARecibir,
-              }}
-              variant="danger"
-              size="sm"
-              label="Eliminar cotización"
-              redirectTo="/cotizaciones"
-            />
-          )}
-          <ButtonLink href="/cotizaciones" variant="secondary" size="sm">
-            ← Volver
-          </ButtonLink>
+          <AccionesCotizacion cotizacion={cotizacion} conPrincipal enDetalle />
         </div>
       </div>
 
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="flex flex-col gap-6">
       {tipo === "SERVICIO" ? (
         <Card>
           <CardHeader>
@@ -154,51 +145,54 @@ export default async function CotizacionDetallePage({
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Resumen fiscal</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-            <ResumenItem label="Subtotal" value={formatCurrency(cotizacion.subtotal)} />
-            <ResumenItem label="IVA trasladado (16%)" value={formatCurrency(cotizacion.iva)} />
-            {cotizacion.retencionIsr > 0 && (
-              <ResumenItem label="Retención ISR (1.25%)" value={`- ${formatCurrency(cotizacion.retencionIsr)}`} />
-            )}
-            <ResumenItem label="Total" value={formatCurrency(cotizacion.netoARecibir)} accent />
-            {cotizacion.margenUtilidadPct != null && (
-              <ResumenItem label="Margen aplicado" value={formatPercent(cotizacion.margenUtilidadPct)} />
-            )}
-          </div>
+        {cotizacion.cuentaPorCobrar && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Cuenta por cobrar</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Link
+                href={`/pagos/cobrar/${cotizacion.cuentaPorCobrar.id}`}
+                className="text-sm text-primary hover:underline"
+              >
+                Ver cuenta por cobrar →
+              </Link>
+            </CardContent>
+          </Card>
+        )}
 
-          {tipo === "SERVICIO" && (
-            <CostDetail
-              lineas={cotizacion.lineas.map((l) => ({
-                id: l.id,
-                servicioNombre: l.servicio.nombre,
-                costoRealTotal: l.costoRealTotal,
-                precioVenta: l.precioVenta,
-              }))}
-            />
-          )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {cotizacion.cuentaPorCobrar && (
-        <Card>
+        <Card className="lg:sticky lg:top-6">
           <CardHeader>
-            <CardTitle>Cuenta por cobrar</CardTitle>
+            <CardTitle>Resumen</CardTitle>
           </CardHeader>
-          <CardContent>
-            <Link
-              href={`/pagos/cobrar/${cotizacion.cuentaPorCobrar.id}`}
-              className="text-sm text-primary hover:underline"
-            >
-              Ver cuenta por cobrar →
-            </Link>
+          <CardContent className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-1">
+              <ResumenItem label="Subtotal" value={formatCurrency(cotizacion.subtotal)} />
+              <ResumenItem label={rotuloConTasa("IVA trasladado", tasas.iva)} value={formatCurrency(cotizacion.iva)} />
+              {cotizacion.retencionIsr > 0 && (
+                <ResumenItem label={rotuloConTasa("Retención ISR", tasas.retencionIsr)} value={`- ${formatCurrency(cotizacion.retencionIsr)}`} />
+              )}
+              <ResumenItem label="Total" value={formatCurrency(cotizacion.netoARecibir)} accent />
+              {cotizacion.margenUtilidadPct != null && (
+                <ResumenItem label="Margen aplicado" value={formatPercent(cotizacion.margenUtilidadPct)} />
+              )}
+            </div>
+
+            {tipo === "SERVICIO" && (
+              <CostDetail
+                lineas={cotizacion.lineas.map((l) => ({
+                  id: l.id,
+                  servicioNombre: l.servicio.nombre,
+                  costoRealTotal: l.costoRealTotal,
+                  precioVenta: l.precioVenta,
+                }))}
+              />
+            )}
           </CardContent>
         </Card>
-      )}
+      </div>
     </div>
   );
 }

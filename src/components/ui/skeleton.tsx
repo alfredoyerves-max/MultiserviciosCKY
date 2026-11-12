@@ -17,7 +17,7 @@ export function PageSkeleton({
 }: {
   /** Tarjetas de cifras bajo el encabezado (Dashboard, Pagos). */
   tiles?: number;
-  variante?: "tabla" | "tablero";
+  variante?: "tabla" | "tablero" | "detalle" | "formulario";
 }) {
   return (
     <div role="status" aria-busy="true" className="flex flex-col gap-6">
@@ -43,7 +43,23 @@ export function PageSkeleton({
         </div>
       )}
 
-      {variante === "tablero" ? (
+      {variante === "detalle" || variante === "formulario" ? (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
+          <div className="flex flex-col gap-4 rounded-xl border border-border bg-surface-1 p-5">
+            <Skeleton className="h-4 w-40" />
+            {Array.from({ length: variante === "formulario" ? 4 : 5 }, (_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+          <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface-1 p-5">
+            <Skeleton className="h-4 w-28" />
+            {Array.from({ length: 4 }, (_, i) => (
+              <Skeleton key={i} className="h-6 w-full" />
+            ))}
+            <Skeleton className="mt-2 h-10 w-full" />
+          </div>
+        </div>
+      ) : variante === "tablero" ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {[0, 1].map((col) => (
             <div key={col} className="flex flex-col gap-3 rounded-xl border border-border bg-surface-1 p-4">

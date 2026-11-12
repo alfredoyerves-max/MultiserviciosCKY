@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/format";
 
 interface LineaCosto {
@@ -16,22 +15,19 @@ export function CostDetail({ lineas }: { lineas: LineaCosto[] }) {
 
   return (
     <div className="border-t border-border pt-4">
-      <Button
+      <button
         type="button"
-        variant="ghost"
         onClick={() => setOpen((v) => !v)}
-        className="text-left"
-        // El tamaño "sm" fija h-8 (una sola línea) y el estilo base fuerza
-        // whitespace-nowrap — bien para botones cortos, pero éste es el
-        // único botón de la app con una etiqueta larga a propósito y
-        // necesita envolverse en 2-3 líneas en móvil. Un className no le
-        // gana a esas reglas base por el orden de generación de utilidades
-        // de Tailwind, así que van como estilo inline (evitamos `size` por
-        // completo para no competir con su h-8).
-        style={{ whiteSpace: "normal", height: "auto", padding: "0.375rem 0.75rem" }}
+        aria-expanded={open}
+        title="Información interna: nunca aparece en el documento al cliente."
+        className="inline-flex items-center gap-1.5 text-left text-sm text-primary underline-offset-2 hover:underline"
       >
-        {open ? "Ocultar" : "Ver"} detalle de costos (interno — nunca va en el documento al cliente)
-      </Button>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4 shrink-0" aria-hidden>
+          <rect x="5" y="11" width="14" height="9" rx="2" />
+          <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+        </svg>
+        {open ? "Ocultar" : "Ver"} detalle de costos (interno)
+      </button>
       {open && (
         <div className="overflow-x-auto">
           <table className="mt-3 w-full text-sm">
