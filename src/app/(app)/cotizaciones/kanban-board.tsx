@@ -148,7 +148,7 @@ export function KanbanBoard({
               <h2 className="text-sm font-semibold text-text">{ESTADO_COTIZACION_LABELS[col.estado]}</h2>
               <span className="text-xs text-text-dim">{col.cotizaciones.length}</span>
             </div>
-            <div className="flex max-h-[28rem] flex-col gap-2 overflow-y-auto pr-1">
+            <div className="flex max-h-[max(12rem,calc(100dvh-20rem))] flex-col gap-2 overflow-y-auto pr-1">
               {col.cotizaciones.length === 0 && (
                 <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs text-text-dim">
                   Sin cotizaciones

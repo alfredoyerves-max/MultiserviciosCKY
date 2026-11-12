@@ -143,6 +143,13 @@ select option {
   color: var(--color-text);
 }
 
+/* Escala visual: la referencia es 100 % del navegador. El tamaño base baja a 90 %
+   (14.4 px en vez de 16 px). Tailwind mide texto y espacios en rem, así que todo
+   escala junto; los valores en px (bordes, panel lateral, ancho máximo) no cambian. */
+html {
+  font-size: 90%;
+}
+
 body {
   background: var(--color-bg);
   color: var(--color-text);
