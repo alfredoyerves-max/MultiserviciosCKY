@@ -9,7 +9,7 @@ export type RowAction =
   | { label: string; href: string; danger?: boolean }
   | { label: string; onSelect: () => void; danger?: boolean; disabled?: boolean; hint?: string };
 
-const MENU_WIDTH = 208;
+const MENU_WIDTH = 184;
 
 /**
  * Menú "⋯" de una fila o tarjeta. Se pinta en un portal con posición fija para
@@ -84,7 +84,10 @@ export function RowActions({ actions, label = "Más acciones" }: { actions: RowA
             ref={menuRef}
             role="menu"
             style={{ top: pos.top, left: pos.left, width: MENU_WIDTH }}
-            className="fixed z-50 overflow-hidden rounded-lg border border-border-strong bg-surface-1 py-1 shadow-xl"
+            // select-none: las opciones son botones, no texto (arrastrar el ratón no debe seleccionarlas).
+            // El menú nace pegado al botón (debajo, o encima si no cabe) y nunca sobre su propia fila.
+            className="fixed z-50 select-none overflow-hidden rounded-lg border border-border-strong bg-surface-1 py-1 shadow-xl"
+            onMouseDown={(e) => e.preventDefault()}
           >
             {actions.map((a) =>
               "href" in a ? (
