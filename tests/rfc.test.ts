@@ -1,5 +1,5 @@
 // Prueba del RFC (formato, fecha, tipo deducido) y del esquema de cliente nuevo. Correr con: npm run test:rfc
-import { analizarRfc, tipoClienteEfectivo } from "../src/lib/rfc";
+import { analizarRfc, tipoClienteEfectivo, tiposPermitidosPorRfc } from "../src/lib/rfc";
 import { clienteSchema } from "../src/lib/schemas/cliente";
 
 let fallos = 0;
@@ -20,6 +20,13 @@ ok("día 00 inválido", est("ABC850100AB1") === "invalido");
 ok("día 32 inválido", est("ABC850132AB1") === "invalido");
 ok("14 caracteres inválido", est("ABCD850101AB1X") === "invalido");
 ok("tipo efectivo: RFC válido manda sobre el manual", tipoClienteEfectivo("ABCD850101AB1", "PERSONA_MORAL") === "PERSONA_FISICA");
+ok("RFC de 12: permite Persona Moral y Gobierno", JSON.stringify(tiposPermitidosPorRfc("ABC850101AB1")) === JSON.stringify(["PERSONA_MORAL", "GOBIERNO"]));
+ok("RFC de 13: solo Persona Física (fijo)", JSON.stringify(tiposPermitidosPorRfc("ABCD850101AB1")) === JSON.stringify(["PERSONA_FISICA"]));
+ok("sin RFC válido: tipo libre", tiposPermitidosPorRfc("") === null && tiposPermitidosPorRfc("ABC8501") === null);
+ok("RFC de 12 sin elegir: Persona Moral por defecto", tipoClienteEfectivo("ABC850101AB1", "") === "PERSONA_MORAL");
+ok("RFC de 12 con Gobierno elegido: Gobierno", tipoClienteEfectivo("ABC850101AB1", "GOBIERNO") === "GOBIERNO");
+ok("RFC de 12 con Persona Física elegida (no permitida): vuelve a Persona Moral", tipoClienteEfectivo("ABC850101AB1", "PERSONA_FISICA") === "PERSONA_MORAL");
+ok("RFC de 13 ignora Gobierno: Persona Física", tipoClienteEfectivo("ABCD850101AB1", "GOBIERNO") === "PERSONA_FISICA");
 ok("tipo efectivo: sin RFC usa el manual", tipoClienteEfectivo("", "GOBIERNO") === "GOBIERNO" && tipoClienteEfectivo("", "") === "");
 
 const base = { nombreRazonSocial: "PRUEBA SA", contacto: "" };
@@ -27,6 +34,9 @@ ok("esquema: sin RFC y sin tipo rechaza", !clienteSchema.safeParse({ ...base, rf
 ok("esquema: sin RFC con tipo acepta", clienteSchema.safeParse({ ...base, rfc: "", tipoCliente: "PERSONA_FISICA" }).success);
 ok("esquema: RFC inválido rechaza", !clienteSchema.safeParse({ ...base, rfc: "ABC851301AB1", tipoCliente: "PERSONA_MORAL" }).success);
 ok("esquema: RFC moral con tipo física rechaza", !clienteSchema.safeParse({ ...base, rfc: "ABC850101AB1", tipoCliente: "PERSONA_FISICA" }).success);
+ok("esquema: RFC de 12 con tipo Gobierno acepta", clienteSchema.safeParse({ ...base, rfc: "ABC850101AB1", tipoCliente: "GOBIERNO" }).success);
+ok("esquema: RFC de 13 con tipo Gobierno rechaza", !clienteSchema.safeParse({ ...base, rfc: "ABCD850101AB1", tipoCliente: "GOBIERNO" }).success);
+ok("esquema: RFC de 13 con Persona Física acepta", clienteSchema.safeParse({ ...base, rfc: "ABCD850101AB1", tipoCliente: "PERSONA_FISICA" }).success);
 ok("esquema: RFC moral con tipo moral acepta y normaliza", (() => { const r = clienteSchema.safeParse({ ...base, rfc: "abc850101ab1", tipoCliente: "PERSONA_MORAL" }); return r.success && r.data.rfc === "ABC850101AB1"; })());
 console.log(fallos === 0 ? "\nTODO OK" : `\n${fallos} FALLA(S)`);
 process.exit(fallos === 0 ? 0 : 1);

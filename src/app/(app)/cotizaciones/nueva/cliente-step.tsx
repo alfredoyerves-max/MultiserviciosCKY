@@ -1,7 +1,7 @@
 "use client";
 
 import { retencionInicial } from "@/lib/retencion";
-import { analizarRfc, normalizarRfc, tipoClienteEfectivo, textoTipoDeducido, MENSAJE_TIPO_CLIENTE } from "@/lib/rfc";
+import { analizarRfc, normalizarRfc, tipoClienteEfectivo, tiposPermitidosPorRfc, textoTipoDeducido, MENSAJE_TIPO_CLIENTE } from "@/lib/rfc";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -141,7 +141,10 @@ export function ClienteStep({
   errorCliente: string | null;
 }) {
   const analisisRfc = analizarRfc(clienteNuevo.rfc);
-  const tipoDeducido = analisisRfc.estado === "valido" ? analisisRfc.tipo : null;
+  const permitidos = tiposPermitidosPorRfc(clienteNuevo.rfc);
+  // 13 caracteres: Persona Física fija. 12: se elige entre Persona Moral (por defecto) y Gobierno.
+  const tipoFijo = permitidos && permitidos.length === 1 ? permitidos[0] : null;
+  const tipoConRfc = permitidos && permitidos.length > 1 ? tipoClienteEfectivo(clienteNuevo.rfc, clienteNuevo.tipoCliente) : null;
   return (
     <Card>
       <CardHeader>
@@ -203,8 +206,19 @@ export function ClienteStep({
             </Field>
             <Field>
               <FieldLabel>Tipo de cliente</FieldLabel>
-              {tipoDeducido ? (
-                <Input readOnly value={textoTipoDeducido(tipoDeducido)} className="cursor-default text-text-muted" />
+              {tipoFijo ? (
+                <Input readOnly value={textoTipoDeducido(tipoFijo)} className="cursor-default text-text-muted" />
+              ) : permitidos ? (
+                <Select
+                  value={tipoConRfc || permitidos[0]}
+                  onChange={(e) => setClienteNuevo((c) => ({ ...c, tipoCliente: e.target.value as TipoCliente }))}
+                >
+                  {permitidos.map((t) => (
+                    <option key={t} value={t}>
+                      {TIPO_CLIENTE_LABELS[t]}
+                    </option>
+                  ))}
+                </Select>
               ) : (
                 <Select
                   value={clienteNuevo.tipoCliente || "_none_"}

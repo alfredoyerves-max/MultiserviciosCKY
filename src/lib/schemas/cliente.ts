@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { TIPOS_CLIENTE } from "@/lib/enums";
-import { analizarRfc, normalizarRfc, MENSAJE_TIPO_CLIENTE } from "@/lib/rfc";
+import { analizarRfc, normalizarRfc, tiposPermitidosPorRfc, MENSAJE_TIPO_CLIENTE } from "@/lib/rfc";
 
 // El RFC sigue siendo opcional; si se captura, debe ser válido y fija el tipo de persona
-// (12 caracteres = Persona Moral, 13 = Persona Física). Sin RFC, el tipo es obligatorio.
+// (13 caracteres = Persona Física; 12 = Persona Moral o Gobierno). Sin RFC, el tipo es obligatorio.
 export const clienteSchema = z
   .object({
     nombreRazonSocial: z.string().trim().min(1, "Requerido"),
@@ -15,7 +15,7 @@ export const clienteSchema = z
     const a = analizarRfc(v.rfc ?? "");
     if (a.estado === "invalido") {
       ctx.addIssue({ code: "custom", path: ["rfc"], message: a.error });
-    } else if (a.estado === "valido" && a.tipo !== v.tipoCliente) {
+    } else if (a.estado === "valido" && !tiposPermitidosPorRfc(v.rfc ?? "")!.includes(v.tipoCliente)) {
       ctx.addIssue({ code: "custom", path: ["tipoCliente"], message: "El tipo de cliente no corresponde al RFC." });
     }
   })

@@ -32,13 +32,28 @@ export function analizarRfc(rfc: string): AnalisisRfc {
   return { estado: "valido", tipo: valor.length === 12 ? "PERSONA_MORAL" : "PERSONA_FISICA" };
 }
 
-/** Tipo de cliente efectivo: el deducido del RFC si es válido; si no, el elegido a mano ("" = sin elegir). */
-export function tipoClienteEfectivo(rfc: string, tipoManual: TipoCliente | ""): TipoCliente | "" {
+/**
+ * Tipos que admite un RFC válido: de 13 caracteres solo Persona Física (fijo); de 12, Persona Moral
+ * (por defecto) o Gobierno, porque las entidades de gobierno también tienen RFC de 12.
+ * `null` = sin RFC válido: el tipo se elige libremente.
+ */
+export function tiposPermitidosPorRfc(rfc: string): TipoCliente[] | null {
   const a = analizarRfc(rfc);
-  return a.estado === "valido" ? a.tipo : tipoManual;
+  if (a.estado !== "valido") return null;
+  return a.tipo === "PERSONA_FISICA" ? ["PERSONA_FISICA"] : ["PERSONA_MORAL", "GOBIERNO"];
 }
 
-/** Texto del tipo fijado por el RFC, p. ej. "Persona Moral (deducido del RFC)". */
+/**
+ * Tipo de cliente efectivo. Con RFC válido: Persona Física si tiene 13 caracteres; con 12, lo elegido a mano
+ * si es Gobierno y Persona Moral en cualquier otro caso. Sin RFC válido: lo elegido a mano ("" = sin elegir).
+ */
+export function tipoClienteEfectivo(rfc: string, tipoManual: TipoCliente | ""): TipoCliente | "" {
+  const permitidos = tiposPermitidosPorRfc(rfc);
+  if (!permitidos) return tipoManual;
+  return permitidos.includes(tipoManual as TipoCliente) ? (tipoManual as TipoCliente) : permitidos[0];
+}
+
+/** Texto del tipo fijado por el RFC, p. ej. "Persona Física (deducido del RFC)". */
 export function textoTipoDeducido(tipo: TipoCliente): string {
   return `${TIPO_CLIENTE_LABELS[tipo]} (deducido del RFC)`;
 }
