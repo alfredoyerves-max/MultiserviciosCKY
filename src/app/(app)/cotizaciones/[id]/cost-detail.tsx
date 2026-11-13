@@ -45,7 +45,7 @@ export function CostDetail({ lineas }: { lineas: LineaCosto[] }) {
                   <dd className="font-mono tabular-nums text-text">{formatCurrency(l.precioVenta)}</dd>
                 </div>
                 <div className="flex items-baseline justify-between gap-3 border-t border-border pt-1">
-                  <dt className="text-text-dim">Margen</dt>
+                  <dt className="text-text-dim">Recargo</dt>
                   <dd className="font-mono tabular-nums text-success-soft">
                     {formatCurrency(l.precioVenta - l.costoRealTotal)}
                   </dd>

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel, Input, Select } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/format";
+import { margenSobrePrecioPct } from "@/lib/recargo";
 import { textoAvisoSueldo } from "@/lib/servicioCosto";
 import { MODALIDAD_LABELS, type Modalidad } from "@/lib/enums";
 import type { Cliente } from "@/generated/prisma/client";
@@ -249,7 +250,7 @@ export function Wizard({
         sinLineas={lineas.length === 0}
       >
         <Field>
-          <FieldLabel>Margen de utilidad de esta cotización (%)</FieldLabel>
+          <FieldLabel>Recargo sobre costo (%)</FieldLabel>
           <Input
             type="number"
             step="0.01"
@@ -257,6 +258,9 @@ export function Wizard({
             onFocus={(e) => e.target.select()}
             onChange={(e) => setMargenUtilidadPct(Number(e.target.value) || 0)}
           />
+          <p className="text-xs text-text-dim">
+            Precio = costo × (1 + recargo). Equivale a {margenSobrePrecioPct(margenUtilidadPct).toFixed(2)} % de margen sobre el precio.
+          </p>
         </Field>
       </ResumenCotizacionCard>
     </form>
