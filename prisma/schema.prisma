@@ -24,9 +24,9 @@ datasource db {
 model SystemConfig {
   id Int @id @default(1)
 
-  umaDiaria    Float
-  umaMensual   Float
-  topeSbcUmas  Float // en múltiplos de UMA, ej. 25
+  umaDiaria   Float
+  umaMensual  Float
+  topeSbcUmas Float // en múltiplos de UMA, ej. 25
 
   /// Salario mínimo general vigente (Campeche, zona general). Vive en la
   /// sección fiscal (candado de contraseña) — es la base de las bandas 1-2
@@ -45,18 +45,18 @@ model SystemConfig {
   // Reforma LSS/LSAR (DOF 16-dic-2020), Art. 168 fracción II: la cuota
   // patronal depende del SBC del trabajador en múltiplos de UMA/SM.
 
-  isnPct                Float // % de la nómina
-  impuestoAdicionalPct  Float // % del ISN
+  isnPct               Float // % de la nómina
+  impuestoAdicionalPct Float // % del ISN
 
-  diasAguinaldo       Int
-  diasVacaciones      Int
-  primaVacacionalPct  Float
+  diasAguinaldo      Int
+  diasVacaciones     Int
+  primaVacacionalPct Float
 
-  ivaPct         Float
+  ivaPct          Float
   retencionIsrPct Float // Art. 113-J RESICO, solo Persona Moral
 
-  horasPorDia    Int
-  diasPorSemana  Int
+  horasPorDia   Int
+  diasPorSemana Int
 
   margenUtilidadDefaultPct Float // placeholder inicial, editable en /configuracion
 
@@ -85,8 +85,8 @@ model SystemConfig {
   /// documento (ver lib/export/cotizacionData.ts). Reemplaza a las 6 leyendas
   /// anteriores (Fase 4). Protegido por el mismo candado. El interruptor
   /// `mostrar*` omite el bloque completo del documento sin perder el texto.
-  condicionesTerminosServicio String @default("Precios en moneda nacional (MXN), sujetos a la vigencia de esta cotización. Pago de contado: liquidación contra entrega o al término del periodo acordado. El servicio incluye personal uniformado y monitoreo de calidad en sitio; los insumos y consumibles de limpieza corren por cuenta del cliente, salvo solicitud expresa de suministro independiente. Nuestro compromiso es brindar un servicio profesional y supervisado, ejecutado por personal calificado bajo estrictos estándares de calidad, seguridad y cumplimiento en cada entrega.")
-  condicionesTerminosMaterial String @default("Precios en moneda nacional (MXN), sujetos a la vigencia de esta cotización. Pago 100% anticipado, previo a la preparación del pedido y a su entrega o embarque. Precios exclusivos para la venta y entrega de los materiales o productos solicitados; no incluye aplicación ni servicios operativos. Garantizamos la calidad, las especificaciones técnicas y el óptimo estado de los materiales suministrados, con estricto control en tiempos de entrega.")
+  condicionesTerminosServicio        String  @default("Precios en moneda nacional (MXN), sujetos a la vigencia de esta cotización. Pago de contado: liquidación contra entrega o al término del periodo acordado. El servicio incluye personal uniformado y monitoreo de calidad en sitio; los insumos y consumibles de limpieza corren por cuenta del cliente, salvo solicitud expresa de suministro independiente. Nuestro compromiso es brindar un servicio profesional y supervisado, ejecutado por personal calificado bajo estrictos estándares de calidad, seguridad y cumplimiento en cada entrega.")
+  condicionesTerminosMaterial        String  @default("Precios en moneda nacional (MXN), sujetos a la vigencia de esta cotización. Pago 100% anticipado, previo a la preparación del pedido y a su entrega o embarque. Precios exclusivos para la venta y entrega de los materiales o productos solicitados; no incluye aplicación ni servicios operativos. Garantizamos la calidad, las especificaciones técnicas y el óptimo estado de los materiales suministrados, con estricto control en tiempos de entrega.")
   mostrarCondicionesTerminosServicio Boolean @default(true)
   mostrarCondicionesTerminosMaterial Boolean @default(true)
 
@@ -94,8 +94,8 @@ model SystemConfig {
   /// se leen ni se escriben desde la app — quedaron fusionadas en
   /// `condicionesTerminos*`. Se conservan sin uso (migración aditiva); su
   /// eliminación sería una limpieza aparte.
-  garantiaServicio              String @default("Nuestro compromiso es brindar un servicio profesional y supervisado, ejecutado por personal calificado bajo estrictos estándares de calidad, seguridad y cumplimiento en cada entrega.")
-  garantiaMaterial              String @default("Garantizamos la calidad, especificaciones técnicas y óptimo estado de los materiales suministrados, asegurando un estricto control en tiempos de entrega y disponibilidad de inventario.")
+  garantiaServicio               String @default("Nuestro compromiso es brindar un servicio profesional y supervisado, ejecutado por personal calificado bajo estrictos estándares de calidad, seguridad y cumplimiento en cada entrega.")
+  garantiaMaterial               String @default("Garantizamos la calidad, especificaciones técnicas y óptimo estado de los materiales suministrados, asegurando un estricto control en tiempos de entrega y disponibilidad de inventario.")
   /// "Condiciones Comerciales" (precio/moneda/vigencia/modalidad de pago) —
   /// antes se llamaba condicionPago*; renombrado y con texto nuevo en el
   /// documento maestro de diseño.
@@ -103,8 +103,8 @@ model SystemConfig {
   condicionesComercialesMaterial String @default("Precios en moneda nacional (MXN) sujetos a disponibilidad de inventario. Modalidad de pago 100% anticipado previo a la preparación de pedido y entrega/embarque.")
   /// "Condiciones Operativas" (alcance del servicio/material) — antes se
   /// llamaba condicionesComerciales*; mismo texto, solo renombrado.
-  condicionesOperativasServicio String @default("El servicio incluye personal uniformado y monitoreo de calidad en sitio. Los insumos y consumibles de limpieza corren por cuenta del cliente, salvo solicitud expresa de suministro independiente.")
-  condicionesOperativasMaterial String @default("Precios exclusivos para la venta y entrega de materiales o productos solicitados. No incluye aplicación ni servicios operativos.")
+  condicionesOperativasServicio  String @default("El servicio incluye personal uniformado y monitoreo de calidad en sitio. Los insumos y consumibles de limpieza corren por cuenta del cliente, salvo solicitud expresa de suministro independiente.")
+  condicionesOperativasMaterial  String @default("Precios exclusivos para la venta y entrega de materiales o productos solicitados. No incluye aplicación ni servicios operativos.")
 
   /// Interruptor por leyenda — si es false, el bloque (encabezado +
   /// texto) NO aparece en el documento exportado para ese tipo, aunque el
@@ -271,9 +271,9 @@ model Cliente {
 /// pipeline de estados, kanban, modal de confirmación y generación de
 /// cuenta por cobrar (aceptarCotizacion) — ninguno toca Inventario.
 model Cotizacion {
-  id     String @id @default(cuid())
-  folio  String @unique
-  tipo   String @default("SERVICIO")
+  id    String @id @default(cuid())
+  folio String @unique
+  tipo  String @default("SERVICIO")
 
   clienteId String
   cliente   Cliente @relation(fields: [clienteId], references: [id])
@@ -303,6 +303,11 @@ model Cotizacion {
   /// de compras sin intención real de compra) — no es un estado ni un tipo
   /// separado, solo un flag que el kanban oculta por defecto.
   esSoporte Boolean @default(false)
+
+  /// Retención ISR 1.25 %: null = se deriva del tipo del cliente (cotizaciones anteriores a esta
+  /// casilla); true/false = lo que se decidió en el formulario. Valor efectivo =
+  /// aplicaRetencion ?? (el cliente es Persona Moral).
+  aplicaRetencion Boolean?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -395,9 +400,9 @@ model CuentaPorCobrar {
   cotizacionId String     @unique
   cotizacion   Cotizacion @relation(fields: [cotizacionId], references: [id])
 
-  montoTotal      Float
+  montoTotal       Float
   fechaVencimiento DateTime
-  cancelada       Boolean  @default(false)
+  cancelada        Boolean  @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -410,9 +415,9 @@ model AbonoPorCobrar {
   cuentaPorCobrarId String
   cuentaPorCobrar   CuentaPorCobrar @relation(fields: [cuentaPorCobrarId], references: [id], onDelete: Cascade)
 
-  fecha  DateTime
-  monto  Float
-  nota   String?
+  fecha DateTime
+  monto Float
+  nota  String?
 
   createdAt DateTime @default(now())
 
@@ -605,4 +610,46 @@ model LoginAttempt {
   intentos       Int       @default(0)
   bloqueadoHasta DateTime?
   updatedAt      DateTime  @updatedAt
+}
+
+/// Catálogos editables (Configuración › Catálogos). Se crean y se eliminan; no hay "activa".
+/// La unicidad sin distinguir mayúsculas se revisa en la capa de datos (un índice por expresión
+/// no se puede describir en este esquema y Prisma lo marcaría como deriva).
+
+/// Categoría de Servicio (ámbito SERVICIO). ACTIVO y PRODUCTO están previstos para después.
+/// Servicio.categoria guarda el NOMBRE (o el código histórico, p. ej. "LIMPIEZA") como texto.
+model Categoria {
+  id     String @id @default(cuid())
+  nombre String
+  /// SERVICIO | ACTIVO | PRODUCTO
+  ambito String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ambito, nombre])
+}
+
+/// Unidad de medida para productos y líneas de cotización. La clave SAT de unidad
+/// (c_ClaveUnidad, 3 caracteres) es opcional.
+model UnidadMedida {
+  id       String  @id @default(cuid())
+  nombre   String  @unique
+  claveSat String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Clave de producto/servicio SAT (c_ClaveProdServ, 8 dígitos). `verificada` = confirmada
+/// contra el catálogo oficial; las que agrega el usuario nacen sin verificar.
+model ClaveSat {
+  id                String  @id @default(cuid())
+  clave             String  @unique
+  descripcion       String
+  palabrasSimilares String?
+  verificada        Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

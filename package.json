@@ -14,6 +14,7 @@
     "test:abonofecha": "tsx tests/abonoFecha.test.ts",
     "test:rfc": "tsx tests/rfc.test.ts",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:catalogos": "tsx prisma/seed-catalogos.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
