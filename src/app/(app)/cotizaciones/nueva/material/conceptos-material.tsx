@@ -3,10 +3,11 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Field, FieldLabel, Input, Select } from "@/components/ui/input";
+import { Field, FieldError, FieldLabel, Input, Select } from "@/components/ui/input";
 import { UnidadSelect } from "@/components/ui/unidad-select";
 import { formatCurrency } from "@/lib/format";
 import { etiquetaUnidad } from "@/lib/enums";
+import { claveSatValida, MENSAJE_CLAVE_SAT } from "@/lib/claveSat";
 import type { Producto } from "@/generated/prisma/client";
 
 /** Valor del selector de atajo cuando la línea se captura libre. */
@@ -103,6 +104,7 @@ export function ConceptosMaterial({
     }
     const cantidad = Number(borrador.cantidad);
     const precio = borrador.precioUnitario.trim() === "" ? 0 : Number(borrador.precioUnitario);
+    if (!claveSatValida(borrador.claveSat)) return setAviso(MENSAJE_CLAVE_SAT);
     if (!(cantidad > 0)) return setAviso("La cantidad debe ser mayor a 0.");
     if (!(precio >= 0)) return setAviso("El precio no puede ser negativo.");
     if (!borrador.unidadMedida.trim()) return setAviso("Indica la unidad.");
@@ -186,10 +188,13 @@ export function ConceptosMaterial({
               <FieldLabel>Clave SAT</FieldLabel>
               <Input
                 value={borrador.claveSat}
-                maxLength={20}
+                maxLength={8}
+                inputMode="numeric"
+                aria-invalid={!claveSatValida(borrador.claveSat)}
                 onChange={(e) => cambiar({ claveSat: e.target.value })}
                 onKeyDown={teclaCaptura}
               />
+              {!claveSatValida(borrador.claveSat) && <FieldError>{MENSAJE_CLAVE_SAT}</FieldError>}
             </Field>
             <Field>
               <FieldLabel>Unidad</FieldLabel>
