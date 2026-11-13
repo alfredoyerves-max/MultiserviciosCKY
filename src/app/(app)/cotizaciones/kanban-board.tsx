@@ -31,15 +31,16 @@ type CotizacionConCliente = Cotizacion & {
 const DIAS_ALERTA_VIGENCIA = 3;
 
 /** Insignia de vigencia de una cotización abierta (Borrador o Enviada):
- *  rojo = vencida, ámbar = vence hoy o en ≤3 días, neutro = con margen. */
-function vigenciaInfo(fechaVigencia: Date): { label: string; tone: "danger" | "warning" | "neutral" } {
+ *  rojo = Enviada vencida, gris = Borrador caducado (aún no se manda a nadie, no es una falta),
+ *  ámbar = vence hoy o en ≤3 días, neutro = con margen. */
+function vigenciaInfo(fechaVigencia: Date, estado: string): { label: string; tone: "danger" | "warning" | "neutral" } {
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
   const venc = new Date(fechaVigencia);
   venc.setHours(0, 0, 0, 0);
   const dias = Math.round((venc.getTime() - hoy.getTime()) / 86400000);
 
-  if (dias < 0) return { label: "Vencida", tone: "danger" };
+  if (dias < 0) return estado === "BORRADOR" ? { label: "Caducada", tone: "neutral" } : { label: "Vencida", tone: "danger" };
   if (dias === 0) return { label: "Vence hoy", tone: "warning" };
   const label = `Vence en ${dias} ${dias === 1 ? "día" : "días"}`;
   return { label, tone: dias <= DIAS_ALERTA_VIGENCIA ? "warning" : "neutral" };
@@ -291,7 +292,7 @@ function EstadoBadge({ estado }: { estado: string }) {
 }
 
 function KanbanCard({ cotizacion }: { cotizacion: CotizacionConCliente }) {
-  const vigencia = vigenciaInfo(cotizacion.fechaVigencia);
+  const vigencia = vigenciaInfo(cotizacion.fechaVigencia, cotizacion.estado);
 
   // Fila compacta (~64 px): identificación y vigencia a la izquierda; total,
   // acción principal y "⋯" a la derecha. Borde neutro siempre; si está vencida,
