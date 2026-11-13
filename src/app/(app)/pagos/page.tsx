@@ -35,7 +35,6 @@ export default async function PagosPage() {
     const saldo = calcularSaldo(c.montoTotal, c.abonos);
     return estaVencida(c.fechaVencimiento, saldo) ? sum + saldo : sum;
   }, 0);
-  const totalVencido = vencidoCobrar + vencidoPagar;
 
   return (
     <div className="flex flex-col gap-6">
@@ -49,13 +48,18 @@ export default async function PagosPage() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatTile label="Total por cobrar" value={formatCurrency(totalPorCobrar)} accent />
-        <StatTile label="Total por pagar" value={formatCurrency(totalPorPagar)} />
+      {/* Cobrar y pagar no se suman entre sí: cada tarjeta lleva su propio vencido. */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <StatTile
-          label="Total vencido"
-          value={formatCurrency(totalVencido)}
-          hint={totalVencido > 0 ? "Entre cobrar y pagar" : undefined}
+          label="Total por cobrar"
+          value={formatCurrency(totalPorCobrar)}
+          hint={`Vencido: ${formatCurrency(vencidoCobrar)}`}
+          accent
+        />
+        <StatTile
+          label="Total por pagar"
+          value={formatCurrency(totalPorPagar)}
+          hint={`Vencido: ${formatCurrency(vencidoPagar)}`}
         />
       </div>
 
