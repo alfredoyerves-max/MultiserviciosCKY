@@ -13,6 +13,7 @@
     "test:clavesat": "tsx tests/claveSat.test.ts",
     "test:abonofecha": "tsx tests/abonoFecha.test.ts",
     "test:rfc": "tsx tests/rfc.test.ts",
+    "test:catalogos": "tsx tests/catalogos.test.ts",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:catalogos": "tsx prisma/seed-catalogos.ts",
     "postinstall": "prisma generate"

@@ -24,6 +24,11 @@ export const SERVICIO_CATEGORIA_LABELS: Record<ServicioCategoria, string> = {
   AC: "Aire acondicionado",
 };
 
+/** Etiqueta de la categoría de un servicio: la del catálogo histórico (código "LIMPIEZA" → "Limpieza") o, si ya es un nombre, tal cual. */
+export function etiquetaCategoriaServicio(categoria: string): string {
+  return (SERVICIO_CATEGORIA_LABELS as Record<string, string>)[categoria] ?? categoria;
+}
+
 export const MODALIDADES = ["HORA", "DIA", "SEMANA", "MES"] as const;
 export type Modalidad = (typeof MODALIDADES)[number];
 

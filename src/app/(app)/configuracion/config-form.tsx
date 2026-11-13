@@ -4,12 +4,13 @@ import { useActionState, useState } from "react";
 import { saveSystemConfigAction, type ConfigActionState } from "./actions";
 import { ProteccionBadge, UnlockModal } from "./fiscal-lock";
 import { CuentasBancariasPanel } from "./cuentas-bancarias-panel";
+import { CatalogosPanel } from "./catalogos-panel";
 import { Field, FieldError, FieldLabel, Input, Textarea } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
-import type { CuentaBancaria, SystemConfig } from "@/generated/prisma/client";
+import type { Categoria, ClaveSat, CuentaBancaria, SystemConfig, UnidadMedida } from "@/generated/prisma/client";
 import type { CeavBandaInput } from "@/lib/costEngine";
 import {
   IMSS_ENF_MAT_CUOTA_FIJA_PCT,
@@ -39,26 +40,29 @@ function toPctDisplayPrecise(fraction: number) {
   return String(Math.round(fraction * 1000000) / 10000);
 }
 
-type Pestana = "empresa" | "fiscal" | "cuentas" | "condiciones";
+type Pestana = "empresa" | "fiscal" | "cuentas" | "condiciones" | "catalogos";
 
 const PESTANAS: { id: Pestana; label: string }[] = [
   { id: "empresa", label: "Empresa" },
   { id: "fiscal", label: "Fiscal" },
   { id: "cuentas", label: "Cuentas y pagos" },
   { id: "condiciones", label: "Condiciones y términos" },
+  { id: "catalogos", label: "Catálogos" },
 ];
 
-const TODAS_BLOQUEADAS: Record<Pestana, boolean> = { empresa: false, fiscal: false, cuentas: false, condiciones: false };
-const CLAVES_EN_CERO: Record<Pestana, number> = { empresa: 0, fiscal: 0, cuentas: 0, condiciones: 0 };
+const TODAS_BLOQUEADAS: Record<Pestana, boolean> = { empresa: false, fiscal: false, cuentas: false, condiciones: false, catalogos: false };
+const CLAVES_EN_CERO: Record<Pestana, number> = { empresa: 0, fiscal: 0, cuentas: 0, condiciones: 0, catalogos: 0 };
 
 export function ConfigForm({
   config,
   bandasCeav,
   cuentasBancarias,
+  catalogos,
 }: {
   config: SystemConfig;
   bandasCeav: CeavBandaInput[];
   cuentasBancarias: CuentaBancaria[];
+  catalogos: { categorias: Categoria[]; unidades: UnidadMedida[]; claves: ClaveSat[] };
 }) {
   const [tab, setTab] = useState<Pestana>("empresa");
   const [desbloqueadas, setDesbloqueadas] = useState(TODAS_BLOQUEADAS);
@@ -84,6 +88,7 @@ export function ConfigForm({
           fiscal: c.fiscal + 1,
           cuentas: c.cuentas + 1,
           condiciones: c.condiciones + 1,
+          catalogos: c.catalogos,
         }));
       }
       return res;
@@ -277,7 +282,12 @@ export function ConfigForm({
         </Seccion>
       </PestanaCuerpo>
 
-      {/* Un solo Guardar por pestaña, fijo al fondo (sobre la barra inferior en móvil). */}
+      <PestanaCuerpo id="catalogos" activa={tab} clave={claves.catalogos}>
+        <CatalogosPanel categorias={catalogos.categorias} unidades={catalogos.unidades} claves={catalogos.claves} />
+      </PestanaCuerpo>
+
+      {/* Un solo Guardar por pestaña, fijo al fondo (sobre la barra inferior en móvil). Los catálogos se guardan al instante. */}
+      {tab !== "catalogos" && (
       <div
         className="sticky bottom-16 z-20 -mx-1 flex flex-wrap items-center justify-end gap-3 rounded-xl border border-border-strong bg-surface-1/95 px-4 py-3 shadow-lg backdrop-blur lg:bottom-4"
       >
@@ -297,6 +307,7 @@ export function ConfigForm({
           {pending ? "Guardando…" : "Guardar"}
         </Button>
       </div>
+      )}
 
       {desbloqueando && (
         <UnlockModal
