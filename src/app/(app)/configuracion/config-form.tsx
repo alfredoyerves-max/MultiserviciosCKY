@@ -164,8 +164,8 @@ export function ConfigForm({
           <NumField name="diasPorSemana" label="Días por semana laboral" defaultValue={config.diasPorSemana} error={err?.diasPorSemana} step="1" />
         </Seccion>
 
-        <Seccion titulo="Recargo sobre costo">
-          <NumField name="margenUtilidadDefaultPct" label="Recargo sobre costo por defecto (%)" defaultValue={toPctDisplay(config.margenUtilidadDefaultPct)} error={err?.margenUtilidadDefaultPct} />
+        <Seccion titulo="Utilidad sobre costo">
+          <NumField name="margenUtilidadDefaultPct" label="Utilidad sobre costo por defecto (%)" defaultValue={toPctDisplay(config.margenUtilidadDefaultPct)} error={err?.margenUtilidadDefaultPct} />
         </Seccion>
       </PestanaCuerpo>
 

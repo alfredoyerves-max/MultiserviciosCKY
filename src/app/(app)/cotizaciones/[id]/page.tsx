@@ -175,7 +175,7 @@ export default async function CotizacionDetallePage({
               )}
               <ResumenItem label="Total" value={formatCurrency(cotizacion.netoARecibir)} accent />
               {cotizacion.margenUtilidadPct != null && (
-                <ResumenItem label="Recargo aplicado" value={formatPercent(cotizacion.margenUtilidadPct)} />
+                <ResumenItem label="Utilidad aplicada" value={formatPercent(cotizacion.margenUtilidadPct)} />
               )}
             </div>
 

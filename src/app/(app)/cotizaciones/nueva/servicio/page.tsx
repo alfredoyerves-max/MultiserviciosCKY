@@ -50,7 +50,7 @@ export default async function NuevaCotizacionServicioPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Nueva cotización de servicio"
-        description="El precio se calcula a partir del costo real y el recargo."
+        description="El precio se calcula a partir del costo real y la utilidad."
       />
 
       <Wizard

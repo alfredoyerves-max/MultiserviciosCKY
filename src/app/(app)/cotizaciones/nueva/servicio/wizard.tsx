@@ -250,7 +250,7 @@ export function Wizard({
         sinLineas={lineas.length === 0}
       >
         <Field>
-          <FieldLabel>Recargo sobre costo (%)</FieldLabel>
+          <FieldLabel>Utilidad sobre costo (%)</FieldLabel>
           <Input
             type="number"
             step="0.01"
@@ -259,7 +259,7 @@ export function Wizard({
             onChange={(e) => setMargenUtilidadPct(Number(e.target.value) || 0)}
           />
           <p className="text-xs text-text-dim">
-            Precio = costo × (1 + recargo). Equivale a {margenSobrePrecioPct(margenUtilidadPct).toFixed(2)} % de margen sobre el precio.
+            Precio = costo × (1 + utilidad). Equivale a {margenSobrePrecioPct(margenUtilidadPct).toFixed(2)} % de la venta.
           </p>
         </Field>
       </ResumenCotizacionCard>
