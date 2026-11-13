@@ -8,6 +8,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { TIPO_CLIENTE_LABELS, type TipoCliente } from "@/lib/enums";
 import { registrarAbonoPorCobrarAction } from "../../actions";
+import { fechaMexico } from "@/lib/fechaLocal";
 import { AbonoForm } from "../../abono-form";
 import { AccionesCuenta } from "./acciones-cuenta";
 import { PagarSaldoButton } from "../../pagar-saldo-button";
@@ -89,7 +90,11 @@ export default async function CuentaPorCobrarDetallePage({
             <CardTitle>Registrar abono parcial</CardTitle>
           </CardHeader>
           <CardContent>
-            <AbonoForm cuentaId={cuenta.id} action={registrarAbonoPorCobrarAction} />
+            <AbonoForm
+              cuentaId={cuenta.id}
+              action={registrarAbonoPorCobrarAction}
+              fechaCotizacion={fechaMexico(cuenta.cotizacion.createdAt)}
+            />
           </CardContent>
         </Card>
       )}

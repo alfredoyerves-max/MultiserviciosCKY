@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { initialActionState, ejecutarSeguro, MENSAJE_FALLO_ACCION, type ActionState } from "./form-state";
 import { useAvisoLento, TEXTO_AVISO_LENTO } from "./use-aviso-lento";
+import { errorFechaAbono } from "@/lib/abonoFecha";
 import { hoyMexico } from "@/lib/fechaLocal";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel, Input } from "@/components/ui/input";
@@ -11,8 +12,11 @@ import { Field, FieldError, FieldLabel, Input } from "@/components/ui/input";
 export function AbonoForm({
   cuentaId,
   action,
+  fechaCotizacion,
 }: {
   cuentaId: string;
+  /** AAAA-MM-DD de la cotización que originó la cuenta (solo por cobrar): el abono no puede ser anterior. */
+  fechaCotizacion?: string;
   action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
 }) {
   const router = useRouter();
@@ -20,6 +24,8 @@ export function AbonoForm({
   const [state, formAction, pending] = useActionState(
     async (prev: ActionState, formData: FormData) => {
       if (enviando.current) return prev; // sin doble envío
+      const errorFecha = errorFechaAbono(String(formData.get("fecha") ?? ""), fechaCotizacion);
+      if (errorFecha) return { ok: false, error: errorFecha };
       enviando.current = true;
       try {
         const res = await ejecutarSeguro(action, prev, formData);
@@ -52,6 +58,8 @@ export function AbonoForm({
           name="fecha"
           type="date"
           defaultValue={hoyMexico()}
+          min={fechaCotizacion}
+          max={hoyMexico()}
           required
         />
         <FieldError>{state.fieldErrors?.fecha}</FieldError>

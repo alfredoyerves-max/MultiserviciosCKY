@@ -1,6 +1,7 @@
 import { advisoryLock, prisma } from "@/lib/prisma";
 import { calcularSaldo } from "@/lib/cuentas";
 import type { CuentaPorPagarInput, AbonoInput } from "@/lib/schemas/cuentas";
+import { errorFechaAbono } from "@/lib/abonoFecha";
 import { requireSession } from "@/lib/auth/session";
 
 const TOLERANCIA_SALDO = 0.01; // centavos, por acumulación de floats
@@ -38,6 +39,10 @@ export async function registrarAbonoPorPagar(cuentaPorPagarId: string, input: Ab
       where: { id: cuentaPorPagarId },
       include: { abonos: { select: { monto: true } } },
     });
+
+    // Por pagar no nace de una cotización: solo se exige que la fecha no sea futura.
+    const errorFecha = errorFechaAbono(input.fecha.toISOString().slice(0, 10));
+    if (errorFecha) throw new Error(errorFecha);
 
     const saldo = calcularSaldo(cuenta.montoTotal, cuenta.abonos);
     if (input.monto > saldo + TOLERANCIA_SALDO) {

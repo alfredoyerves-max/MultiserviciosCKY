@@ -1,6 +1,8 @@
 import { advisoryLock, prisma } from "@/lib/prisma";
 import { calcularSaldo } from "@/lib/cuentas";
 import type { AbonoInput } from "@/lib/schemas/cuentas";
+import { errorFechaAbono } from "@/lib/abonoFecha";
+import { fechaMexico } from "@/lib/fechaLocal";
 import { requireSession } from "@/lib/auth/session";
 
 const TOLERANCIA_SALDO = 0.01; // centavos, por acumulación de floats
@@ -77,11 +79,14 @@ export async function registrarAbonoPorCobrar(cuentaPorCobrarId: string, input: 
 
     const cuenta = await tx.cuentaPorCobrar.findUniqueOrThrow({
       where: { id: cuentaPorCobrarId },
-      include: { abonos: { select: { monto: true } } },
+      include: { abonos: { select: { monto: true } }, cotizacion: { select: { createdAt: true } } },
     });
     if (cuenta.cancelada) {
       throw new Error("No se pueden registrar abonos en una cuenta cancelada.");
     }
+
+    const errorFecha = errorFechaAbono(input.fecha.toISOString().slice(0, 10), fechaMexico(cuenta.cotizacion.createdAt));
+    if (errorFecha) throw new Error(errorFecha);
 
     const saldo = calcularSaldo(cuenta.montoTotal, cuenta.abonos);
     if (input.monto > saldo + TOLERANCIA_SALDO) {
