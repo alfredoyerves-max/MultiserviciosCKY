@@ -54,7 +54,7 @@ export async function saveServicioAction(
   const puestoId = formData.get("puestoId");
   const parsed = servicioSchema.safeParse({
     ...raw,
-    puestoId: puestoId && puestoId !== "" ? puestoId : undefined,
+    puestoId: puestoId && puestoId !== "" && puestoId !== "_none_" ? puestoId : undefined,
     modalidades: formData.getAll("modalidades"),
     incluyeUniforme: formData.get("incluyeUniforme") === "on",
     incluyeMaterial: formData.get("incluyeMaterial") === "on",

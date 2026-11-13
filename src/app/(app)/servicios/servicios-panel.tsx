@@ -392,6 +392,9 @@ function ServicioCardMobile({
   );
 }
 
+/** Valor del selector de puesto cuando todavía no se eligió ninguno (nunca value=""). */
+const SIN_PUESTO = "_none_";
+
 function ServicioForm({
   servicio,
   puestos,
@@ -413,7 +416,9 @@ function ServicioForm({
     if (servicio) return servicio.puestoId ? "puesto" : "inline";
     return puestos.length > 0 ? "puesto" : "inline";
   });
-  const [puestoId, setPuestoId] = useState(servicio?.puestoId ?? puestos[0]?.id ?? "");
+  // Servicio nuevo: sin puesto preseleccionado (hay que elegir uno a propósito). Editar conserva el suyo.
+  const [puestoId, setPuestoId] = useState(servicio?.puestoId ?? SIN_PUESTO);
+  const faltaPuesto = modoMano === "puesto" && (puestos.length === 0 || puestoId === SIN_PUESTO);
   const [sueldoInline, setSueldoInline] = useState(servicio?.sueldoMensualInline ?? undefined);
   const [nombreInline, setNombreInline] = useState(servicio?.nombrePuestoInline ?? "");
   const [guardarComoPuesto, setGuardarComoPuesto] = useState(false);
@@ -451,7 +456,7 @@ function ServicioForm({
           <Button type="button" variant="ghost" onClick={solicitarCierre}>
             Cancelar
           </Button>
-          <Button type="submit" form="servicio-form" disabled={pending}>
+          <Button type="submit" form="servicio-form" disabled={pending || faltaPuesto}>
             {pending ? "Guardando…" : "Guardar"}
           </Button>
         </>
@@ -522,6 +527,7 @@ function ServicioForm({
                       value={puestoId}
                       onChange={(e) => setPuestoId(e.target.value)}
                     >
+                      <option value={SIN_PUESTO}>Selecciona un puesto…</option>
                       {puestos.map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.nombre} — {formatCurrency(p.sueldoMensual)}/mes
