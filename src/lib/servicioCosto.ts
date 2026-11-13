@@ -46,5 +46,22 @@ export function costoDeServicio(servicio: ServicioParaCosto, config: CostConfigI
     costoMaterial: servicio.costoMaterial,
     vidaUtilMaterialMeses: servicio.vidaUtilMaterialMeses,
   });
-  return { costo, bajoMinimo: esSueldoBajoMinimo(sueldoMensual, config.salarioMinimoMensual) };
+  return {
+    costo,
+    bajoMinimo: esSueldoBajoMinimo(sueldoMensual, config.salarioMinimoMensual),
+    // El motor ya dice si aplicó el piso (SBC integrado < mínimo); no se recalcula aquí.
+    cargasSobreMinimo: costo.pisoSalarioMinimoAplicado,
+  };
+}
+
+/** Dos avisos distintos: (1) el sueldo pactado es menor al mínimo; (2) además, el SBC integrado también queda debajo y las cargas se calcularon sobre el mínimo. */
+export const TEXTO_SUELDO_BAJO = "Sueldo por debajo del mínimo legal";
+export const TEXTO_CARGAS_SOBRE_MINIMO = "Cargas calculadas sobre el mínimo legal";
+
+/** Texto del aviso según cuáles de las dos condiciones se cumplen (undefined si ninguna). */
+export function textoAvisoSueldo(a: { bajoMinimo: boolean; cargasSobreMinimo: boolean }): string | undefined {
+  if (a.bajoMinimo && a.cargasSobreMinimo) return `${TEXTO_SUELDO_BAJO} · ${TEXTO_CARGAS_SOBRE_MINIMO}`;
+  if (a.bajoMinimo) return TEXTO_SUELDO_BAJO;
+  if (a.cargasSobreMinimo) return TEXTO_CARGAS_SOBRE_MINIMO;
+  return undefined;
 }

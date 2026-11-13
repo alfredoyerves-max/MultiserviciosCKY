@@ -41,6 +41,8 @@ export default async function NuevaCotizacionServicioPage() {
       puestoNombre: nombrePuestoEfectivo(s),
       sueldoMensual,
       bajoMinimo: esSueldoBajoMinimo(sueldoMensual, config.salarioMinimoMensual),
+      // El motor ya informa si aplicó el piso; no se vuelve a calcular.
+      cargasSobreMinimo: costo.pisoSalarioMinimoAplicado,
     };
   });
 

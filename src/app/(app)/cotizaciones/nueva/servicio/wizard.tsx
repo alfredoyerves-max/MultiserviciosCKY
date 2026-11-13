@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel, Input, Select } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/format";
+import { textoAvisoSueldo } from "@/lib/servicioCosto";
 import { MODALIDAD_LABELS, type Modalidad } from "@/lib/enums";
 import type { Cliente } from "@/generated/prisma/client";
 
@@ -24,6 +25,8 @@ export interface ServicioOption {
    *  — se muestra como ícono de aviso junto a esta opción específica en el
    *  selector, para no tener que seleccionarla primero para descubrirlo. */
   bajoMinimo: boolean;
+  /** El motor aplicó el piso: las cargas se calcularon sobre el mínimo legal. */
+  cargasSobreMinimo: boolean;
 }
 
 /** Texto de una opción del selector: nombre + puesto + sueldo mensual, para
@@ -32,7 +35,6 @@ function servicioOptionLabel(s: ServicioOption): string {
   return `${s.nombre} — ${s.puestoNombre} · ${formatCurrency(s.sueldoMensual)}/mes`;
 }
 
-const AVISO_SUELDO_BAJO = "Sueldo por debajo del mínimo — costo calculado sobre piso legal";
 
 interface LineaState {
   key: string;
@@ -148,8 +150,8 @@ export function Wizard({
                 <Field>
                   <FieldLabel>
                     Servicio
-                    {servicio?.bajoMinimo && (
-                      <span title={AVISO_SUELDO_BAJO} aria-label={AVISO_SUELDO_BAJO} className="ml-1 cursor-help text-warning-soft">
+                    {servicio && textoAvisoSueldo(servicio) && (
+                      <span title={textoAvisoSueldo(servicio)} aria-label={textoAvisoSueldo(servicio)} className="ml-1 cursor-help text-warning-soft">
                         ⚠
                       </span>
                     )}
@@ -230,7 +232,10 @@ export function Wizard({
 
       <ResumenCotizacionCard
         titulo="Resumen"
-        aviso={lineasCalculadas.some((l) => l.servicio?.bajoMinimo) ? AVISO_SUELDO_BAJO : undefined}
+        aviso={textoAvisoSueldo({
+          bajoMinimo: lineasCalculadas.some((l) => l.servicio?.bajoMinimo),
+          cargasSobreMinimo: lineasCalculadas.some((l) => l.servicio?.cargasSobreMinimo),
+        })}
         diasVigencia={diasVigencia}
         setDiasVigencia={setDiasVigencia}
         esSoporte={esSoporte}

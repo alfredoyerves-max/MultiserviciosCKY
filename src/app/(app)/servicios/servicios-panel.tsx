@@ -19,7 +19,14 @@ import {
 } from "@/lib/enums";
 import { calcularCostoReal, type CostConfigInput, type CostoRealResult } from "@/lib/costEngine";
 import { parseModalidades } from "@/lib/modalidades";
-import { sueldoMensualEfectivo, nombrePuestoEfectivo, esSueldoBajoMinimo, costoDeServicio } from "@/lib/servicioCosto";
+import {
+  sueldoMensualEfectivo,
+  nombrePuestoEfectivo,
+  esSueldoBajoMinimo,
+  costoDeServicio,
+  TEXTO_SUELDO_BAJO,
+  TEXTO_CARGAS_SOBRE_MINIMO,
+} from "@/lib/servicioCosto";
 import { cn } from "@/lib/cn";
 import type { Puesto, Servicio } from "@/generated/prisma/client";
 
@@ -30,11 +37,17 @@ const COLS = 6;
 /** Ícono de aviso discreto con tooltip nativo (Sección 7 del documento de
  *  diseño) — reemplaza el badge grande "Por debajo del salario mínimo
  *  vigente" que competía con el título; ahora vive junto al costo real. */
-function SalarioBajoAviso({ salarioMinimoMensual }: { salarioMinimoMensual: number }) {
+function SalarioBajoAviso({
+  salarioMinimoMensual,
+  cargasSobreMinimo,
+}: {
+  salarioMinimoMensual: number;
+  cargasSobreMinimo: boolean;
+}) {
   return (
     <span
       className="inline-flex cursor-help text-warning-soft"
-      title={`El sueldo capturado está por debajo del salario mínimo mensual vigente (${formatCurrency(salarioMinimoMensual)}).`}
+      title={`${TEXTO_SUELDO_BAJO} (mínimo mensual vigente: ${formatCurrency(salarioMinimoMensual)}).${cargasSobreMinimo ? ` ${TEXTO_CARGAS_SOBRE_MINIMO}.` : ""}`}
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4">
         <path d="M12 9v4M12 17h.01" />
@@ -58,8 +71,7 @@ function DesgloseCargasPatronales({ costo }: { costo: CostoRealResult }) {
       </p>
       {costo.pisoSalarioMinimoAplicado && (
         <p className="mb-3 text-xs italic text-warning-soft">
-          Cuotas patronales calculadas sobre salario mínimo (piso legal), no sobre el sueldo
-          pactado.
+          {TEXTO_CARGAS_SOBRE_MINIMO}, no sobre el sueldo pactado.
         </p>
       )}
       <dl className="flex flex-col gap-1.5 text-sm">
@@ -121,9 +133,9 @@ export function ServiciosPanel({
   // Inactivos ocultos por defecto; el interruptor los muestra.
   const visibles = verInactivos ? servicios : servicios.filter((s) => s.activo);
   const inactivos = servicios.length - servicios.filter((s) => s.activo).length;
-  const conSueldoBajo = visibles.filter((s) =>
-    esSueldoBajoMinimo(sueldoMensualEfectivo(s), config.salarioMinimoMensual)
-  ).length;
+  const avisos = visibles.map((s) => costoDeServicio(s, config));
+  const conSueldoBajo = avisos.filter((a) => a.bajoMinimo).length;
+  const conCargasSobreMinimo = avisos.filter((a) => a.cargasSobreMinimo).length;
 
   const nuevoServicio = (
     <Button size="sm" onClick={() => setCreating(true)}>
@@ -153,7 +165,8 @@ export function ServiciosPanel({
 
       {conSueldoBajo > 0 && (
         <p className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning-soft">
-          ⚠ {conSueldoBajo} servicio(s) con sueldo por debajo del mínimo — costo calculado sobre piso legal
+          ⚠ {conSueldoBajo} servicio(s) con sueldo por debajo del mínimo
+          {conCargasSobreMinimo > 0 && `; ${conCargasSobreMinimo} con cargas sobre el mínimo`}
         </p>
       )}
 
@@ -262,7 +275,7 @@ function ServicioRow({
   onEdit: () => void;
 }) {
   const [expandido, setExpandido] = useState(false);
-  const { costo, bajoMinimo } = costoDeServicio(servicio, config);
+  const { costo, bajoMinimo, cargasSobreMinimo } = costoDeServicio(servicio, config);
   const modalidades = parseModalidades(servicio.modalidadesJson);
 
   return (
@@ -292,7 +305,7 @@ function ServicioRow({
         <td className="px-5 py-3 text-text-muted">{modalidades.map((m) => MODALIDAD_LABELS[m]).join(", ")}</td>
         <td className="px-5 py-3 text-right">
           <div className="flex items-center justify-end gap-1.5">
-            {bajoMinimo && <SalarioBajoAviso salarioMinimoMensual={config.salarioMinimoMensual} />}
+            {bajoMinimo && <SalarioBajoAviso salarioMinimoMensual={config.salarioMinimoMensual} cargasSobreMinimo={cargasSobreMinimo} />}
             <p className="font-mono text-sm font-semibold tabular-nums text-primary">
               {formatCurrency(costo.costoRealMensual)}
             </p>
@@ -331,7 +344,7 @@ function ServicioCardMobile({
   onEdit: () => void;
 }) {
   const [expandido, setExpandido] = useState(false);
-  const { costo, bajoMinimo } = costoDeServicio(servicio, config);
+  const { costo, bajoMinimo, cargasSobreMinimo } = costoDeServicio(servicio, config);
   const modalidades = parseModalidades(servicio.modalidadesJson);
 
   return (
@@ -370,7 +383,7 @@ function ServicioCardMobile({
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2.5">
           <div className="flex items-center gap-1.5">
-            {bajoMinimo && <SalarioBajoAviso salarioMinimoMensual={config.salarioMinimoMensual} />}
+            {bajoMinimo && <SalarioBajoAviso salarioMinimoMensual={config.salarioMinimoMensual} cargasSobreMinimo={cargasSobreMinimo} />}
             <div>
               <p className="font-mono text-sm font-semibold tabular-nums text-primary">
                 {formatCurrency(costo.costoRealMensual)}/mes
@@ -579,7 +592,7 @@ function ServicioForm({
               {costoPreview && (
                 <div className="mt-3 flex flex-col gap-2">
                   <p className="flex items-center gap-1.5 text-xs text-text-dim">
-                    {bajoMinimo && <SalarioBajoAviso salarioMinimoMensual={config.salarioMinimoMensual} />}
+                    {bajoMinimo && <SalarioBajoAviso salarioMinimoMensual={config.salarioMinimoMensual} cargasSobreMinimo={costoPreview.pisoSalarioMinimoAplicado} />}
                     Costo real estimado (sin uniforme/material):{" "}
                     <span className="font-mono text-text-muted">
                       {formatCurrency(costoPreview.costoRealMensual)}/mes ·{" "}
