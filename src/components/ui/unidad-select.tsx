@@ -21,9 +21,11 @@ export function UnidadSelect({
 }) {
   const conocida = (UNIDADES_MEDIDA as readonly string[]).includes(value);
   return (
-    <div className={className}>
+    // Con "Otra…" el texto va a un lado del selector, dentro de la misma fila (no debajo).
+    <div className={`flex items-center gap-1 ${className ?? ""}`}>
       <Select
         aria-label="Unidad"
+        className={conocida ? undefined : "w-[5.25rem] shrink-0 px-2"}
         value={conocida ? value : OTRA}
         onChange={(e) => onChange(e.target.value === OTRA ? "" : e.target.value)}
       >
@@ -37,7 +39,7 @@ export function UnidadSelect({
       {!conocida && (
         <Input
           aria-label="Otra unidad"
-          className="mt-1"
+          className="min-w-0 flex-1"
           value={value}
           maxLength={20}
           autoFocus={value === ""}

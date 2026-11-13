@@ -173,7 +173,7 @@ export function ConceptosMaterial({
               </Select>
             </Field>
           )}
-          <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-[minmax(0,3fr)_minmax(0,1fr)_minmax(0,1.2fr)_5rem_7rem_auto]">
+          <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-[minmax(0,3fr)_minmax(0,1fr)_minmax(0,1.8fr)_5rem_7rem_auto]">
             <Field className="col-span-2 sm:col-span-1">
               <FieldLabel>Descripción</FieldLabel>
               <Input
