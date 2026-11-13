@@ -33,6 +33,7 @@ export function ResumenCotizacionCard({
   error,
   pending,
   sinLineas,
+  bloqueo,
 }: {
   titulo: string;
   children?: React.ReactNode;
@@ -49,6 +50,8 @@ export function ResumenCotizacionCard({
   error?: string;
   pending: boolean;
   sinLineas: boolean;
+  /** Motivo por el que no se puede crear todavía (ej. RFC inválido del cliente nuevo). */
+  bloqueo?: string | null;
 }) {
   // Sin cliente elegido todavía no hay retención (solo aplica a Persona Moral).
   const fiscal = calcularTotalesFiscales(subtotal, tipoClienteActivo ?? "PERSONA_FISICA", ivaPct, retencionIsrPct);
@@ -106,8 +109,9 @@ export function ResumenCotizacionCard({
         </div>
 
         {error && <p className="text-sm text-danger">{error}</p>}
+        {bloqueo && <p className="text-sm text-danger">{bloqueo}</p>}
 
-        <Button type="submit" size="lg" className="w-full" disabled={pending || sinLineas}>
+        <Button type="submit" size="lg" className="w-full" disabled={pending || sinLineas || !!bloqueo}>
           {pending ? "Creando…" : "Crear cotización"}
         </Button>
       </CardContent>

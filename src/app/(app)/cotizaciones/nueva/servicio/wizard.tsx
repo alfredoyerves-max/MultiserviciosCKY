@@ -248,6 +248,7 @@ export function Wizard({
         error={state.error}
         pending={pending}
         sinLineas={lineas.length === 0}
+        bloqueo={cliente.errorCliente}
       >
         <Field>
           <FieldLabel>Utilidad sobre costo (%)</FieldLabel>

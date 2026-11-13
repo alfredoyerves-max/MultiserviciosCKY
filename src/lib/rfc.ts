@@ -1,31 +1,44 @@
-// Validación SUAVE del RFC (solo un aviso al capturar; nunca bloquea el guardado
-// y el campo sigue siendo opcional). Revisa únicamente la longitud según el tipo
-// de contribuyente y los caracteres permitidos; no verifica que el RFC exista ni
-// que la fecha o la homoclave sean válidas ante el SAT.
-import type { TipoCliente } from "@/lib/enums";
+// RFC de un cliente nuevo: formato, fecha y tipo de persona deducido.
+// Valida el FORMATO (3 o 4 letras, fecha AAMMDD con mes 01-12 y día 01-31, 3 de homoclave);
+// no verifica que el RFC exista ni la homoclave ante el SAT.
+import { TIPO_CLIENTE_LABELS, type TipoCliente } from "@/lib/enums";
 
-const LONGITUD_ESPERADA: Record<TipoCliente, number> = {
-  PERSONA_MORAL: 12,
-  GOBIERNO: 12, // las entidades de gobierno se identifican con RFC de 12 caracteres
-  PERSONA_FISICA: 13,
-};
+export const RFC_REGEX = /^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/;
 
-const TIPO_TEXTO: Record<TipoCliente, string> = {
-  PERSONA_MORAL: "Persona Moral",
-  GOBIERNO: "Gobierno",
-  PERSONA_FISICA: "Persona Física",
-};
+export const MENSAJE_RFC_FORMATO =
+  "RFC inválido: 3 letras (Persona Moral) o 4 (Persona Física), 6 dígitos de fecha (AAMMDD) y 3 de homoclave.";
+export const MENSAJE_RFC_FECHA = "RFC inválido: la fecha debe tener mes 01-12 y día 01-31.";
+export const MENSAJE_TIPO_CLIENTE = "Selecciona el tipo de cliente.";
 
-/** Texto del aviso, o null si no hay nada que avisar (incluido RFC vacío). */
-export function avisoRfc(rfc: string, tipo: TipoCliente): string | null {
-  const valor = rfc.trim().toUpperCase();
-  if (valor === "") return null;
-  if (!/^[A-ZÑ&0-9]+$/.test(valor)) {
-    return "El RFC solo debe tener letras y números (puede incluir Ñ y &).";
-  }
-  const esperada = LONGITUD_ESPERADA[tipo];
-  if (valor.length !== esperada) {
-    return `El RFC de ${TIPO_TEXTO[tipo]} tiene ${esperada} caracteres y este tiene ${valor.length}. Puedes guardarlo así, pero revísalo.`;
-  }
-  return null;
+/** Mayúsculas y sin espacios en los extremos. */
+export function normalizarRfc(rfc: string): string {
+  return rfc.trim().toUpperCase();
+}
+
+export type AnalisisRfc =
+  | { estado: "vacio" }
+  | { estado: "invalido"; error: string }
+  | { estado: "valido"; tipo: "PERSONA_MORAL" | "PERSONA_FISICA" };
+
+/** 12 caracteres = Persona Moral; 13 = Persona Física. */
+export function analizarRfc(rfc: string): AnalisisRfc {
+  const valor = normalizarRfc(rfc);
+  if (valor === "") return { estado: "vacio" };
+  if (!RFC_REGEX.test(valor)) return { estado: "invalido", error: MENSAJE_RFC_FORMATO };
+  const inicioFecha = valor.length === 13 ? 4 : 3;
+  const mes = Number(valor.slice(inicioFecha + 2, inicioFecha + 4));
+  const dia = Number(valor.slice(inicioFecha + 4, inicioFecha + 6));
+  if (mes < 1 || mes > 12 || dia < 1 || dia > 31) return { estado: "invalido", error: MENSAJE_RFC_FECHA };
+  return { estado: "valido", tipo: valor.length === 12 ? "PERSONA_MORAL" : "PERSONA_FISICA" };
+}
+
+/** Tipo de cliente efectivo: el deducido del RFC si es válido; si no, el elegido a mano ("" = sin elegir). */
+export function tipoClienteEfectivo(rfc: string, tipoManual: TipoCliente | ""): TipoCliente | "" {
+  const a = analizarRfc(rfc);
+  return a.estado === "valido" ? a.tipo : tipoManual;
+}
+
+/** Texto del tipo fijado por el RFC, p. ej. "Persona Moral (deducido del RFC)". */
+export function textoTipoDeducido(tipo: TipoCliente): string {
+  return `${TIPO_CLIENTE_LABELS[tipo]} (deducido del RFC)`;
 }

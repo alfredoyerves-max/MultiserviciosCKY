@@ -1,6 +1,6 @@
 "use client";
 
-import { avisoRfc } from "@/lib/rfc";
+import { analizarRfc, normalizarRfc, tipoClienteEfectivo, textoTipoDeducido, MENSAJE_TIPO_CLIENTE } from "@/lib/rfc";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,16 @@ export interface ClienteNuevoState {
   nombreRazonSocial: string;
   rfc: string;
   contacto: string;
-  tipoCliente: TipoCliente;
+  /** Elegido a mano; "" = sin elegir. Si el RFC es válido, el tipo efectivo sale del RFC y este valor no cuenta. */
+  tipoCliente: TipoCliente | "";
+}
+
+/** Motivo por el que el cliente nuevo todavía no se puede guardar (null = todo bien). */
+export function errorClienteNuevo(c: ClienteNuevoState): string | null {
+  const a = analizarRfc(c.rfc);
+  if (a.estado === "invalido") return a.error;
+  if (tipoClienteEfectivo(c.rfc, c.tipoCliente) === "") return MENSAJE_TIPO_CLIENTE;
+  return null;
 }
 
 /** Estado del paso "1. Cliente" — idéntico en los wizards de Servicio y
@@ -26,6 +35,8 @@ export interface ClienteEstado {
   setClienteNuevo: (updater: (c: ClienteNuevoState) => ClienteNuevoState) => void;
   proyecto: string;
   setProyecto: (p: string) => void;
+  /** Cliente nuevo con RFC inválido o sin tipo: la cotización no se puede crear. */
+  errorCliente: string | null;
 }
 
 export function useClienteCotizacion(clientes: Cliente[]): {
@@ -41,17 +52,27 @@ export function useClienteCotizacion(clientes: Cliente[]): {
     nombreRazonSocial: "",
     rfc: "",
     contacto: "",
-    tipoCliente: "PERSONA_MORAL",
+    tipoCliente: "", // sin valor por defecto: hay que elegirlo (o deducirlo del RFC)
   });
   const [proyecto, setProyecto] = useState("");
 
   const tipoClienteActivo: TipoCliente | null =
     modoCliente === "existente"
       ? ((clientes.find((c) => c.id === clienteId)?.tipoCliente as TipoCliente) ?? null)
-      : clienteNuevo.tipoCliente;
+      : tipoClienteEfectivo(clienteNuevo.rfc, clienteNuevo.tipoCliente) || null;
 
   return {
-    estado: { modoCliente, setModoCliente, clienteId, setClienteId, clienteNuevo, setClienteNuevo, proyecto, setProyecto },
+    estado: {
+      modoCliente,
+      setModoCliente,
+      clienteId,
+      setClienteId,
+      clienteNuevo,
+      setClienteNuevo,
+      proyecto,
+      setProyecto,
+      errorCliente: modoCliente === "nuevo" ? errorClienteNuevo(clienteNuevo) : null,
+    },
     tipoClienteActivo,
   };
 }
@@ -64,7 +85,15 @@ export function ClienteHiddenFields({ estado }: { estado: ClienteEstado }) {
       <input
         type="hidden"
         name="clienteNuevoJson"
-        value={estado.modoCliente === "nuevo" ? JSON.stringify(estado.clienteNuevo) : ""}
+        value={
+          estado.modoCliente === "nuevo"
+            ? JSON.stringify({
+                ...estado.clienteNuevo,
+                rfc: normalizarRfc(estado.clienteNuevo.rfc),
+                tipoCliente: tipoClienteEfectivo(estado.clienteNuevo.rfc, estado.clienteNuevo.tipoCliente),
+              })
+            : ""
+        }
       />
       {estado.modoCliente === "existente" && <input type="hidden" name="clienteId" value={estado.clienteId} />}
       <input type="hidden" name="proyecto" value={estado.proyecto} />
@@ -86,6 +115,7 @@ export function ClienteStep({
   setClienteNuevo,
   proyecto,
   setProyecto,
+  errorCliente,
 }: {
   clientes: Cliente[];
   modoCliente: "existente" | "nuevo";
@@ -96,7 +126,10 @@ export function ClienteStep({
   setClienteNuevo: (updater: (c: ClienteNuevoState) => ClienteNuevoState) => void;
   proyecto: string;
   setProyecto: (p: string) => void;
+  errorCliente: string | null;
 }) {
+  const analisisRfc = analizarRfc(clienteNuevo.rfc);
+  const tipoDeducido = analisisRfc.estado === "valido" ? analisisRfc.tipo : null;
   return (
     <Card>
       <CardHeader>
@@ -146,27 +179,36 @@ export function ClienteStep({
               />
             </Field>
             <Field>
-              <FieldLabel>Tipo de cliente</FieldLabel>
-              <Select
-                value={clienteNuevo.tipoCliente}
-                onChange={(e) => setClienteNuevo((c) => ({ ...c, tipoCliente: e.target.value as TipoCliente }))}
-              >
-                {TIPOS_CLIENTE.map((t) => (
-                  <option key={t} value={t}>
-                    {TIPO_CLIENTE_LABELS[t]}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field>
               <FieldLabel>RFC (opcional)</FieldLabel>
               <Input
                 value={clienteNuevo.rfc}
-                onChange={(e) => setClienteNuevo((c) => ({ ...c, rfc: e.target.value }))}
+                maxLength={13}
+                autoCapitalize="characters"
+                aria-invalid={analisisRfc.estado === "invalido"}
+                onChange={(e) => setClienteNuevo((c) => ({ ...c, rfc: e.target.value.toUpperCase() }))}
               />
-              {avisoRfc(clienteNuevo.rfc, clienteNuevo.tipoCliente) && (
-                <p className="mt-1 text-xs text-warning-soft">{avisoRfc(clienteNuevo.rfc, clienteNuevo.tipoCliente)}</p>
+              {analisisRfc.estado === "invalido" && <p className="mt-1 text-xs text-danger">{analisisRfc.error}</p>}
+            </Field>
+            <Field>
+              <FieldLabel>Tipo de cliente</FieldLabel>
+              {tipoDeducido ? (
+                <Input readOnly value={textoTipoDeducido(tipoDeducido)} className="cursor-default text-text-muted" />
+              ) : (
+                <Select
+                  value={clienteNuevo.tipoCliente || "_none_"}
+                  onChange={(e) =>
+                    setClienteNuevo((c) => ({ ...c, tipoCliente: e.target.value === "_none_" ? "" : (e.target.value as TipoCliente) }))
+                  }
+                >
+                  <option value="_none_">Selecciona…</option>
+                  {TIPOS_CLIENTE.map((t) => (
+                    <option key={t} value={t}>
+                      {TIPO_CLIENTE_LABELS[t]}
+                    </option>
+                  ))}
+                </Select>
               )}
+              {errorCliente === MENSAJE_TIPO_CLIENTE && <p className="mt-1 text-xs text-text-dim">{errorCliente}</p>}
             </Field>
             <Field>
               <FieldLabel>Contacto (opcional)</FieldLabel>

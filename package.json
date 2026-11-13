@@ -12,6 +12,7 @@
     "test:maxwait": "tsx tests/transaccionMaxWait.test.ts",
     "test:clavesat": "tsx tests/claveSat.test.ts",
     "test:abonofecha": "tsx tests/abonoFecha.test.ts",
+    "test:rfc": "tsx tests/rfc.test.ts",
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate"
   },
