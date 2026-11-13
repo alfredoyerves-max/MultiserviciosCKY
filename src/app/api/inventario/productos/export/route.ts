@@ -2,7 +2,7 @@ import ExcelJS from "exceljs";
 import { requireSession } from "@/lib/auth/session";
 import { listProductosConMovimientos } from "@/lib/data/productos";
 import { calcularStock } from "@/lib/inventario";
-import { UNIDAD_MEDIDA_LABELS, type UnidadMedida } from "@/lib/enums";
+import { etiquetaUnidad } from "@/lib/enums";
 import { styleHeaderRow, workbookToBuffer, xlsxResponse } from "@/lib/export/excel";
 
 export async function GET() {
@@ -25,7 +25,7 @@ export async function GET() {
   for (const p of productos) {
     sheet.addRow({
       nombre: p.nombre,
-      unidad: UNIDAD_MEDIDA_LABELS[p.unidadMedida as UnidadMedida],
+      unidad: etiquetaUnidad(p.unidadMedida),
       descripcion: p.descripcion ?? "",
       costo: p.costoCompraReciente ?? null,
       precio: p.precioVentaSugerido ?? null,

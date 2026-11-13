@@ -1,12 +1,17 @@
 import { z } from "zod";
 import { MODALIDADES } from "@/lib/enums";
-import { servicioCategoriaSchema } from "@/lib/schemas/enums";
 
 export const servicioSchema = z
   .object({
     nombre: z.string().trim().min(1, "Requerido"),
     descripcion: z.string().trim().optional(),
-    categoria: servicioCategoriaSchema,
+    // Nombre de una categoría del catálogo (Configuración › Catálogos) o un valor histórico ("LIMPIEZA").
+    categoria: z
+      .string()
+      .trim()
+      .min(1, "Selecciona una categoría")
+      .max(60, "Máximo 60 caracteres")
+      .refine((v) => v !== "_none_", "Selecciona una categoría"),
 
     // Mano de obra: o un Puesto ya guardado, o un sueldo capturado aquí
     // mismo (Addendum v4 punto 4) — exactamente uno de los dos.

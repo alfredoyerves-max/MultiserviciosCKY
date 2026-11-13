@@ -1,16 +1,19 @@
 import { listProductosActivos } from "@/lib/data/productos";
 import { listClientes } from "@/lib/data/clientes";
 import { getSystemConfigConCeav } from "@/lib/data/config";
+import { listUnidades, listClavesSat } from "@/lib/data/catalogos";
 import { PageHeader } from "@/components/ui/page-header";
 import { Wizard } from "./wizard";
 import { requireSession } from "@/lib/auth/session";
 
 export default async function NuevaCotizacionMaterialPage() {
   await requireSession();
-  const [productos, clientes, config] = await Promise.all([
+  const [productos, clientes, config, unidades, claves] = await Promise.all([
     listProductosActivos(),
     listClientes(),
     getSystemConfigConCeav(),
+    listUnidades(),
+    listClavesSat(),
   ]);
 
   return (
@@ -23,6 +26,8 @@ export default async function NuevaCotizacionMaterialPage() {
       <Wizard
         productos={productos}
         clientes={clientes}
+        unidades={unidades}
+        claves={claves}
         ivaPct={config.ivaPct}
         retencionIsrPct={config.retencionIsrPct}
       />

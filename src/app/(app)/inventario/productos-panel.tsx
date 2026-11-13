@@ -10,15 +10,16 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ExportMenu } from "@/components/ui/export-menu";
 import { Modal } from "@/components/ui/modal";
 import { RowActions, type RowAction } from "@/components/ui/row-actions";
-import { Field, FieldError, FieldLabel, Input, Select, Textarea } from "@/components/ui/input";
+import { Field, FieldError, FieldLabel, Input, Textarea } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/format";
-import { UNIDADES_MEDIDA, UNIDAD_MEDIDA_LABELS } from "@/lib/enums";
+import { etiquetaUnidad } from "@/lib/enums";
+import { UnidadSelect } from "@/components/ui/unidad-select";
 import { calcularStock } from "@/lib/inventario";
-import type { Producto } from "@/generated/prisma/client";
+import type { Producto, UnidadMedida } from "@/generated/prisma/client";
 
 type ProductoConMovimientos = Producto & { movimientos: { tipo: string; cantidad: number }[] };
 
-export function ProductosPanel({ productos }: { productos: ProductoConMovimientos[] }) {
+export function ProductosPanel({ productos, unidades }: { productos: ProductoConMovimientos[]; unidades: UnidadMedida[] }) {
   const [editing, setEditing] = useState<ProductoConMovimientos | null>(null);
   const [creating, setCreating] = useState(false);
   const [busqueda, setBusqueda] = useState("");
@@ -102,6 +103,7 @@ export function ProductosPanel({ productos }: { productos: ProductoConMovimiento
         <ProductoForm
           key={editing?.id ?? "nuevo"}
           producto={editing ?? undefined}
+          unidades={unidades}
           onDone={() => {
             setCreating(false);
             setEditing(null);
@@ -137,7 +139,7 @@ function AccionesProducto({ producto, onEdit }: { producto: ProductoConMovimient
 
 function ProductoRow({ producto, onEdit }: { producto: ProductoConMovimientos; onEdit: () => void }) {
   const stock = calcularStock(producto.movimientos);
-  const unidadLabel = UNIDAD_MEDIDA_LABELS[producto.unidadMedida as keyof typeof UNIDAD_MEDIDA_LABELS];
+  const unidadLabel = etiquetaUnidad(producto.unidadMedida);
 
   return (
     <tr className="border-b border-border last:border-0">
@@ -173,7 +175,7 @@ function ProductoRow({ producto, onEdit }: { producto: ProductoConMovimientos; o
  *  primero y grande: es el dato que se busca parado en la tienda. */
 function ProductoCardMobile({ producto, onEdit }: { producto: ProductoConMovimientos; onEdit: () => void }) {
   const stock = calcularStock(producto.movimientos);
-  const unidadLabel = UNIDAD_MEDIDA_LABELS[producto.unidadMedida as keyof typeof UNIDAD_MEDIDA_LABELS];
+  const unidadLabel = etiquetaUnidad(producto.unidadMedida);
 
   return (
     <Card>
@@ -217,13 +219,16 @@ function ProductoCardMobile({ producto, onEdit }: { producto: ProductoConMovimie
 
 function ProductoForm({
   producto,
+  unidades,
   onDone,
   onCancel,
 }: {
   producto?: ProductoConMovimientos;
+  unidades: UnidadMedida[];
   onDone: () => void;
   onCancel: () => void;
 }) {
+  const [unidad, setUnidad] = useState(producto?.unidadMedida ?? "");
   const [state, formAction, pending] = useActionState(
     async (prev: typeof initialFormState, formData: FormData) => {
       const res = await saveProductoAction(prev, formData);
@@ -247,13 +252,7 @@ function ProductoForm({
           </Field>
           <Field>
             <FieldLabel htmlFor="unidadMedida">Unidad de medida</FieldLabel>
-            <Select id="unidadMedida" name="unidadMedida" defaultValue={producto?.unidadMedida} required>
-              {UNIDADES_MEDIDA.map((u) => (
-                <option key={u} value={u}>
-                  {UNIDAD_MEDIDA_LABELS[u]}
-                </option>
-              ))}
-            </Select>
+            <UnidadSelect name="unidadMedida" value={unidad} onChange={setUnidad} unidades={unidades} permitirOtra={false} />
             <FieldError>{state.fieldErrors?.unidadMedida}</FieldError>
           </Field>
         </div>

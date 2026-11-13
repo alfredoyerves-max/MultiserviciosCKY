@@ -4,7 +4,7 @@ import { listServicios } from "@/lib/data/servicios";
 import { getSystemConfigConCeav } from "@/lib/data/config";
 import { calcularCostoReal } from "@/lib/costEngine";
 import { sueldoMensualEfectivo } from "@/lib/servicioCosto";
-import { SERVICIO_CATEGORIA_LABELS, type ServicioCategoria } from "@/lib/enums";
+import { etiquetaCategoriaServicio } from "@/lib/enums";
 import { styleHeaderRow, workbookToBuffer, xlsxResponse } from "@/lib/export/excel";
 
 export async function GET() {
@@ -35,7 +35,7 @@ export async function GET() {
     });
     sheet.addRow({
       nombre: s.nombre,
-      categoria: SERVICIO_CATEGORIA_LABELS[s.categoria as ServicioCategoria],
+      categoria: etiquetaCategoriaServicio(s.categoria),
       descripcion: s.descripcion ?? "",
       costoMensual: costo.costoRealMensual,
       costoHora: costo.costoRealHora,

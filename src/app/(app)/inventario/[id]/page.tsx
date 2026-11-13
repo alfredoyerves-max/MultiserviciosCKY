@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { UNIDAD_MEDIDA_LABELS, MOTIVO_SALIDA_LABELS, type UnidadMedida, type MotivoSalida } from "@/lib/enums";
+import { etiquetaUnidad, MOTIVO_SALIDA_LABELS, type MotivoSalida } from "@/lib/enums";
 import { RegistrarEntradaButton, RegistrarSalidaButton } from "../movimiento-buttons";
 import { requireSession } from "@/lib/auth/session";
 
@@ -19,7 +19,7 @@ export default async function ProductoDetallePage({
   const { id } = await params;
   const producto = await getProducto(id);
   const stock = calcularStock(producto.movimientos);
-  const unidadLabel = UNIDAD_MEDIDA_LABELS[producto.unidadMedida as UnidadMedida];
+  const unidadLabel = etiquetaUnidad(producto.unidadMedida);
 
   return (
     <div className="flex flex-col gap-6">

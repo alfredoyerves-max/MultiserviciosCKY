@@ -4,16 +4,18 @@ import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { ProductosPanel } from "./productos-panel";
 import { ActivosPanel } from "./activos-panel";
-import type { Activo, Producto } from "@/generated/prisma/client";
+import type { Activo, Producto, UnidadMedida } from "@/generated/prisma/client";
 
 type ProductoConMovimientos = Producto & { movimientos: { tipo: string; cantidad: number }[] };
 
 export function InventarioTabs({
   productos,
   activos,
+  unidades,
 }: {
   productos: ProductoConMovimientos[];
   activos: Activo[];
+  unidades: UnidadMedida[];
 }) {
   const [tab, setTab] = useState<"inventario" | "activos">("inventario");
 
@@ -28,7 +30,7 @@ export function InventarioTabs({
         </TabButton>
       </div>
 
-      {tab === "inventario" ? <ProductosPanel productos={productos} /> : <ActivosPanel activos={activos} />}
+      {tab === "inventario" ? <ProductosPanel productos={productos} unidades={unidades} /> : <ActivosPanel activos={activos} />}
     </div>
   );
 }

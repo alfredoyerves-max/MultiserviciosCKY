@@ -14,8 +14,7 @@ import { formatCurrency } from "@/lib/format";
 import {
   MODALIDADES,
   MODALIDAD_LABELS,
-  SERVICIO_CATEGORIAS,
-  SERVICIO_CATEGORIA_LABELS,
+  etiquetaCategoriaServicio,
 } from "@/lib/enums";
 import { calcularCostoReal, type CostConfigInput, type CostoRealResult } from "@/lib/costEngine";
 import { parseModalidades } from "@/lib/modalidades";
@@ -27,7 +26,7 @@ import {
   TEXTO_CARGAS_SOBRE_MINIMO,
 } from "@/lib/servicioCosto";
 import { cn } from "@/lib/cn";
-import type { Puesto, Servicio } from "@/generated/prisma/client";
+import type { Categoria, Puesto, Servicio } from "@/generated/prisma/client";
 
 type ServicioConPuesto = Servicio & { puesto: Puesto | null };
 
@@ -120,10 +119,12 @@ export function ServiciosPanel({
   servicios,
   puestos,
   config,
+  categorias,
 }: {
   servicios: ServicioConPuesto[];
   puestos: Puesto[];
   config: CostConfigInput;
+  categorias: Categoria[];
 }) {
   const [editing, setEditing] = useState<ServicioConPuesto | null>(null);
   const [creating, setCreating] = useState(false);
@@ -219,6 +220,7 @@ export function ServiciosPanel({
           servicio={editing ?? undefined}
           puestos={puestos}
           config={config}
+          categorias={categorias}
           onDone={() => {
             setCreating(false);
             setEditing(null);
@@ -295,7 +297,7 @@ function ServicioRow({
           )}
         </td>
         <td className="px-5 py-3">
-          <Badge tone="neutral">{SERVICIO_CATEGORIA_LABELS[servicio.categoria as keyof typeof SERVICIO_CATEGORIA_LABELS]}</Badge>
+          <Badge tone="neutral">{etiquetaCategoriaServicio(servicio.categoria)}</Badge>
         </td>
         <td className="px-5 py-3 text-text-muted">
           {nombrePuestoEfectivo(servicio)}
@@ -358,7 +360,7 @@ function ServicioCardMobile({
             {servicio.descripcion && <p className="mt-0.5 text-xs text-text-dim">{servicio.descripcion}</p>}
           </div>
           <Badge tone="neutral" className="shrink-0">
-            {SERVICIO_CATEGORIA_LABELS[servicio.categoria as keyof typeof SERVICIO_CATEGORIA_LABELS]}
+            {etiquetaCategoriaServicio(servicio.categoria)}
           </Badge>
         </div>
 
@@ -411,15 +413,22 @@ function ServicioForm({
   servicio,
   puestos,
   config,
+  categorias,
   onDone,
   onCancel,
 }: {
   servicio?: ServicioConPuesto;
   puestos: Puesto[];
   config: CostConfigInput;
+  categorias: Categoria[];
   onDone: () => void;
   onCancel: () => void;
 }) {
+  // Categoría inicial: la del catálogo que corresponde a la del servicio (también si guarda el código
+  // histórico "LIMPIEZA"); si no está en el catálogo se ofrece igual para no perderla.
+  const etiquetaActual = servicio ? etiquetaCategoriaServicio(servicio.categoria) : "";
+  const enCatalogo = categorias.find((c) => c.nombre.toLowerCase() === etiquetaActual.toLowerCase());
+  const categoriaInicial = servicio ? (enCatalogo?.nombre ?? etiquetaActual) : "_none_";
   const [incluyeUniforme, setIncluyeUniforme] = useState(servicio?.incluyeUniforme ?? false);
   const [incluyeMaterial, setIncluyeMaterial] = useState(servicio?.incluyeMaterial ?? false);
   const modalidadesActuales = servicio ? parseModalidades(servicio.modalidadesJson) : [];
@@ -485,10 +494,12 @@ function ServicioForm({
             </Field>
             <Field>
               <FieldLabel htmlFor="categoria">Categoría</FieldLabel>
-              <Select id="categoria" name="categoria" defaultValue={servicio?.categoria} required>
-                {SERVICIO_CATEGORIAS.map((c) => (
-                  <option key={c} value={c}>
-                    {SERVICIO_CATEGORIA_LABELS[c]}
+              <Select id="categoria" name="categoria" defaultValue={categoriaInicial} required>
+                {!servicio && <option value="_none_">Selecciona…</option>}
+                {servicio && !enCatalogo && <option value={etiquetaActual}>{etiquetaActual}</option>}
+                {categorias.map((c) => (
+                  <option key={c.id} value={c.nombre}>
+                    {c.nombre}
                   </option>
                 ))}
               </Select>

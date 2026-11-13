@@ -3,12 +3,13 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Field, FieldError, FieldLabel, Input, Select } from "@/components/ui/input";
+import { Field, FieldLabel, Input, Select } from "@/components/ui/input";
 import { UnidadSelect } from "@/components/ui/unidad-select";
+import { ClaveSatInput } from "./clave-sat-input";
 import { formatCurrency } from "@/lib/format";
 import { etiquetaUnidad } from "@/lib/enums";
 import { claveSatValida, MENSAJE_CLAVE_SAT } from "@/lib/claveSat";
-import type { Producto } from "@/generated/prisma/client";
+import type { ClaveSat, Producto, UnidadMedida } from "@/generated/prisma/client";
 
 /** Valor del selector de atajo cuando la línea se captura libre. */
 const SIN_PRODUCTO = "_none_";
@@ -55,10 +56,14 @@ const COLUMNAS = "sm:grid sm:grid-cols-[minmax(0,3fr)_minmax(0,1fr)_minmax(0,1fr
  */
 export function ConceptosMaterial({
   productos,
+  unidades,
+  claves,
   lineas,
   setLineas,
 }: {
   productos: Producto[];
+  unidades: UnidadMedida[];
+  claves: ClaveSat[];
   lineas: LineaMaterial[];
   setLineas: (fn: (prev: LineaMaterial[]) => LineaMaterial[]) => void;
 }) {
@@ -186,19 +191,16 @@ export function ConceptosMaterial({
             </Field>
             <Field>
               <FieldLabel>Clave SAT</FieldLabel>
-              <Input
+              <ClaveSatInput
                 value={borrador.claveSat}
-                maxLength={8}
-                inputMode="numeric"
-                aria-invalid={!claveSatValida(borrador.claveSat)}
-                onChange={(e) => cambiar({ claveSat: e.target.value })}
+                onChange={(v) => cambiar({ claveSat: v })}
+                claves={claves}
                 onKeyDown={teclaCaptura}
               />
-              {!claveSatValida(borrador.claveSat) && <FieldError>{MENSAJE_CLAVE_SAT}</FieldError>}
             </Field>
             <Field>
               <FieldLabel>Unidad</FieldLabel>
-              <UnidadSelect value={borrador.unidadMedida} onChange={(v) => cambiar({ unidadMedida: v })} />
+              <UnidadSelect value={borrador.unidadMedida} onChange={(v) => cambiar({ unidadMedida: v })} unidades={unidades} />
             </Field>
             <Field>
               <FieldLabel>Cant.</FieldLabel>

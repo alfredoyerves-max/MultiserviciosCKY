@@ -4,7 +4,7 @@ import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { PuestosPanel } from "./puestos-panel";
 import { ServiciosPanel } from "./servicios-panel";
-import type { Puesto, Servicio } from "@/generated/prisma/client";
+import type { Categoria, Puesto, Servicio } from "@/generated/prisma/client";
 import type { CostConfigInput } from "@/lib/costEngine";
 
 type ServicioConPuesto = Servicio & { puesto: Puesto | null };
@@ -13,10 +13,12 @@ export function ServiciosTabs({
   servicios,
   puestos,
   config,
+  categorias,
 }: {
   servicios: ServicioConPuesto[];
   puestos: Puesto[];
   config: CostConfigInput;
+  categorias: Categoria[];
 }) {
   const [tab, setTab] = useState<"servicios" | "puestos">("servicios");
 
@@ -32,7 +34,7 @@ export function ServiciosTabs({
       </div>
 
       {tab === "servicios" ? (
-        <ServiciosPanel servicios={servicios} puestos={puestos} config={config} />
+        <ServiciosPanel servicios={servicios} puestos={puestos} config={config} categorias={categorias} />
       ) : (
         <PuestosPanel puestos={puestos} onVerServicios={() => setTab("servicios")} />
       )}

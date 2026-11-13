@@ -5,18 +5,22 @@ import { createCotizacionMaterialAction, type CotizacionActionState } from "../.
 import { ClienteStep, ClienteHiddenFields, useClienteCotizacion } from "../cliente-step";
 import { ResumenCotizacionCard } from "../resumen-card";
 import { ConceptosMaterial, type LineaMaterial } from "./conceptos-material";
-import type { Cliente, Producto } from "@/generated/prisma/client";
+import type { Cliente, ClaveSat, Producto, UnidadMedida } from "@/generated/prisma/client";
 
 const initialState: CotizacionActionState = { ok: false };
 
 export function Wizard({
   productos,
   clientes,
+  unidades,
+  claves,
   ivaPct,
   retencionIsrPct,
 }: {
   productos: Producto[];
   clientes: Cliente[];
+  unidades: UnidadMedida[];
+  claves: ClaveSat[];
   ivaPct: number;
   retencionIsrPct: number;
 }) {
@@ -42,7 +46,7 @@ export function Wizard({
       <div className="flex flex-col gap-6">
       <ClienteStep clientes={clientes} {...cliente} />
 
-      <ConceptosMaterial productos={productos} lineas={lineas} setLineas={setLineas} />
+      <ConceptosMaterial productos={productos} unidades={unidades} claves={claves} lineas={lineas} setLineas={setLineas} />
       </div>
 
       <ResumenCotizacionCard

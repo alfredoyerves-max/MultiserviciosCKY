@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { requireSession } from "@/lib/auth/session";
 import { listMovimientosInventario } from "@/lib/data/movimientosInventario";
-import { UNIDAD_MEDIDA_LABELS, MOTIVO_SALIDA_LABELS, type UnidadMedida, type MotivoSalida } from "@/lib/enums";
+import { etiquetaUnidad, MOTIVO_SALIDA_LABELS, type MotivoSalida } from "@/lib/enums";
 import { formatDate } from "@/lib/format";
 import { styleHeaderRow, workbookToBuffer, xlsxResponse } from "@/lib/export/excel";
 
@@ -28,7 +28,7 @@ export async function GET() {
       producto: m.producto.nombre,
       tipo: m.tipo === "ENTRADA" ? "Entrada" : "Salida",
       cantidad: m.cantidad,
-      unidad: UNIDAD_MEDIDA_LABELS[m.producto.unidadMedida as UnidadMedida],
+      unidad: etiquetaUnidad(m.producto.unidadMedida),
       fecha: formatDate(m.fecha),
       detalle: m.tipo === "ENTRADA" ? (m.proveedor ?? "") : MOTIVO_SALIDA_LABELS[m.motivoSalida as MotivoSalida],
       referencia: m.referencia ?? "",
