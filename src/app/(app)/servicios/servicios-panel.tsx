@@ -20,7 +20,6 @@ import {
 import { calcularCostoReal, type CostConfigInput, type CostoRealResult } from "@/lib/costEngine";
 import { parseModalidades } from "@/lib/modalidades";
 import {
-  sueldoMensualEfectivo,
   nombrePuestoEfectivo,
   esSueldoBajoMinimo,
   costoDeServicio,
