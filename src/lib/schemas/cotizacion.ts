@@ -37,6 +37,8 @@ const cotizacionBaseSchema = z.object({
   // resuelve a una fecha absoluta al crear la cotización (Fase 6).
   diasVigencia: z.coerce.number().int().min(1, "Mínimo 1 día"),
   esSoporte: z.coerce.boolean().optional(),
+  // Casilla "Retención ISR" del Resumen; sin valor = se deriva del tipo del cliente.
+  aplicaRetencion: z.boolean().optional(),
 });
 
 export const cotizacionInputSchema = cotizacionBaseSchema.extend({

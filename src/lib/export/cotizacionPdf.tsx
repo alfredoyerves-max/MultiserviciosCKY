@@ -346,7 +346,7 @@ function CotizacionPdfDocument({ data }: { data: CotizacionExportData }) {
 
           {conRetencion && (
             <View style={styles.legalBox}>
-              <Text style={styles.legalText}>{leyendaRetencion(data.tasaRetencionIsr)}</Text>
+              <Text style={styles.legalText}>{leyendaRetencion(data.tasaRetencionIsr, data.cliente.tipoCliente)}</Text>
             </View>
           )}
 

@@ -60,7 +60,7 @@ export function Wizard({
   ivaPct: number;
   retencionIsrPct: number;
 }) {
-  const { estado: cliente, tipoClienteActivo } = useClienteCotizacion(clientes);
+  const { estado: cliente, aplicaRetencion, setAplicaRetencion } = useClienteCotizacion(clientes);
   const [margenUtilidadPct, setMargenUtilidadPct] = useState(margenDefaultPct);
   const [diasVigencia, setDiasVigencia] = useState(15);
   const [esSoporte, setEsSoporte] = useState(false);
@@ -242,7 +242,8 @@ export function Wizard({
         esSoporte={esSoporte}
         setEsSoporte={setEsSoporte}
         subtotal={subtotal}
-        tipoClienteActivo={tipoClienteActivo}
+        aplicaRetencion={aplicaRetencion}
+        setAplicaRetencion={setAplicaRetencion}
         ivaPct={ivaPct}
         retencionIsrPct={retencionIsrPct}
         error={state.error}

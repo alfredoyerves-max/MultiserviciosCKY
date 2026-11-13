@@ -375,11 +375,11 @@ function fiscalBlock(data: CotizacionExportData): Table {
   });
 }
 
-function leyendaRetencionBlock(tasa: number | null): Paragraph {
+function leyendaRetencionBlock(tasa: number | null, tipoCliente: string): Paragraph {
   return new Paragraph({
     spacing: { before: 200 },
     border: { left: { style: BorderStyle.SINGLE, size: 18, color: ACCENT, space: 8 } },
-    children: [new TextRun({ text: leyendaRetencion(tasa), italics: true, size: 15, color: GRAY })],
+    children: [new TextRun({ text: leyendaRetencion(tasa, tipoCliente), italics: true, size: 15, color: GRAY })],
   });
 }
 
@@ -518,7 +518,7 @@ export async function generarCotizacionDocx(data: CotizacionExportData): Promise
           lineasTable,
           new Paragraph({ spacing: { before: 260 }, children: [] }),
           fiscalBlock(data),
-          ...(conRetencion ? [leyendaRetencionBlock(data.tasaRetencionIsr)] : []),
+          ...(conRetencion ? [leyendaRetencionBlock(data.tasaRetencionIsr, data.cliente.tipoCliente)] : []),
           ...notaBlock("CONDICIONES Y TÉRMINOS", data.condicionesTerminos),
           ...datosBancariosBlock(data),
           firmasBlock(data),

@@ -37,6 +37,12 @@ function leerClienteDeFormData(
   return { ok: true, clienteId: clienteId ? String(clienteId) : undefined, clienteNuevo };
 }
 
+/** Casilla "Retención ISR": viaja como "true"/"false"; ausente = sin decisión (se deriva del cliente). */
+function leerAplicaRetencion(formData: FormData): boolean | undefined {
+  const v = formData.get("aplicaRetencion");
+  return v === "true" ? true : v === "false" ? false : undefined;
+}
+
 /** Cierre común de la creación: ejecuta, revalida y redirige al detalle. */
 async function finalizarCreacion(
   datos: { clienteId?: string; clienteNuevo?: unknown },
@@ -82,6 +88,7 @@ export async function createCotizacionAction(
     margenUtilidadPct: formData.get("margenUtilidadPct"),
     diasVigencia: formData.get("diasVigencia"),
     esSoporte: formData.get("esSoporte") === "on",
+    aplicaRetencion: leerAplicaRetencion(formData),
     lineas,
   });
   if (!parsed.success) {
@@ -114,6 +121,7 @@ export async function createCotizacionMaterialAction(
     proyecto: formData.get("proyecto") ?? undefined,
     diasVigencia: formData.get("diasVigencia"),
     esSoporte: formData.get("esSoporte") === "on",
+    aplicaRetencion: leerAplicaRetencion(formData),
     lineasMaterial,
   });
   if (!parsed.success) {

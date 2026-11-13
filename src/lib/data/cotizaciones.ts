@@ -2,6 +2,7 @@ import { advisoryLock, prisma } from "@/lib/prisma";
 import { getSystemConfigConCeav } from "./config";
 import { calcularCostoReal, costoRealPorModalidad } from "@/lib/costEngine";
 import { calcularTotalesFiscales } from "@/lib/fiscalEngine";
+import { retencionEfectiva, tipoParaCalculoFiscal } from "@/lib/retencion";
 import { sueldoMensualEfectivo } from "@/lib/servicioCosto";
 import { puedeEliminarseCotizacion, MENSAJE_COTIZACION_NO_ELIMINABLE } from "@/lib/cotizacionRules";
 import { createCliente } from "./clientes";
@@ -102,7 +103,8 @@ export async function createCotizacion(input: CotizacionInput) {
   });
 
   const subtotal = lineasCalculadas.reduce((sum, l) => sum + l.precioVenta, 0);
-  const fiscal = calcularTotalesFiscales(subtotal, tipoCliente, config.ivaPct, config.retencionIsrPct);
+  const aplicaRetencion = retencionEfectiva(input.aplicaRetencion, tipoCliente);
+  const fiscal = calcularTotalesFiscales(subtotal, tipoParaCalculoFiscal(aplicaRetencion), config.ivaPct, config.retencionIsrPct);
 
   const folio = await generarFolio();
 
@@ -122,6 +124,7 @@ export async function createCotizacion(input: CotizacionInput) {
       netoARecibir: fiscal.netoARecibir,
       fechaVigencia,
       esSoporte: input.esSoporte ?? false,
+      aplicaRetencion: input.aplicaRetencion ?? null,
       lineas: { create: lineasCalculadas },
     },
     include: { cliente: true, lineas: { include: { servicio: true } } },
@@ -162,7 +165,8 @@ export async function createCotizacionMaterial(input: CotizacionMaterialInput) {
   });
 
   const subtotal = lineasCalculadas.reduce((sum, l) => sum + l.importe, 0);
-  const fiscal = calcularTotalesFiscales(subtotal, tipoCliente, config.ivaPct, config.retencionIsrPct);
+  const aplicaRetencion = retencionEfectiva(input.aplicaRetencion, tipoCliente);
+  const fiscal = calcularTotalesFiscales(subtotal, tipoParaCalculoFiscal(aplicaRetencion), config.ivaPct, config.retencionIsrPct);
 
   const folio = await generarFolio();
 
@@ -182,6 +186,7 @@ export async function createCotizacionMaterial(input: CotizacionMaterialInput) {
       netoARecibir: fiscal.netoARecibir,
       fechaVigencia,
       esSoporte: input.esSoporte ?? false,
+      aplicaRetencion: input.aplicaRetencion ?? null,
       lineasMaterial: { create: lineasCalculadas },
     },
     include: { cliente: true, lineasMaterial: true },

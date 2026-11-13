@@ -166,9 +166,11 @@ export function buildCotizacionExportData(
 }
 
 /** Leyenda del Art. 113-J: una sola redacción para Word y PDF. Solo se muestra
- *  cuando la cotización tiene retención; la tasa sale de los montos (sin
+ *  cuando la cotización tiene retención (el valor efectivo: casilla de la cotización o, en las anteriores, el tipo del cliente); la tasa sale de los montos (sin
  *  porcentaje si no se puede afirmar). */
-export function leyendaRetencion(tasaRetencionIsr: number | null): string {
+export function leyendaRetencion(tasaRetencionIsr: number | null, tipoCliente: string = "PERSONA_MORAL"): string {
   const tasa = tasaRetencionIsr === null ? "de ISR" : `del ${tasaRetencionIsr}% de ISR`;
-  return `De conformidad con el Artículo 113-J de la Ley del ISR, al ser usted Persona Moral, se aplicará la retención obligatoria ${tasa} sobre el subtotal de esta operación. Dicho monto se reflejará descontado en el total neto de su factura para que proceda con su entero directo al SAT.`;
+  // La retención ahora es decisión de la cotización: solo se afirma «al ser usted Persona Moral» cuando el cliente lo es.
+  const sujeto = tipoCliente === "PERSONA_MORAL" ? ", al ser usted Persona Moral," : ",";
+  return `De conformidad con el Artículo 113-J de la Ley del ISR${sujeto} se aplicará la retención obligatoria ${tasa} sobre el subtotal de esta operación. Dicho monto se reflejará descontado en el total neto de su factura para que proceda con su entero directo al SAT.`;
 }

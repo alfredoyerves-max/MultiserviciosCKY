@@ -1,5 +1,6 @@
 "use client";
 
+import { retencionInicial } from "@/lib/retencion";
 import { analizarRfc, normalizarRfc, tipoClienteEfectivo, textoTipoDeducido, MENSAJE_TIPO_CLIENTE } from "@/lib/rfc";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +44,9 @@ export function useClienteCotizacion(clientes: Cliente[]): {
   estado: ClienteEstado;
   /** Tipo del cliente elegido o capturado; null si aún no hay uno. */
   tipoClienteActivo: TipoCliente | null;
+  /** Casilla "Retención ISR": arranca según el cliente, es editable y vuelve a su valor al cambiar de cliente. */
+  aplicaRetencion: boolean;
+  setAplicaRetencion: (v: boolean) => void;
 } {
   const [modoCliente, setModoCliente] = useState<"existente" | "nuevo">(
     clientes.length > 0 ? "existente" : "nuevo"
@@ -61,7 +65,15 @@ export function useClienteCotizacion(clientes: Cliente[]): {
       ? ((clientes.find((c) => c.id === clienteId)?.tipoCliente as TipoCliente) ?? null)
       : tipoClienteEfectivo(clienteNuevo.rfc, clienteNuevo.tipoCliente) || null;
 
+  // La decisión manual solo vale para el cliente con el que se tomó; con otro cliente (o otro tipo) vuelve al valor de ese cliente.
+  const claveCliente = `${modoCliente}|${modoCliente === "existente" ? clienteId : "nuevo"}|${tipoClienteActivo ?? ""}`;
+  const [retencionManual, setRetencionManual] = useState<{ clave: string; valor: boolean } | null>(null);
+  const aplicaRetencion =
+    retencionManual && retencionManual.clave === claveCliente ? retencionManual.valor : retencionInicial(tipoClienteActivo);
+
   return {
+    aplicaRetencion,
+    setAplicaRetencion: (valor: boolean) => setRetencionManual({ clave: claveCliente, valor }),
     estado: {
       modoCliente,
       setModoCliente,

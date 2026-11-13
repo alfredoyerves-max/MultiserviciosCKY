@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel, Input } from "@/components/ui/input";
 import { calcularTotalesFiscales } from "@/lib/fiscalEngine";
+import { tipoParaCalculoFiscal } from "@/lib/retencion";
 import { formatCurrency, formatPercent } from "@/lib/format";
-import type { TipoCliente } from "@/lib/enums";
 
 const TOOLTIP_SOLO_TRAMITE =
   "Cotización generada solo como trámite interno del cliente (papeleo de compras), sin intención real de compra: no es una venta. Se oculta del tablero por defecto.";
@@ -26,7 +26,8 @@ export function ResumenCotizacionCard({
   esSoporte,
   setEsSoporte,
   subtotal,
-  tipoClienteActivo,
+  aplicaRetencion,
+  setAplicaRetencion,
   ivaPct,
   retencionIsrPct,
   aviso,
@@ -42,7 +43,9 @@ export function ResumenCotizacionCard({
   esSoporte: boolean;
   setEsSoporte: (b: boolean) => void;
   subtotal: number;
-  tipoClienteActivo: TipoCliente | null;
+  /** Casilla de retención ISR (valor ya resuelto por el cliente elegido). */
+  aplicaRetencion: boolean;
+  setAplicaRetencion: (v: boolean) => void;
   ivaPct: number;
   retencionIsrPct: number;
   /** Aviso único del formulario (ej. sueldo bajo el mínimo). */
@@ -53,13 +56,14 @@ export function ResumenCotizacionCard({
   /** Motivo por el que no se puede crear todavía (ej. RFC inválido del cliente nuevo). */
   bloqueo?: string | null;
 }) {
-  // Sin cliente elegido todavía no hay retención (solo aplica a Persona Moral).
-  const fiscal = calcularTotalesFiscales(subtotal, tipoClienteActivo ?? "PERSONA_FISICA", ivaPct, retencionIsrPct);
+  // El motor fiscal no cambia: decide la retención por el tipo de cliente, así que se le pasa el equivalente a la casilla.
+  const fiscal = calcularTotalesFiscales(subtotal, tipoParaCalculoFiscal(aplicaRetencion), ivaPct, retencionIsrPct);
 
   return (
     <Card className="lg:sticky lg:top-6">
       <input type="hidden" name="diasVigencia" value={diasVigencia} />
       <input type="hidden" name="esSoporte" value={esSoporte ? "on" : ""} />
+      <input type="hidden" name="aplicaRetencion" value={aplicaRetencion ? "true" : "false"} />
 
       <CardHeader>
         <CardTitle>{titulo}</CardTitle>
@@ -68,7 +72,7 @@ export function ResumenCotizacionCard({
         <div className="flex flex-col gap-3">
           <ResumenItem label="Subtotal" value={formatCurrency(fiscal.subtotal)} />
           <ResumenItem label={`IVA trasladado (${formatPercent(ivaPct)})`} value={formatCurrency(fiscal.iva)} />
-          {tipoClienteActivo === "PERSONA_MORAL" && (
+          {aplicaRetencion && (
             <ResumenItem
               label={`Retención ISR (${formatPercent(retencionIsrPct)})`}
               value={`- ${formatCurrency(fiscal.retencionIsr)}`}
@@ -107,6 +111,16 @@ export function ResumenCotizacionCard({
             Solo trámite (no es venta)
           </label>
         </div>
+
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-text-muted">
+          <input
+            type="checkbox"
+            checked={aplicaRetencion}
+            onChange={(e) => setAplicaRetencion(e.target.checked)}
+            className="h-4 w-4 rounded border-border-strong bg-surface-2 accent-[var(--color-primary)]"
+          />
+          Retención ISR {formatPercent(retencionIsrPct)}
+        </label>
 
         {error && <p className="text-sm text-danger">{error}</p>}
         {bloqueo && <p className="text-sm text-danger">{bloqueo}</p>}
