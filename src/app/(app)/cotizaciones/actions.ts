@@ -127,14 +127,17 @@ export async function createCotizacionMaterialAction(
 // confirmarAceptacionAction / confirmarRechazoAction (modal obligatorio).
 // Toda salida de ACEPTADA va por cambiarEstadoCotizacion: elimina la cuenta
 // por cobrar en la misma transacción, o bloquea si ya tiene abonos.
-export async function updateEstadoAction(id: string, estado: string) {
+export async function updateEstadoAction(id: string, estado: string, diasVigenciaNueva?: number) {
   await requireSession();
   const parsed = estadoCotizacionSchema.safeParse(estado);
   if (!parsed.success) throw new Error("Estado inválido.");
   if (parsed.data === "ACEPTADA" || parsed.data === "RECHAZADA") {
     throw new Error("Este cambio de estado requiere confirmación — usa el modal correspondiente.");
   }
-  await cambiarEstadoCotizacion(id, parsed.data);
+  if (diasVigenciaNueva !== undefined && (!Number.isInteger(diasVigenciaNueva) || diasVigenciaNueva < 1 || diasVigenciaNueva > 365)) {
+    throw new Error("Los días de vigencia deben ser un número entero entre 1 y 365.");
+  }
+  await cambiarEstadoCotizacion(id, parsed.data, diasVigenciaNueva);
   revalidatePath(`/cotizaciones/${id}`);
   revalidatePath("/cotizaciones");
 }

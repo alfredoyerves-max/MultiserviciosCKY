@@ -8,6 +8,7 @@ import { createCliente } from "./clientes";
 import type { CotizacionInput, CotizacionMaterialInput } from "@/lib/schemas/cotizacion";
 import type { ClienteInput } from "@/lib/schemas/cliente";
 import type { TipoCliente, TipoCotizacion } from "@/lib/enums";
+import { vigenciaVencida, vigenciaEnDias } from "@/lib/fechaLocal";
 import { requireSession } from "@/lib/auth/session";
 
 /**
@@ -303,7 +304,9 @@ export async function deleteCotizacion(id: string) {
  */
 export async function cambiarEstadoCotizacion(
   cotizacionId: string,
-  nuevoEstado: "BORRADOR" | "ENVIADA" | "RECHAZADA"
+  nuevoEstado: "BORRADOR" | "ENVIADA" | "RECHAZADA",
+  /** Solo al marcar como enviada una cotización con la vigencia vencida: días nuevos desde hoy (México). */
+  diasVigenciaNueva?: number
 ) {
   await requireSession();
   return prisma.$transaction(async (tx) => {
@@ -311,8 +314,21 @@ export async function cambiarEstadoCotizacion(
 
     const cotizacion = await tx.cotizacion.findUniqueOrThrow({
       where: { id: cotizacionId },
-      select: { cuentaPorCobrar: { select: { id: true, abonos: { select: { id: true }, take: 1 } } } },
+      select: {
+        estado: true,
+        fechaVigencia: true,
+        cuentaPorCobrar: { select: { id: true, abonos: { select: { id: true }, take: 1 } } },
+      },
     });
+
+    // Una cotización con la vigencia vencida no se envía tal cual: hay que fijar una vigencia nueva.
+    let fechaVigencia: Date | undefined;
+    if (nuevoEstado === "ENVIADA" && vigenciaVencida(cotizacion.fechaVigencia)) {
+      if (!diasVigenciaNueva) {
+        throw new Error("La vigencia de esta cotización ya venció: indica cuántos días de vigencia nuevos tendrá.");
+      }
+      fechaVigencia = vigenciaEnDias(diasVigenciaNueva);
+    }
 
     const cuenta = cotizacion.cuentaPorCobrar;
     if (cuenta && cuenta.abonos.length > 0) {
@@ -322,7 +338,10 @@ export async function cambiarEstadoCotizacion(
     }
     if (cuenta) await tx.cuentaPorCobrar.delete({ where: { id: cuenta.id } });
 
-    await tx.cotizacion.update({ where: { id: cotizacionId }, data: { estado: nuevoEstado } });
+    await tx.cotizacion.update({
+      where: { id: cotizacionId },
+      data: { estado: nuevoEstado, ...(fechaVigencia ? { fechaVigencia } : {}) },
+    });
   });
 }
 

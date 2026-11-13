@@ -7,9 +7,11 @@ import {
   ConfirmarAceptacionModal,
   ConfirmarEliminacionModal,
   ConfirmarRechazoModal,
+  ReenviarConVigenciaModal,
 } from "./confirm-modals";
 import { Button } from "@/components/ui/button";
 import { RowActions, type RowAction } from "@/components/ui/row-actions";
+import { vigenciaVencida } from "@/lib/fechaLocal";
 import { puedeEliminarseCotizacion, MENSAJE_COTIZACION_NO_ELIMINABLE } from "@/lib/cotizacionRules";
 import type { EstadoCotizacion } from "@/lib/enums";
 
@@ -21,6 +23,8 @@ export interface CotizacionParaAcciones {
   netoARecibir: number;
   cliente: { nombreRazonSocial: string };
   cuentaPorCobrar: { abonos: { id: string }[] } | null;
+  fechaVigencia: Date;
+  createdAt: Date;
 }
 
 const MENSAJE_BLOQUEO = "Ya tiene pagos registrados en su cuenta por cobrar.";
@@ -61,12 +65,18 @@ export function AccionesCotizacion({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [modal, setModal] = useState<"ACEPTADA" | "RECHAZADA" | "ELIMINAR" | null>(null);
+  const [modal, setModal] = useState<"ACEPTADA" | "RECHAZADA" | "ELIMINAR" | "REENVIAR" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const tieneCxc = cotizacion.cuentaPorCobrar !== null;
   const tieneAbonos = (cotizacion.cuentaPorCobrar?.abonos.length ?? 0) > 0;
   const bloqueadoPorAbonos = cotizacion.estado === "ACEPTADA" && tieneAbonos;
+
+  // Los días que tenía la cotización al crearse (vigencia − creación), para proponerlos de nuevo.
+  const diasDeVigenciaOriginal = Math.max(
+    1,
+    Math.round((new Date(cotizacion.fechaVigencia).getTime() - new Date(cotizacion.createdAt).getTime()) / 86400000)
+  );
 
   const resumen = {
     id: cotizacion.id,
@@ -80,6 +90,11 @@ export function AccionesCotizacion({
     setError(null);
     if (destino === "ACEPTADA" || destino === "RECHAZADA") {
       setModal(destino);
+      return;
+    }
+    // Marcar como enviada con la vigencia vencida: antes hay que fijar una vigencia nueva.
+    if (destino === "ENVIADA" && vigenciaVencida(cotizacion.fechaVigencia)) {
+      setModal("REENVIAR");
       return;
     }
     startTransition(async () => {
@@ -128,6 +143,9 @@ export function AccionesCotizacion({
       {bloqueadoPorAbonos && conPrincipal && <p className="text-xs text-danger">{MENSAJE_BLOQUEO}</p>}
       {error && <p className="text-xs text-danger">{error}</p>}
 
+      {modal === "REENVIAR" && (
+        <ReenviarConVigenciaModal cotizacion={resumen} diasPorDefecto={diasDeVigenciaOriginal} onClose={() => setModal(null)} />
+      )}
       {modal === "ACEPTADA" && (
         <ConfirmarAceptacionModal
           cotizacion={resumen}

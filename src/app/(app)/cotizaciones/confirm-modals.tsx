@@ -1,16 +1,19 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   confirmarAceptacionAction,
   confirmarRechazoAction,
   deleteCotizacionAction,
+  updateEstadoAction,
   type CotizacionActionState,
 } from "./actions";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel, Input } from "@/components/ui/input";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
+import { vigenciaEnDias } from "@/lib/fechaLocal";
 
 const initialState: CotizacionActionState = { ok: false };
 
@@ -192,6 +195,86 @@ export function ConfirmarEliminacionModal({
           </Button>
         </div>
       </form>
+    </Modal>
+  );
+}
+
+/**
+ * "Marcar como enviada" sobre una cotización con la vigencia vencida: pide los días de
+ * vigencia nuevos (por defecto los que tenía la cotización) y los cuenta desde hoy en México.
+ */
+export function ReenviarConVigenciaModal({
+  cotizacion,
+  diasPorDefecto,
+  onClose,
+}: {
+  cotizacion: CotizacionResumen;
+  diasPorDefecto: number;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const [dias, setDias] = useState(String(diasPorDefecto));
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const n = Number(dias);
+  const valido = Number.isInteger(n) && n >= 1 && n <= 365;
+
+  function confirmar() {
+    if (!valido || pending) return;
+    setError(null);
+    startTransition(async () => {
+      try {
+        await updateEstadoAction(cotizacion.id, "ENVIADA", n);
+        onClose();
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "No se pudo marcar como enviada.");
+      }
+    });
+  }
+
+  return (
+    <Modal onClose={pending ? () => {} : onClose}>
+      <div className="flex flex-col gap-4 p-5">
+        <div>
+          <h3 className="text-sm font-semibold text-text">Nueva vigencia para {cotizacion.folio}</h3>
+          <p className="mt-1 text-sm text-text-muted">
+            La vigencia de esta cotización ya venció. Indica cuántos días tendrá, contados desde hoy (hora de México).
+          </p>
+        </div>
+        <Field className="max-w-[10rem]">
+          <FieldLabel htmlFor="dias-vigencia">Días de vigencia</FieldLabel>
+          <Input
+            id="dias-vigencia"
+            type="number"
+            min={1}
+            max={365}
+            step={1}
+            value={dias}
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => setDias(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                confirmar();
+              }
+            }}
+          />
+        </Field>
+        {valido && (
+          <p className="text-xs text-text-dim">Vencerá el {formatDate(vigenciaEnDias(n))}.</p>
+        )}
+        {!valido && <p className="text-sm text-danger">Escribe un número entero de 1 a 365.</p>}
+        {error && <p className="text-sm text-danger">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose} disabled={pending}>
+            Cancelar
+          </Button>
+          <Button type="button" onClick={confirmar} disabled={!valido || pending}>
+            {pending ? "Guardando…" : "Marcar como enviada"}
+          </Button>
+        </div>
+      </div>
     </Modal>
   );
 }

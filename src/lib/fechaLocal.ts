@@ -20,3 +20,18 @@ export function hoyMexicoMasDias(dias: number, ahora: Date = new Date()): string
   const [a, m, d] = hoyMexico(ahora).split("-").map(Number);
   return new Date(Date.UTC(a, m - 1, d + dias)).toISOString().slice(0, 10);
 }
+
+/** Un instante como fecha de calendario en México (AAAA-MM-DD). */
+export function fechaMexico(fecha: Date): string {
+  return hoyMexico(fecha);
+}
+
+/** ¿Esa fecha de vigencia ya pasó, contando por días de calendario en México? */
+export function vigenciaVencida(fechaVigencia: Date, ahora: Date = new Date()): boolean {
+  return fechaMexico(fechaVigencia) < hoyMexico(ahora);
+}
+
+/** Vigencia de `dias` días contados desde hoy en México (a mediodía UTC para no cruzar de día en ninguna zona de México). */
+export function vigenciaEnDias(dias: number, ahora: Date = new Date()): Date {
+  return new Date(`${hoyMexicoMasDias(dias, ahora)}T12:00:00Z`);
+}
