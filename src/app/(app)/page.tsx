@@ -64,24 +64,29 @@ export default async function DashboardPage({
 
   const delRango = cotizaciones.filter((c) => c.createdAt >= inicio && c.createdAt < finExclusivo);
 
-  // "Por cobrar" — cuentas no canceladas cuya fecha de vencimiento cae en el
-  // rango seleccionado. Se separan por el tipo de la cotización que las originó.
-  const porCobrarRango = cuentasPorCobrar.filter(
-    (cc) => !cc.cancelada && cc.fechaVencimiento >= inicio && cc.fechaVencimiento < finExclusivo
-  );
+  // "Por cobrar (saldo)" — cuentas abiertas (no canceladas y con saldo pendiente), sin importar
+  // el mes o año elegido: es lo que se debe hoy. Se separan por el tipo de la cotización que las originó.
+  const cuentasAbiertas = cuentasPorCobrar
+    .filter((cc) => !cc.cancelada)
+    .map((cc) => ({ cc, saldo: calcularSaldo(cc.montoTotal, cc.abonos) }))
+    .filter(({ saldo }) => saldo > 0);
 
-  /** Cotizado / Aceptado / Por cobrar de un tipo de cotización en el rango. */
+  /** Cotizado / Aceptado de un tipo en el rango, y saldo por cobrar abierto (todas las fechas). */
   function kpisDe(tipo: TipoCotizacion) {
     const cot = delRango.filter((c) => c.tipo === tipo);
     const aceptadas = cot.filter((c) => c.estado === "ACEPTADA");
-    const cuentas = porCobrarRango.filter((cc) => cc.cotizacion.tipo === tipo);
+    const cuentas = cuentasAbiertas.filter(({ cc }) => cc.cotizacion.tipo === tipo);
     return {
       cotizado: cot.reduce((sum, c) => sum + c.netoARecibir, 0),
       nCotizadas: cot.length,
       aceptado: aceptadas.reduce((sum, c) => sum + c.netoARecibir, 0),
       nAceptadas: aceptadas.length,
-      porCobrar: cuentas.reduce((sum, cc) => sum + calcularSaldo(cc.montoTotal, cc.abonos), 0),
+      porCobrar: cuentas.reduce((sum, { saldo }) => sum + saldo, 0),
       nCuentas: cuentas.length,
+      porCobrarVencido: cuentas.reduce(
+        (sum, { cc, saldo }) => (estaVencida(cc.fechaVencimiento, saldo) ? sum + saldo : sum),
+        0
+      ),
     };
   }
   const servicio = kpisDe("SERVICIO");
@@ -90,16 +95,16 @@ export default async function DashboardPage({
   // Alertas (no dependen del mes elegido: son lo que requiere atención hoy).
   const inicioHoy = new Date(hoy);
   inicioHoy.setHours(0, 0, 0, 0);
-  // Cotizaciones abiertas (Borrador o Enviada) según su vigencia: ya vencidas
-  // (rojo) o que vencen hoy o en los próximos 3 días (ámbar). Son dos alertas
-  // distintas que nunca se cuentan juntas.
+  // Cotizaciones abiertas (Borrador o Enviada) por vencer hoy o en los próximos 3 días (ámbar), y
+  // Enviadas sin respuesta con la vigencia ya pasada (rojo). Un borrador no se cuenta como vencido:
+  // todavía no se ha mandado a nadie. Son dos alertas distintas que nunca se cuentan juntas.
   const abiertas = cotizaciones.filter((c) => c.estado === "BORRADOR" || c.estado === "ENVIADA");
   const diasParaVencer = (c: { fechaVigencia: Date }) => {
     const venc = new Date(c.fechaVigencia);
     venc.setHours(0, 0, 0, 0);
     return Math.round((venc.getTime() - inicioHoy.getTime()) / 86400000);
   };
-  const vencidas = abiertas.filter((c) => diasParaVencer(c) < 0);
+  const vencidas = abiertas.filter((c) => c.estado === "ENVIADA" && diasParaVencer(c) < 0);
   const porVencer = abiertas.filter((c) => {
     const dias = diasParaVencer(c);
     return dias >= 0 && dias <= DIAS_ALERTA_VIGENCIA;
@@ -125,9 +130,11 @@ export default async function DashboardPage({
               href="/cotizaciones"
               className="rounded-xl border border-danger-strong/50 bg-danger-strong/10 px-4 py-3 transition-colors hover:bg-danger-strong/15"
             >
-              <p className="text-sm font-semibold text-danger">{vencidas.length} cotización(es) vencida(s)</p>
+              <p className="text-sm font-semibold text-danger">
+                {vencidas.length} cotización(es) enviada(s) sin respuesta con vigencia vencida
+              </p>
               <p className="mt-0.5 text-xs text-text-muted">
-                Borradores y enviadas cuya vigencia ya pasó. Ver tablero →
+                Enviadas cuya vigencia ya pasó. Ver tablero →
               </p>
             </Link>
           )}
@@ -175,9 +182,9 @@ export default async function DashboardPage({
               hint={`${k.nAceptadas} cotización(es)`}
             />
             <StatTile
-              label={`Por cobrar ${labelSufijo}`}
+              label="Por cobrar (saldo)"
               value={formatCurrency(k.porCobrar)}
-              hint={`${k.nCuentas} cuenta(s) por vencer`}
+              hint={`${k.nCuentas} cuenta(s) · ${formatCurrency(k.porCobrarVencido)} vencido`}
             />
           </div>
         </section>
