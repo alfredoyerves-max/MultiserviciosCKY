@@ -14,13 +14,13 @@ const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: proc
 /** Categorías de Servicio pedidas; además se crean las que hoy usan los servicios existentes. */
 const CATEGORIAS_SERVICIO = ["Servicios de Limpieza", "Velador"];
 
-/** [nombre, clave SAT de unidad (c_ClaveUnidad) o null]. "Lote" queda sin clave: el SAT tiene dos ("LO" y "XLT"). */
+/** [nombre, clave SAT de unidad (c_ClaveUnidad) o null]. "Lote" = XLT (nombre oficial "Lote"); LO se llama "Lote [unidad de adquisición]". */
 const UNIDADES: [string, string | null][] = [
   ["Pieza", "H87"],
   ["Caja", "XBX"],
   ["Unidad de servicio", "E48"],
   ["Uno", "C62"],
-  ["Lote", null],
+  ["Lote", "XLT"],
 ];
 /** Claves de unidad oficiales de las que ya se usan en productos/cotizaciones (nombre idéntico al del SAT). */
 const CLAVE_UNIDAD_VALIDADA: Record<string, string> = { Litro: "LTR", Kilogramo: "KGM", Paquete: "XPK" };
